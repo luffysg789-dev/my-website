@@ -247,6 +247,57 @@ app.get('/api/tutorial', (_req, res) => {
   res.json({ items: rows });
 });
 
+function decodeBasicHtmlEntities(text) {
+  return String(text || '')
+    .replaceAll('&nbsp;', ' ')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'");
+}
+
+function htmlToPlainText(html) {
+  const input = String(html || '');
+  const withoutScripts = input.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+  const withBreaks = withoutScripts
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/div>/gi, '\n');
+  const stripped = withBreaks.replace(/<[^>]+>/g, '');
+  return decodeBasicHtmlEntities(stripped).replace(/\n{3,}/g, '\n\n').trim();
+}
+
+app.get('/api/tutorials/:id/preview', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+  const id = Number(req.params.id);
+  const limit = Math.max(200, Math.min(10000, Number(req.query.limit || 2000)));
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'id 无效' });
+
+  const row = db
+    .prepare(
+      `
+      SELECT id, title, substr(content, 1, 40000) as content_part, created_at, updated_at
+      FROM tutorials
+      WHERE id = ? AND status = 'published'
+    `
+    )
+    .get(id);
+
+  if (!row) return res.status(404).json({ error: '教程不存在' });
+  const previewText = htmlToPlainText(row.content_part || '').slice(0, limit);
+  res.json({
+    ok: true,
+    item: { id: row.id, title: row.title, created_at: row.created_at, updated_at: row.updated_at },
+    previewText,
+    limit
+  });
+});
+
+app.get('/api/tutorial/:id/preview', (req, res) => res.redirect(307, `/api/tutorials/${req.params.id}/preview?${new URLSearchParams(req.query).toString()}`));
+
 app.get('/api/tutorials/:id', (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   const id = Number(req.params.id);

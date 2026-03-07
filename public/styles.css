@@ -454,6 +454,13 @@ button.danger { background: var(--danger); }
   contain-intrinsic-size: 1000px;
 }
 
+.tutorial-preview {
+  white-space: pre-wrap;
+  margin: 0;
+  font: inherit;
+  line-height: 1.7;
+}
+
 .tutorial-content img {
   max-width: 100%;
   height: auto;
@@ -518,7 +525,13 @@ button.danger { background: var(--danger); }
     left: 10px;
     bottom: 10px;
   }
-  .left-nav button { border-radius: 10px; width: auto; }
+.left-nav button { border-radius: 10px; width: auto; }
+.left-nav button:empty {
+  /* Keep the dock width/height consistent while hiding label text. */
+  width: 56px;
+  height: 56px;
+  padding: 0;
+}
   .admin-panel-grid { grid-template-columns: 1fr; }
   .admin-add-form { grid-template-columns: 1fr; }
 }

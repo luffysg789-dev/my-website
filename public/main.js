@@ -11,12 +11,7 @@ const searchBtn = document.getElementById('searchBtn');
 const langZhBtn = document.getElementById('langZhBtn');
 const langEnBtn = document.getElementById('langEnBtn');
 const categorySelect = document.getElementById('categorySelect');
-const leftNavEl = document.querySelector('.left-nav');
 const navView = document.getElementById('navView');
-const tutorialView = document.getElementById('tutorialView');
-const tutorialListEl = document.getElementById('tutorialList');
-const showNavBtn = document.getElementById('showNavBtn');
-const showTutorialBtn = document.getElementById('showTutorialBtn');
 const heroLogoEl = document.getElementById('heroLogo');
 const heroSubtitleEl = document.getElementById('heroSubtitle');
 
@@ -166,7 +161,6 @@ const texts = {
 let currentCategory = '';
 let currentLang = localStorage.getItem('claw800_lang') === 'en' ? 'en' : 'zh';
 let categoriesCache = [];
-let currentView = 'nav';
 const translationCache = new Map(); // key: `en|${source}` -> translated
 let siteConfig = null; // { title, subtitleZh, subtitleEn }
 
@@ -338,8 +332,6 @@ function applyLanguage() {
 
   searchInput.placeholder = dict.searchPlaceholder;
   searchBtn.textContent = dict.searchBtn;
-  showNavBtn.textContent = dict.navBtn;
-  showTutorialBtn.textContent = dict.tutorialBtn;
   document.getElementById('submitTitle').textContent = dict.submitTitle;
   document.getElementById('submitDesc').textContent = dict.submitDesc;
   openSubmitFormBtn.textContent = dict.openSubmit;
@@ -357,9 +349,6 @@ function applyLanguage() {
 
   renderCategoryOptions();
   renderCategories(categoriesCache);
-  if (currentView === 'tutorial') {
-    loadTutorials();
-  }
 }
 
 async function loadSiteConfig() {
@@ -433,57 +422,8 @@ async function loadSites() {
   translateVisibleTextNodes();
 }
 
-async function loadTutorials() {
-  const res = await fetch('/api/tutorials');
-  const data = await res.json();
-  const items = Array.isArray(data.items) ? data.items : [];
-
-  if (!items.length) {
-    tutorialListEl.innerHTML = `<p class="empty">${escapeHtml(t('tutorialEmpty'))}</p>`;
-    return;
-  }
-
-  tutorialListEl.innerHTML = items
-    .map((item) => {
-      const createdAt = escapeHtml(String(item.created_at || '').replace('T', ' ').slice(0, 16));
-      const title = String(item.title || '').trim();
-      const titleAttr = currentLang === 'en' && hasCjk(title) ? ` data-src="${escapeHtml(title)}"` : '';
-      return `
-        <a class="tutorial-item" href="/tutorial.html?id=${encodeURIComponent(item.id)}">
-          <h3${titleAttr}>${escapeHtml(title)}</h3>
-          <p class="small">${createdAt}</p>
-        </a>
-      `;
-    })
-    .join('');
-
-  translateVisibleTextNodes();
-}
-
-function setView(view) {
-  currentView = view === 'tutorial' ? 'tutorial' : 'nav';
-  navView.classList.toggle('hidden', currentView !== 'nav');
-  tutorialView.classList.toggle('hidden', currentView !== 'tutorial');
-  showNavBtn.classList.toggle('active', currentView === 'nav');
-  showTutorialBtn.classList.toggle('active', currentView === 'tutorial');
-  if (currentView === 'tutorial') {
-    loadTutorials();
-  }
-}
-
-function syncLeftNavTop() {
-  if (!leftNavEl) return;
-  if (window.matchMedia('(max-width: 900px)').matches) {
-    leftNavEl.style.top = '';
-    return;
-  }
-
-  const rootStyles = getComputedStyle(document.documentElement);
-  const dockTop = parseFloat(rootStyles.getPropertyValue('--dock-top')) || 156;
-  const initialTop = dockTop + 44;
-  const nextTop = Math.max(0, initialTop - window.scrollY);
-  leftNavEl.style.top = `${nextTop}px`;
-}
+// Left-side dock (导航/教程) is disabled on homepage for now.
+function syncLeftNavTop() {}
 
 function setLanguage(lang) {
   currentLang = lang === 'en' ? 'en' : 'zh';
@@ -542,16 +482,10 @@ searchInput.addEventListener('keydown', (e) => {
     loadSites();
   }
 });
-showNavBtn.addEventListener('click', () => setView('nav'));
-showTutorialBtn.addEventListener('click', () => setView('tutorial'));
-window.addEventListener('scroll', syncLeftNavTop, { passive: true });
-window.addEventListener('resize', syncLeftNavTop);
 
 (async () => {
   await loadSiteConfig();
   applyLanguage();
   await loadCategories();
   await loadSites();
-  setView('nav');
-  syncLeftNavTop();
 })();

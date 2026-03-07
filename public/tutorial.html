@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>教程 - claw800.com</title>
-    <link rel="stylesheet" href="/styles.css?v=20260307-01" />
+    <link rel="stylesheet" href="/styles.css?v=20260307-03" />
   </head>
   <body>
     <header class="hero">
@@ -46,6 +46,7 @@
           subTitle: '图文教程',
           backHome: '返回首页',
           loading: '加载中...',
+          loadingFull: '正在加载全文...',
           translating: '翻译中...',
           notFound: '教程不存在或已下线',
           failed: '加载失败，请稍后重试',
@@ -57,6 +58,7 @@
           subTitle: 'Tutorial',
           backHome: 'Back Home',
           loading: 'Loading...',
+          loadingFull: 'Loading full content...',
           translating: 'Translating...',
           notFound: 'Tutorial not found.',
           failed: 'Load failed. Please retry later.',
@@ -163,6 +165,57 @@
         }
       }
 
+      function buildHtmlBlocks(html) {
+        const input = String(html || '');
+        if (!input) return [];
+        // Try to split on safe-ish boundaries so we can append progressively.
+        const tokens = input.split(/(<\/p>|<\/h[1-6]>|<\/li>|<br\\s*\\/?>)/gi);
+        const blocks = [];
+        let buf = '';
+        for (const tok of tokens) {
+          buf += tok;
+          if (buf.length >= 12000 || /<\/p>|<\/h[1-6]>|<\/li>|<br\s*\/?>/i.test(tok)) {
+            blocks.push(buf);
+            buf = '';
+          }
+        }
+        if (buf) blocks.push(buf);
+        return blocks.filter(Boolean);
+      }
+
+      function renderHtmlProgressively({ html, contentEl, messageEl, token }) {
+        return new Promise((resolve) => {
+          const blocks = buildHtmlBlocks(html);
+          contentEl.innerHTML = '';
+          if (!blocks.length) return resolve();
+
+          let idx = 0;
+          messageEl.textContent = t('loadingFull');
+          messageEl.className = 'message';
+
+          const pump = () => {
+            if (token !== tutorialLoadToken) return resolve();
+            const start = performance.now();
+            while (idx < blocks.length && performance.now() - start < 10) {
+              contentEl.insertAdjacentHTML('beforeend', blocks[idx++]);
+            }
+            // Lazy-load images already appended.
+            contentEl.querySelectorAll('img:not([loading])').forEach((img) => {
+              img.setAttribute('loading', 'lazy');
+              img.setAttribute('decoding', 'async');
+            });
+            if (idx < blocks.length) {
+              requestAnimationFrame(pump);
+              return;
+            }
+            messageEl.textContent = '';
+            resolve();
+          };
+
+          requestAnimationFrame(pump);
+        });
+      }
+
       function applyLanguage() {
         document.documentElement.lang = t('htmlLang');
         document.getElementById('tutorialSubTitle').textContent = t('subTitle');
@@ -212,33 +265,47 @@
         messageEl.className = 'message';
 
         try {
-          const res = await fetch(`/api/tutorials/${id}`);
-          const data = await res.json();
-          if (!res.ok || !data.item) {
+          // 1) Load a small preview first so the user sees content almost immediately.
+          const previewRes = await fetch(`/api/tutorials/${id}/preview?limit=2000`, { cache: 'no-store' });
+          const previewData = await previewRes.json().catch(() => ({}));
+          if (!previewRes.ok || !previewData.item) {
             messageEl.textContent = t('notFound');
             messageEl.className = 'message error';
             return;
           }
+          const previewItem = previewData.item;
+          document.title = `${t('titlePrefix')}${previewItem.title}`;
+          titleEl.textContent = previewItem.title;
+          metaEl.textContent = `${t('publishedAt')}：${formatDate(previewItem.created_at)}`;
 
-          const item = data.item;
-          document.title = `${t('titlePrefix')}${item.title}`;
-          titleEl.textContent = item.title;
-          metaEl.textContent = `${t('publishedAt')}：${formatDate(item.created_at)}`;
-          contentEl.innerHTML = item.content;
-          // Lazy-load images to improve initial paint for long articles.
-          contentEl.querySelectorAll('img').forEach((img) => {
-            img.setAttribute('loading', 'lazy');
-            img.setAttribute('decoding', 'async');
-          });
-          messageEl.textContent = '';
+          const previewText = String(previewData.previewText || '').trim();
+          if (previewText) {
+            contentEl.innerHTML = '';
+            const pre = document.createElement('pre');
+            pre.className = 'tutorial-preview';
+            pre.textContent = previewText;
+            contentEl.appendChild(pre);
+          }
+
+          // 2) Fetch full content in background, then progressively render it.
+          const fullRes = await fetch(`/api/tutorials/${id}`, { cache: 'no-store' });
+          const fullData = await fullRes.json().catch(() => ({}));
+          if (!fullRes.ok || !fullData.item) {
+            // Keep preview, but show error.
+            messageEl.textContent = t('failed');
+            messageEl.className = 'message error';
+            return;
+          }
+          const item = fullData.item;
+
+          await renderHtmlProgressively({ html: item.content, contentEl, messageEl, token });
 
           if (currentLang === 'en') {
-            messageEl.textContent = t('translating');
-            messageEl.className = 'message';
-
             const runTranslate = async () => {
               try {
                 if (token !== tutorialLoadToken) return;
+                messageEl.textContent = t('translating');
+                messageEl.className = 'message';
                 const rawTitle = String(item.title || '');
                 const titleMap = await requestTranslateBatch([rawTitle]);
                 const translatedTitle = titleMap.get(rawTitle);
@@ -249,12 +316,9 @@
                 if (token !== tutorialLoadToken) return;
                 await translateElementTextNodes(contentEl);
               } finally {
-                if (token === tutorialLoadToken) {
-                  messageEl.textContent = '';
-                }
+                if (token === tutorialLoadToken) messageEl.textContent = '';
               }
             };
-
             if (typeof requestIdleCallback === 'function') {
               requestIdleCallback(() => runTranslate(), { timeout: 1000 });
             } else {
