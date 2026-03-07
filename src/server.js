@@ -55,6 +55,18 @@ function getAdminPassword() {
   return pwd || DEFAULT_ADMIN_PASSWORD;
 }
 
+function getSetting(key, fallback = '') {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(String(key));
+  const value = String(row?.value || '').trim();
+  return value || String(fallback || '');
+}
+
+const upsertSettingStmt = db.prepare(`
+  INSERT INTO settings (key, value, updated_at)
+  VALUES (?, ?, datetime('now'))
+  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+`);
+
 function adminTokenForPassword(password) {
   return crypto.createHash('sha256').update(String(password || '')).digest('hex');
 }
@@ -148,7 +160,44 @@ app.get('/api/categories', (_req, res) => {
   res.json({ items: rows });
 });
 
+app.get('/api/site-config', (_req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  const title = getSetting('site_title', 'claw800.com');
+  const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
+  const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
+  res.json({ ok: true, title, subtitleZh, subtitleEn });
+});
+
+app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
+  const title = getSetting('site_title', 'claw800.com');
+  const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
+  const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
+  res.json({ ok: true, title, subtitleZh, subtitleEn });
+});
+
+app.put('/api/admin/site-config', requireAdmin, (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const subtitleZh = String(req.body.subtitleZh || '').trim();
+  const subtitleEn = String(req.body.subtitleEn || '').trim();
+
+  if (!title) return res.status(400).json({ error: '网站名称必填' });
+  if (Buffer.byteLength(title, 'utf8') > 200) return res.status(413).json({ error: '网站名称太长' });
+  if (Buffer.byteLength(subtitleZh, 'utf8') > 2000) return res.status(413).json({ error: '中文简介太长' });
+  if (Buffer.byteLength(subtitleEn, 'utf8') > 2000) return res.status(413).json({ error: '英文简介太长' });
+
+  try {
+    upsertSettingStmt.run('site_title', title);
+    upsertSettingStmt.run('site_subtitle_zh', subtitleZh);
+    upsertSettingStmt.run('site_subtitle_en', subtitleEn);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: '保存失败' });
+  }
+});
+
 app.get('/api/tutorials', (_req, res) => {
+  // Tutorials change infrequently; allow short public caching.
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   const rows = db
     .prepare(`
       SELECT id, title, created_at
@@ -161,6 +210,7 @@ app.get('/api/tutorials', (_req, res) => {
 });
 
 app.get('/api/tutorial', (_req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   const rows = db
     .prepare(`
       SELECT id, title, created_at
@@ -173,6 +223,7 @@ app.get('/api/tutorial', (_req, res) => {
 });
 
 app.get('/api/tutorials/:id', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) {
     return res.status(400).json({ error: 'id 无效' });
@@ -193,6 +244,7 @@ app.get('/api/tutorials/:id', (req, res) => {
 });
 
 app.get('/api/tutorial/:id', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) {
     return res.status(400).json({ error: 'id 无效' });
@@ -750,6 +802,121 @@ app.post('/api/admin/sites/:id/delete', requireAdmin, (req, res) => {
 
 app.delete('/admin/sites/:id', requireAdmin, (req, res) => res.redirect(307, `/api/admin/sites/${req.params.id}`));
 app.post('/admin/sites/:id/delete', requireAdmin, (req, res) => res.redirect(307, `/api/admin/sites/${req.params.id}/delete`));
+
+const TRANSLATE_PROVIDER = String(process.env.TRANSLATE_PROVIDER || 'libretranslate').toLowerCase();
+const TRANSLATE_ENDPOINT = String(process.env.TRANSLATE_ENDPOINT || 'https://libretranslate.com/translate');
+const TRANSLATE_API_KEY = String(process.env.TRANSLATE_API_KEY || '');
+const TRANSLATE_TIMEOUT_MS = Number(process.env.TRANSLATE_TIMEOUT_MS || 8000);
+
+const getTranslationStmt = db.prepare(
+  'SELECT translated_text FROM translations WHERE target_lang = ? AND source_hash = ?'
+);
+const insertTranslationStmt = db.prepare(
+  'INSERT OR IGNORE INTO translations (target_lang, source_hash, source_text, translated_text) VALUES (?, ?, ?, ?)'
+);
+
+function hasCjk(text) {
+  return /[\u3400-\u9FBF]/.test(String(text || ''));
+}
+
+async function translateViaLibreTranslate(text, targetLang) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TRANSLATE_TIMEOUT_MS);
+  try {
+    const payload = {
+      q: String(text || ''),
+      source: 'auto',
+      target: String(targetLang || 'en'),
+      format: 'text'
+    };
+    if (TRANSLATE_API_KEY) payload.api_key = TRANSLATE_API_KEY;
+
+    const resp = await fetch(TRANSLATE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    if (!resp.ok) throw new Error(`translate failed: ${resp.status}`);
+    const data = await resp.json();
+    const translated = String(data.translatedText || '').trim();
+    return translated || String(text || '');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function translateTextCached(text, targetLang) {
+  const source = String(text || '');
+  const to = String(targetLang || 'en').toLowerCase();
+  const hash = crypto.createHash('sha256').update(source).digest('hex');
+
+  const cached = getTranslationStmt.get(to, hash);
+  if (cached && typeof cached.translated_text === 'string') {
+    return cached.translated_text;
+  }
+
+  let translated = source;
+  if (TRANSLATE_PROVIDER === 'off' || TRANSLATE_PROVIDER === 'none') {
+    translated = source;
+  } else if (TRANSLATE_PROVIDER === 'libretranslate') {
+    translated = await translateViaLibreTranslate(source, to);
+  } else {
+    // Unknown provider: return original to avoid breaking the page.
+    translated = source;
+  }
+
+  try {
+    insertTranslationStmt.run(to, hash, source, translated);
+  } catch {
+    // ignore cache write failures
+  }
+
+  return translated;
+}
+
+app.get('/api/translate', async (req, res) => {
+  const to = String(req.query.to || 'en').toLowerCase();
+  const text = String(req.query.text || '');
+  if (!text) return res.status(400).json({ error: 'text 必填' });
+  if (!['en', 'zh'].includes(to)) return res.status(400).json({ error: 'to 只支持 en/zh' });
+
+  try {
+    const translated = hasCjk(text) ? await translateTextCached(text, to) : text;
+    res.json({ ok: true, to, translated });
+  } catch {
+    res.status(502).json({ error: '翻译服务不可用' });
+  }
+});
+
+app.post('/api/translate', async (req, res) => {
+  const to = String(req.body.to || 'en').toLowerCase();
+  const texts = Array.isArray(req.body.texts) ? req.body.texts : [];
+
+  if (!['en', 'zh'].includes(to)) return res.status(400).json({ error: 'to 只支持 en/zh' });
+  if (!texts.length) return res.json({ ok: true, to, items: [] });
+  if (texts.length > 200) return res.status(413).json({ error: 'texts 过多，请分批提交' });
+
+  const normalized = texts.map((t) => String(t || ''));
+  const totalBytes = Buffer.byteLength(JSON.stringify(normalized), 'utf8');
+  if (totalBytes > 200000) return res.status(413).json({ error: '请求体过大（翻译）' });
+
+  try {
+    const items = [];
+    for (const text of normalized) {
+      if (!text) {
+        items.push('');
+        continue;
+      }
+      // Only translate when it likely needs translation.
+      items.push(hasCjk(text) ? await translateTextCached(text, to) : text);
+    }
+    res.json({ ok: true, to, items });
+  } catch {
+    res.status(502).json({ error: '翻译服务不可用' });
+  }
+});
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'claw800' });

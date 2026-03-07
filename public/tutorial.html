@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>教程 - claw800.com</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260307-01" />
   </head>
   <body>
     <header class="hero">
       <div class="container">
         <div class="hero-top">
-          <h1><a class="hero-logo" href="/">claw800.com</a></h1>
+          <h1><a class="hero-logo" id="tutorialHeroLogo" href="/">claw800.com</a></h1>
         </div>
         <div class="hero-subrow">
           <p id="tutorialSubTitle">图文教程</p>
@@ -46,6 +46,7 @@
           subTitle: '图文教程',
           backHome: '返回首页',
           loading: '加载中...',
+          translating: '翻译中...',
           notFound: '教程不存在或已下线',
           failed: '加载失败，请稍后重试',
           publishedAt: '发布时间'
@@ -56,6 +57,7 @@
           subTitle: 'Tutorial',
           backHome: 'Back Home',
           loading: 'Loading...',
+          translating: 'Translating...',
           notFound: 'Tutorial not found.',
           failed: 'Load failed. Please retry later.',
           publishedAt: 'Published At'
@@ -63,6 +65,9 @@
       };
 
       let currentLang = localStorage.getItem('claw800_lang') === 'en' ? 'en' : 'zh';
+      const translationCache = new Map(); // key: `en|${source}` -> translated
+      let tutorialLoadToken = 0;
+      let siteConfig = null;
 
       function t(key) {
         return texts[currentLang][key];
@@ -83,15 +88,113 @@
         return d.toLocaleString(currentLang === 'en' ? 'en-US' : 'zh-CN', { hour12: false });
       }
 
+      function hasCjk(text) {
+        return /[\u3400-\u9FBF]/.test(String(text || ''));
+      }
+
+      async function requestTranslateBatch(texts) {
+        const unique = Array.from(new Set(texts.map((t) => String(t || '')).filter(Boolean)));
+        const need = unique.filter((t) => hasCjk(t) && !translationCache.has(`en|${t}`));
+        if (need.length) {
+          try {
+            const res = await fetch('/api/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ to: 'en', texts: need })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && Array.isArray(data.items)) {
+              need.forEach((src, idx) => {
+                const translated = String(data.items[idx] ?? '').trim();
+                if (translated) translationCache.set(`en|${src}`, translated);
+              });
+            }
+          } catch {
+            // ignore translation failures
+          }
+        }
+        const map = new Map();
+        for (const src of unique) {
+          const cached = translationCache.get(`en|${src}`);
+          if (cached) map.set(src, cached);
+        }
+        return map;
+      }
+
+      function splitWhitespace(text) {
+        const m = String(text || '').match(/^(\s*)([\s\S]*?)(\s*)$/);
+        return [m ? m[1] : '', m ? m[2] : String(text || ''), m ? m[3] : ''];
+      }
+
+      async function translateElementTextNodes(rootEl) {
+        if (!rootEl || currentLang !== 'en') return;
+        const nodes = [];
+        const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+          acceptNode(node) {
+            const raw = String(node.nodeValue || '');
+            if (!raw.trim()) return NodeFilter.FILTER_REJECT;
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            const tag = parent.tagName;
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'CODE' || tag === 'PRE') return NodeFilter.FILTER_REJECT;
+            return hasCjk(raw) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+          }
+        });
+
+        let cur = walker.nextNode();
+        while (cur) {
+          nodes.push(cur);
+          if (nodes.length >= 300) break; // safety cap
+          cur = walker.nextNode();
+        }
+
+        const sources = nodes
+          .map((n) => splitWhitespace(n.nodeValue)[1])
+          .map((mid) => String(mid || '').trim())
+          .filter(Boolean);
+        if (!sources.length) return;
+
+        const translatedMap = await requestTranslateBatch(sources);
+        for (const node of nodes) {
+          const [lead, mid, trail] = splitWhitespace(node.nodeValue);
+          const key = String(mid || '').trim();
+          const translated = translatedMap.get(key);
+          if (translated) node.nodeValue = `${lead}${translated}${trail}`;
+        }
+      }
+
       function applyLanguage() {
         document.documentElement.lang = t('htmlLang');
         document.getElementById('tutorialSubTitle').textContent = t('subTitle');
         document.getElementById('backHomeBtn').textContent = t('backHome');
         document.getElementById('tutorialLangZhBtn').classList.toggle('active', currentLang === 'zh');
         document.getElementById('tutorialLangEnBtn').classList.toggle('active', currentLang === 'en');
+        const titleFromConfig = String(siteConfig?.title || '').trim();
+        const safeTitle = titleFromConfig || 'claw800.com';
+        const logoEl = document.getElementById('tutorialHeroLogo');
+        if (logoEl) logoEl.textContent = safeTitle;
+      }
+
+      async function loadSiteConfig() {
+        try {
+          const res = await fetch('/api/site-config', { cache: 'no-store' });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data && data.ok) {
+            siteConfig = {
+              title: String(data.title || '').trim(),
+              subtitleZh: String(data.subtitleZh || '').trim(),
+              subtitleEn: String(data.subtitleEn || '').trim()
+            };
+          } else {
+            siteConfig = null;
+          }
+        } catch {
+          siteConfig = null;
+        }
       }
 
       async function loadTutorial() {
+        const token = ++tutorialLoadToken;
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         const titleEl = document.getElementById('tutorialTitle');
@@ -122,7 +225,42 @@
           titleEl.textContent = item.title;
           metaEl.textContent = `${t('publishedAt')}：${formatDate(item.created_at)}`;
           contentEl.innerHTML = item.content;
+          // Lazy-load images to improve initial paint for long articles.
+          contentEl.querySelectorAll('img').forEach((img) => {
+            img.setAttribute('loading', 'lazy');
+            img.setAttribute('decoding', 'async');
+          });
           messageEl.textContent = '';
+
+          if (currentLang === 'en') {
+            messageEl.textContent = t('translating');
+            messageEl.className = 'message';
+
+            const runTranslate = async () => {
+              try {
+                if (token !== tutorialLoadToken) return;
+                const rawTitle = String(item.title || '');
+                const titleMap = await requestTranslateBatch([rawTitle]);
+                const translatedTitle = titleMap.get(rawTitle);
+                if (translatedTitle && token === tutorialLoadToken) {
+                  document.title = `${t('titlePrefix')}${translatedTitle}`;
+                  titleEl.textContent = translatedTitle;
+                }
+                if (token !== tutorialLoadToken) return;
+                await translateElementTextNodes(contentEl);
+              } finally {
+                if (token === tutorialLoadToken) {
+                  messageEl.textContent = '';
+                }
+              }
+            };
+
+            if (typeof requestIdleCallback === 'function') {
+              requestIdleCallback(() => runTranslate(), { timeout: 1000 });
+            } else {
+              setTimeout(() => runTranslate(), 0);
+            }
+          }
         } catch {
           titleEl.textContent = '';
           contentEl.innerHTML = '';
@@ -156,8 +294,11 @@
         loadTutorial();
       });
 
-      applyLanguage();
-      loadTutorial();
+      (async () => {
+        await loadSiteConfig();
+        applyLanguage();
+        loadTutorial();
+      })();
     </script>
   </body>
 </html>

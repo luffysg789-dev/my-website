@@ -448,6 +448,12 @@ button.danger { background: var(--danger); }
   margin-top: 0;
 }
 
+.tutorial-content {
+  /* Speed up long tutorial rendering: only paint what is near the viewport. */
+  content-visibility: auto;
+  contain-intrinsic-size: 1000px;
+}
+
 .tutorial-content img {
   max-width: 100%;
   height: auto;

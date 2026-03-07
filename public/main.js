@@ -17,6 +17,8 @@ const tutorialView = document.getElementById('tutorialView');
 const tutorialListEl = document.getElementById('tutorialList');
 const showNavBtn = document.getElementById('showNavBtn');
 const showTutorialBtn = document.getElementById('showTutorialBtn');
+const heroLogoEl = document.getElementById('heroLogo');
+const heroSubtitleEl = document.getElementById('heroSubtitle');
 
 const CATEGORY_EN = {
   'AI 与大语言模型': 'AI & Large Language Models',
@@ -165,6 +167,8 @@ let currentCategory = '';
 let currentLang = localStorage.getItem('claw800_lang') === 'en' ? 'en' : 'zh';
 let categoriesCache = [];
 let currentView = 'nav';
+const translationCache = new Map(); // key: `en|${source}` -> translated
+let siteConfig = null; // { title, subtitleZh, subtitleEn }
 
 function t(key) {
   return texts[currentLang][key];
@@ -190,8 +194,82 @@ function descriptionLabel(description) {
   if (!desc) return t('noDesc');
   if (currentLang !== 'en') return desc;
   if (DESC_EN[desc]) return DESC_EN[desc];
-  if (/[\u3400-\u9FBF]/.test(desc)) return t('noDescEnYet');
+  // For EN, show original text first and then translate it via /api/translate.
+  if (/[\u3400-\u9FBF]/.test(desc)) return desc;
   return desc;
+}
+
+function hasCjk(text) {
+  return /[\u3400-\u9FBF]/.test(String(text || ''));
+}
+
+function getApiCandidates(path) {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  const list = [normalized];
+  const pathName = window.location.pathname || '/';
+  const slash = pathName.lastIndexOf('/');
+  const base = slash >= 0 ? pathName.slice(0, slash + 1) : '/';
+  if (base && base !== '/') {
+    list.push(`${base.replace(/\/+$/, '')}${normalized}`);
+  }
+  return Array.from(new Set(list));
+}
+
+async function requestJson(path, options) {
+  const candidates = getApiCandidates(path);
+  let lastError = null;
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, options);
+      const data = await res.json().catch(() => ({}));
+      return { res, data };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('request failed');
+}
+
+async function translateBatchToEn(texts) {
+  const unique = Array.from(new Set(texts.map((t) => String(t || '')).filter(Boolean)));
+  const need = unique.filter((t) => hasCjk(t) && !translationCache.has(`en|${t}`));
+  if (need.length) {
+    try {
+      const { res, data } = await requestJson('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: 'en', texts: need })
+      });
+      if (res.ok && Array.isArray(data.items)) {
+        need.forEach((src, idx) => {
+          const translated = String(data.items[idx] ?? '');
+          if (translated) translationCache.set(`en|${src}`, translated);
+        });
+      }
+    } catch {
+      // ignore translation failures; keep original text
+    }
+  }
+
+  const map = new Map();
+  for (const src of unique) {
+    const cached = translationCache.get(`en|${src}`);
+    if (cached) map.set(src, cached);
+  }
+  return map;
+}
+
+async function translateVisibleTextNodes() {
+  if (currentLang !== 'en') return;
+  const els = Array.from(document.querySelectorAll('[data-src]'));
+  const sources = els.map((el) => el.getAttribute('data-src') || '').filter(Boolean);
+  const translatedMap = await translateBatchToEn(sources);
+  for (const el of els) {
+    const src = el.getAttribute('data-src') || '';
+    if (!src) continue;
+    const translated = translatedMap.get(src);
+    if (translated) el.textContent = translated;
+  }
 }
 
 function localizeApiError(message) {
@@ -245,8 +323,19 @@ function applyLanguage() {
   const dict = texts[currentLang];
 
   document.documentElement.lang = dict.htmlLang;
-  document.title = dict.title;
-  document.getElementById('heroSubtitle').textContent = dict.heroSubtitle;
+  const titleFromConfig = String(siteConfig?.title || '').trim();
+  const safeTitle = titleFromConfig || 'claw800.com';
+  const titleSuffix = currentLang === 'en' ? 'OpenClaw AI Directory' : 'OpenClaw AI 导航';
+  document.title = `${safeTitle} - ${titleSuffix}`;
+
+  if (heroLogoEl) heroLogoEl.textContent = safeTitle;
+
+  const subtitle =
+    currentLang === 'en'
+      ? String(siteConfig?.subtitleEn || '').trim() || dict.heroSubtitle
+      : String(siteConfig?.subtitleZh || '').trim() || dict.heroSubtitle;
+  if (heroSubtitleEl) heroSubtitleEl.textContent = subtitle;
+
   searchInput.placeholder = dict.searchPlaceholder;
   searchBtn.textContent = dict.searchBtn;
   showNavBtn.textContent = dict.navBtn;
@@ -270,6 +359,24 @@ function applyLanguage() {
   renderCategories(categoriesCache);
   if (currentView === 'tutorial') {
     loadTutorials();
+  }
+}
+
+async function loadSiteConfig() {
+  try {
+    const res = await fetch('/api/site-config', { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data && data.ok) {
+      siteConfig = {
+        title: String(data.title || '').trim(),
+        subtitleZh: String(data.subtitleZh || '').trim(),
+        subtitleEn: String(data.subtitleEn || '').trim()
+      };
+    } else {
+      siteConfig = null;
+    }
+  } catch {
+    siteConfig = null;
   }
 }
 
@@ -299,24 +406,31 @@ async function loadSites() {
   }
 
   siteListEl.innerHTML = data.items
-    .map(
-      (site) => `
+    .map((site) => {
+      const rawName = String(site.name || '').trim();
+      const rawDesc = String(site.description || '').trim();
+      const nameAttr = currentLang === 'en' && hasCjk(rawName) ? ` data-src="${escapeHtml(rawName)}"` : '';
+      const descAttr = currentLang === 'en' && hasCjk(rawDesc) ? ` data-src="${escapeHtml(rawDesc)}"` : '';
+      const descDisplay = descriptionLabel(rawDesc);
+      return `
       <a class="site-card-link" href="${escapeHtml(site.url)}" target="_blank" rel="noopener">
         <article class="site-card">
           <div class="site-row">
-            <span class="site-value">${escapeHtml(site.name)}</span>
+            <span class="site-value"${nameAttr}>${escapeHtml(rawName)}</span>
           </div>
           <div class="site-row">
             <span class="site-value site-link">${escapeHtml(site.url)}</span>
           </div>
           <div class="site-row">
-            <span class="site-value">${escapeHtml(descriptionLabel(site.description))}</span>
+            <span class="site-value"${descAttr}>${escapeHtml(descDisplay)}</span>
           </div>
         </article>
       </a>
     `
-    )
+    })
     .join('');
+
+  translateVisibleTextNodes();
 }
 
 async function loadTutorials() {
@@ -332,14 +446,18 @@ async function loadTutorials() {
   tutorialListEl.innerHTML = items
     .map((item) => {
       const createdAt = escapeHtml(String(item.created_at || '').replace('T', ' ').slice(0, 16));
+      const title = String(item.title || '').trim();
+      const titleAttr = currentLang === 'en' && hasCjk(title) ? ` data-src="${escapeHtml(title)}"` : '';
       return `
         <a class="tutorial-item" href="/tutorial.html?id=${encodeURIComponent(item.id)}">
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3${titleAttr}>${escapeHtml(title)}</h3>
           <p class="small">${createdAt}</p>
         </a>
       `;
     })
     .join('');
+
+  translateVisibleTextNodes();
 }
 
 function setView(view) {
@@ -429,9 +547,11 @@ showTutorialBtn.addEventListener('click', () => setView('tutorial'));
 window.addEventListener('scroll', syncLeftNavTop, { passive: true });
 window.addEventListener('resize', syncLeftNavTop);
 
-applyLanguage();
-loadCategories().then(() => {
-  loadSites();
+(async () => {
+  await loadSiteConfig();
+  applyLanguage();
+  await loadCategories();
+  await loadSites();
   setView('nav');
   syncLeftNavTop();
-});
+})();

@@ -12,9 +12,13 @@ const importMessage = document.getElementById('importMessage');
 const adminCategorySelect = document.getElementById('adminCategorySelect');
 const adminLangZhBtn = document.getElementById('adminLangZhBtn');
 const adminLangEnBtn = document.getElementById('adminLangEnBtn');
+const navSiteConfig = document.getElementById('navSiteConfig');
 const adminSearchInput = document.getElementById('adminSearchInput');
 const adminSearchToolbar = document.getElementById('adminSearchToolbar');
 const adminAddSection = document.getElementById('adminAddSection');
+const adminSiteConfigSection = document.getElementById('adminSiteConfigSection');
+const siteConfigForm = document.getElementById('siteConfigForm');
+const siteConfigMessage = document.getElementById('siteConfigMessage');
 const adminImportSection = document.getElementById('adminImportSection');
 const adminCategoryAddSection = document.getElementById('adminCategoryAddSection');
 const adminCategoryListSection = document.getElementById('adminCategoryListSection');
@@ -88,6 +92,7 @@ const texts = {
     loginBtn: '登录',
     panelTitle: '审核后台',
     navHome: '前端首页',
+    navSiteConfig: '站点设置',
     navAdd: '手动新增',
     navImport: '批量导入',
     navCategoryList: '分类列表',
@@ -98,6 +103,13 @@ const texts = {
     navPending: '等待审核',
     navApproved: '已上线',
     logoutBtn: '退出',
+    siteConfigTitle: '站点设置',
+    siteTitleLabel: '网站名称',
+    siteSubtitleZhLabel: '中文简介',
+    siteSubtitleEnLabel: '英文简介',
+    siteConfigSaveBtn: '保存',
+    siteConfigSaved: '已保存',
+    siteConfigLoadFailed: '加载失败',
     searchPlaceholder: '搜索已上线网站（名称/网址/简介/分类）',
     searchBtn: '搜索',
     clearSearchBtn: '清空',
@@ -208,6 +220,7 @@ const texts = {
     loginBtn: 'Login',
     panelTitle: 'Review Console',
     navHome: 'Frontend Home',
+    navSiteConfig: 'Site Settings',
     navAdd: 'Add Website',
     navImport: 'Bulk Import',
     navCategoryList: 'Category List',
@@ -218,6 +231,13 @@ const texts = {
     navPending: 'Pending',
     navApproved: 'Approved',
     logoutBtn: 'Logout',
+    siteConfigTitle: 'Site Settings',
+    siteTitleLabel: 'Site Name',
+    siteSubtitleZhLabel: 'Subtitle (ZH)',
+    siteSubtitleEnLabel: 'Subtitle (EN)',
+    siteConfigSaveBtn: 'Save',
+    siteConfigSaved: 'Saved.',
+    siteConfigLoadFailed: 'Load failed.',
     searchPlaceholder: 'Search approved websites (name/URL/description/category)',
     searchBtn: 'Search',
     clearSearchBtn: 'Clear',
@@ -331,6 +351,7 @@ let managedCategories = [];
 let tutorialItems = [];
 let editingTutorialId = null;
 let editingSiteId = null;
+let siteConfigCache = null;
 
 function t(key) {
   return texts[currentLang][key];
@@ -591,6 +612,7 @@ function applyLanguage() {
   document.getElementById('loginBtn').textContent = dict.loginBtn;
   document.getElementById('panelTitle').textContent = dict.panelTitle;
   document.getElementById('navHome').textContent = dict.navHome;
+  document.getElementById('navSiteConfig').textContent = dict.navSiteConfig;
   document.getElementById('navAdd').textContent = dict.navAdd;
   document.getElementById('navImport').textContent = dict.navImport;
   document.getElementById('navCategoryList').textContent = dict.navCategoryList;
@@ -614,6 +636,11 @@ function applyLanguage() {
   document.getElementById('importTitle').textContent = dict.importTitle;
   document.getElementById('importLabel').childNodes[0].textContent = dict.importLabel;
   document.getElementById('importBtn').textContent = dict.importBtn;
+  document.getElementById('siteConfigTitle').textContent = dict.siteConfigTitle;
+  document.getElementById('siteTitleLabel').childNodes[0].textContent = dict.siteTitleLabel;
+  document.getElementById('siteSubtitleZhLabel').childNodes[0].textContent = dict.siteSubtitleZhLabel;
+  document.getElementById('siteSubtitleEnLabel').childNodes[0].textContent = dict.siteSubtitleEnLabel;
+  document.getElementById('siteConfigSaveBtn').textContent = dict.siteConfigSaveBtn;
   document.getElementById('categoriesAddTitle').textContent = dict.categoriesAddTitle;
   document.getElementById('categoriesListTitle').textContent = dict.categoriesListTitle;
   refreshTutorialEditorTitleAndButton();
@@ -654,6 +681,7 @@ function applyLanguage() {
 function setView(view) {
   currentView = view;
   adminAddSection.classList.toggle('hidden', view !== 'add');
+  adminSiteConfigSection.classList.toggle('hidden', view !== 'site-config');
   adminImportSection.classList.toggle('hidden', view !== 'import');
   adminCategoryAddSection.classList.toggle('hidden', view !== 'category-add');
   adminCategoryListSection.classList.toggle('hidden', view !== 'category-list');
@@ -665,6 +693,9 @@ function setView(view) {
 
   if (view === 'add' || view === 'category-add' || view === 'category-list') {
     loadAdminCategories();
+  }
+  if (view === 'site-config') {
+    loadSiteConfig();
   }
   if (view === 'tutorial-list') {
     loadTutorialList();
@@ -767,6 +798,36 @@ async function requestTutorialJson(pathCandidates, options = {}) {
     data = {};
   }
   return { res, data };
+}
+
+async function loadSiteConfig() {
+  siteConfigMessage.textContent = '';
+  siteConfigMessage.className = 'message';
+  try {
+    const result = await requestTutorialJson(['/api/admin/site-config']);
+    if (!result.res) throw new Error('no response');
+    if (result.res.status === 401) {
+      loginCard.classList.remove('hidden');
+      panelCard.classList.add('hidden');
+      focusLoginPassword();
+      return;
+    }
+    if (!result.res.ok) {
+      siteConfigMessage.textContent = localizeApiError(result.data?.error || t('siteConfigLoadFailed'));
+      siteConfigMessage.className = 'message error';
+      return;
+    }
+    siteConfigCache = result.data || {};
+    if (siteConfigForm) {
+      siteConfigForm.title.value = String(siteConfigCache.title || '');
+      siteConfigForm.subtitleZh.value = String(siteConfigCache.subtitleZh || '');
+      siteConfigForm.subtitleEn.value = String(siteConfigCache.subtitleEn || '');
+      setTimeout(() => siteConfigForm.title?.focus?.(), 0);
+    }
+  } catch {
+    siteConfigMessage.textContent = t('siteConfigLoadFailed');
+    siteConfigMessage.className = 'message error';
+  }
 }
 
 async function submitTutorialByChunks({ title, content, id }) {
@@ -1515,7 +1576,41 @@ adminSearchInput.addEventListener('keydown', (e) => {
   }
 });
 
+if (siteConfigForm) {
+  siteConfigForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    siteConfigMessage.textContent = '';
+    siteConfigMessage.className = 'message';
+    const payload = Object.fromEntries(new FormData(siteConfigForm).entries());
+    const body = {
+      title: String(payload.title || '').trim(),
+      subtitleZh: String(payload.subtitleZh || '').trim(),
+      subtitleEn: String(payload.subtitleEn || '').trim()
+    };
+    try {
+      const result = await requestTutorialJson(['/api/admin/site-config'], {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!result.res) throw new Error('no response');
+      if (!result.res.ok) {
+        siteConfigMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+        siteConfigMessage.className = 'message error';
+        return;
+      }
+      siteConfigCache = body;
+      siteConfigMessage.textContent = t('siteConfigSaved');
+      siteConfigMessage.className = 'message success';
+    } catch {
+      siteConfigMessage.textContent = t('tutorialNetworkError');
+      siteConfigMessage.className = 'message error';
+    }
+  });
+}
+
 document.getElementById('navAdd').addEventListener('click', () => setView('add'));
+document.getElementById('navSiteConfig').addEventListener('click', () => setView('site-config'));
 document.getElementById('navImport').addEventListener('click', () => setView('import'));
 document.getElementById('navCategoryList').addEventListener('click', () => setView('category-list'));
 document.getElementById('navCategoryAdd').addEventListener('click', () => setView('category-add'));

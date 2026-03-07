@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>claw800 后台</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260307-01" />
   </head>
   <body>
     <main class="container admin">
@@ -27,6 +27,7 @@
         <div class="admin-panel-grid">
           <aside class="admin-nav">
             <button id="navHome">首页</button>
+            <button id="navSiteConfig">站点设置</button>
             <button id="navAdd">手动新增</button>
             <button id="navImport">批量导入</button>
             <button id="navCategoryList">分类列表</button>
@@ -57,6 +58,17 @@
                 <button id="adminAddBtn" type="submit">直接上线</button>
               </form>
               <p id="adminMessage" class="message"></p>
+            </div>
+
+            <div id="adminSiteConfigSection" class="hidden">
+              <h2 id="siteConfigTitle">站点设置</h2>
+              <form id="siteConfigForm" class="admin-add-form">
+                <label id="siteTitleLabel">网站名称<input name="title" required /></label>
+                <label id="siteSubtitleZhLabel">中文简介<textarea name="subtitleZh" rows="2"></textarea></label>
+                <label id="siteSubtitleEnLabel">英文简介<textarea name="subtitleEn" rows="2"></textarea></label>
+                <button id="siteConfigSaveBtn" type="submit">保存</button>
+              </form>
+              <p id="siteConfigMessage" class="message"></p>
             </div>
 
             <div id="adminImportSection" class="hidden">
@@ -148,6 +160,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260307-01"></script>
+    <script src="/admin.js?v=20260307-02"></script>
   </body>
 </html>

@@ -76,10 +76,33 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS translations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_lang TEXT NOT NULL,
+    source_hash TEXT NOT NULL,
+    source_text TEXT NOT NULL,
+    translated_text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(target_lang, source_hash)
+  );
+`);
+
 const defaultAdminPassword = process.env.ADMIN_PASSWORD || '123456';
 db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('admin_password', ?, datetime('now'))"
 ).run(defaultAdminPassword);
+
+// Site meta shown on the homepage header (editable from admin).
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_title', ?, datetime('now'))"
+).run('claw800.com');
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_subtitle_zh', ?, datetime('now'))"
+).run('OpenClaw 生态导航，收录 AI 领域优质网站');
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_subtitle_en', ?, datetime('now'))"
+).run('OpenClaw ecosystem directory for AI websites');
 
 function migrateUniqueUrlToUrlCategory() {
   const tableSqlRow = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sites'").get();
