@@ -157,8 +157,25 @@ db.exec(`
   ON sites(url, category);
 `);
 
-db.prepare("UPDATE sites SET category = 'AI 与大语言模型' WHERE category = '大模型'").run();
-db.prepare("UPDATE sites SET category = 'AI 与大语言模型' WHERE category = 'OpenClaw 生态'").run();
+function runMigrationOnce(key, fn) {
+  const flagKey = `migration:${String(key || '').trim()}`;
+  if (!flagKey || flagKey === 'migration:') return;
+  const exists = db.prepare('SELECT 1 FROM settings WHERE key = ?').get(flagKey);
+  if (exists) return;
+  const tx = db.transaction(() => {
+    fn();
+    db.prepare(
+      'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime(\'now\'))'
+    ).run(flagKey, '1');
+  });
+  tx();
+}
+
+// Category normalization (run once, never on every boot).
+runMigrationOnce('normalize_categories_v1', () => {
+  db.prepare("UPDATE sites SET category = 'AI 与大语言模型' WHERE category = '大模型'").run();
+  db.prepare("UPDATE sites SET category = 'AI 与大语言模型' WHERE category = 'OpenClaw 生态'").run();
+});
 
 const categoryCount = db.prepare('SELECT COUNT(*) as c FROM categories').get().c;
 if (!categoryCount) {
