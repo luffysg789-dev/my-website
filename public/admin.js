@@ -110,6 +110,7 @@ const texts = {
     siteConfigSaveBtn: '保存',
     siteConfigSaved: '已保存',
     siteConfigLoadFailed: '加载失败',
+    siteConfigRouteMissing: '站点设置接口不存在（404）。请重启后端后再试。',
     searchPlaceholder: '搜索已上线网站（名称/网址/简介/分类）',
     searchBtn: '搜索',
     clearSearchBtn: '清空',
@@ -238,6 +239,7 @@ const texts = {
     siteConfigSaveBtn: 'Save',
     siteConfigSaved: 'Saved.',
     siteConfigLoadFailed: 'Load failed.',
+    siteConfigRouteMissing: 'Site settings API not found (404). Please restart backend and retry.',
     searchPlaceholder: 'Search approved websites (name/URL/description/category)',
     searchBtn: 'Search',
     clearSearchBtn: 'Clear',
@@ -800,12 +802,21 @@ async function requestTutorialJson(pathCandidates, options = {}) {
   return { res, data };
 }
 
+function getSiteConfigControl(name) {
+  if (!siteConfigForm || !siteConfigForm.elements) return null;
+  return siteConfigForm.elements.namedItem(name);
+}
+
 async function loadSiteConfig() {
   siteConfigMessage.textContent = '';
   siteConfigMessage.className = 'message';
   try {
-    const result = await requestTutorialJson(['/api/admin/site-config']);
-    if (!result.res) throw new Error('no response');
+    const result = await requestTutorialJson(['/api/admin/site-config', '/admin/site-config']);
+    if (!result.res) {
+      siteConfigMessage.textContent = t('siteConfigRouteMissing');
+      siteConfigMessage.className = 'message error';
+      return;
+    }
     if (result.res.status === 401) {
       loginCard.classList.remove('hidden');
       panelCard.classList.add('hidden');
@@ -819,10 +830,13 @@ async function loadSiteConfig() {
     }
     siteConfigCache = result.data || {};
     if (siteConfigForm) {
-      siteConfigForm.title.value = String(siteConfigCache.title || '');
-      siteConfigForm.subtitleZh.value = String(siteConfigCache.subtitleZh || '');
-      siteConfigForm.subtitleEn.value = String(siteConfigCache.subtitleEn || '');
-      setTimeout(() => siteConfigForm.title?.focus?.(), 0);
+      const titleEl = getSiteConfigControl('title');
+      const zhEl = getSiteConfigControl('subtitleZh');
+      const enEl = getSiteConfigControl('subtitleEn');
+      if (titleEl) titleEl.value = String(siteConfigCache.title || '');
+      if (zhEl) zhEl.value = String(siteConfigCache.subtitleZh || '');
+      if (enEl) enEl.value = String(siteConfigCache.subtitleEn || '');
+      setTimeout(() => titleEl?.focus?.(), 0);
     }
   } catch {
     siteConfigMessage.textContent = t('siteConfigLoadFailed');
@@ -1588,12 +1602,16 @@ if (siteConfigForm) {
       subtitleEn: String(payload.subtitleEn || '').trim()
     };
     try {
-      const result = await requestTutorialJson(['/api/admin/site-config'], {
+      const result = await requestTutorialJson(['/api/admin/site-config', '/admin/site-config'], {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      if (!result.res) throw new Error('no response');
+      if (!result.res) {
+        siteConfigMessage.textContent = t('siteConfigRouteMissing');
+        siteConfigMessage.className = 'message error';
+        return;
+      }
       if (!result.res.ok) {
         siteConfigMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
         siteConfigMessage.className = 'message error';

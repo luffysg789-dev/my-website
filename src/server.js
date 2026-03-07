@@ -195,6 +195,10 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   }
 });
 
+// Backward/alternate paths (useful when /api proxy rules are different).
+app.get('/admin/site-config', requireAdmin, (req, res) => res.redirect(307, '/api/admin/site-config'));
+app.put('/admin/site-config', requireAdmin, (req, res) => res.redirect(307, '/api/admin/site-config'));
+
 app.get('/api/tutorials', (_req, res) => {
   // Tutorials change infrequently; allow short public caching.
   res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
