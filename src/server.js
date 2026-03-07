@@ -506,13 +506,43 @@ app.put('/api/admin/categories/:id', requireAdmin, async (req, res) => {
   }
 
   try {
-    const nameEn = await autoTranslateToEn(name);
-    const result = db
-      .prepare('UPDATE categories SET name = ?, name_en = ?, sort_order = ?, is_enabled = ? WHERE id = ?')
-      .run(name, nameEn || '', sortOrder, isEnabled, id);
-    if (!result.changes) {
+    const existing = db.prepare('SELECT id, name FROM categories WHERE id = ?').get(id);
+    if (!existing) {
       return res.status(404).json({ error: '记录不存在' });
     }
+
+    // Prevent renaming into another existing category name.
+    const dup = db.prepare('SELECT id FROM categories WHERE name = ? AND id <> ?').get(name, id);
+    if (dup) {
+      return res.status(409).json({ error: '分类已存在' });
+    }
+
+    const nameEn = await autoTranslateToEn(name);
+    const oldName = String(existing.name || '').trim();
+
+    const tx = db.transaction(() => {
+      const result = db
+        .prepare('UPDATE categories SET name = ?, name_en = ?, sort_order = ?, is_enabled = ? WHERE id = ?')
+        .run(name, nameEn || '', sortOrder, isEnabled, id);
+      if (!result.changes) {
+        throw new Error('not_found');
+      }
+      // Keep sites in sync when a category is renamed, otherwise the old category
+      // would "reappear" on next boot due to historical category backfill.
+      if (oldName && oldName !== name) {
+        db.prepare('UPDATE sites SET category = ? WHERE category = ?').run(name, oldName);
+      }
+    });
+
+    try {
+      tx();
+    } catch (err) {
+      if (String(err.message) === 'not_found') {
+        return res.status(404).json({ error: '记录不存在' });
+      }
+      throw err;
+    }
+
     res.json({ ok: true });
   } catch (err) {
     if (String(err.message).includes('UNIQUE')) {
