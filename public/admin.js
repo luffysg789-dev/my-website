@@ -170,6 +170,9 @@ const texts = {
     approve: '通过',
     reject: '驳回',
     edit: '编辑',
+    save: '保存',
+    cancel: '取消',
+    delete: '删除',
     sort: '排序',
     saveSort: '保存排序',
     rejectPrompt: '请输入驳回原因（可留空）',
@@ -178,6 +181,8 @@ const texts = {
     editDescPrompt: '编辑简介',
     editCategoryPrompt: '编辑分类（可填写以下任一分类）',
     editSaved: '保存成功',
+    siteDeleteConfirm: '确定删除这个网站收录吗？',
+    siteDeleted: '已删除',
     sortSaved: '排序已更新',
     operationFailed: '操作失败',
     loginFailed: '登录失败',
@@ -285,6 +290,9 @@ const texts = {
     approve: 'Approve',
     reject: 'Reject',
     edit: 'Edit',
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
     sort: 'Sort',
     saveSort: 'Save Sort',
     rejectPrompt: 'Enter rejection reason (optional)',
@@ -293,6 +301,8 @@ const texts = {
     editDescPrompt: 'Edit description',
     editCategoryPrompt: 'Edit category (use one of the listed tags)',
     editSaved: 'Saved successfully.',
+    siteDeleteConfirm: 'Delete this website entry?',
+    siteDeleted: 'Deleted.',
     sortSaved: 'Sort updated.',
     operationFailed: 'Operation failed',
     loginFailed: 'Login failed',
@@ -320,6 +330,7 @@ let currentView = 'pending';
 let managedCategories = [];
 let tutorialItems = [];
 let editingTutorialId = null;
+let editingSiteId = null;
 
 function t(key) {
   return texts[currentLang][key];
@@ -519,6 +530,29 @@ function renderCategoryList() {
       </article>
     `
     )
+    .join('');
+}
+
+function getEnabledCategoryNames() {
+  if (managedCategories.length) {
+    return managedCategories
+      .filter((item) => item.is_enabled)
+      .slice()
+      .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
+      .map((item) => item.name);
+  }
+  return FIXED_CATEGORIES.slice();
+}
+
+function renderCategoryOptions(selectedCategory) {
+  let names = getEnabledCategoryNames();
+  const selected = String(selectedCategory || '').trim();
+  if (selected && !names.includes(selected)) names = [selected, ...names];
+  return names
+    .map((name) => {
+      const selectedAttr = name === selected ? ' selected' : '';
+      return `<option value="${escapeHtml(name)}"${selectedAttr}>${escapeHtml(categoryLabel(name))}</option>`;
+    })
     .join('');
 }
 
@@ -866,11 +900,36 @@ async function loadList(status = 'pending') {
 
   adminList.innerHTML = items
     .map(
-      (site) => `
+      (site) => {
+        const isEditing = status !== 'pending' && editingSiteId === site.id;
+        return `
       <article class="review-card">
-        <h3>${escapeHtml(site.name)}</h3>
-        <p><a href="${escapeHtml(site.url)}" target="_blank" rel="noopener">${escapeHtml(site.url)}</a></p>
-        <p>${escapeHtml(site.description || '')}</p>
+        ${
+          isEditing
+            ? `<h3>${escapeHtml(t('edit'))}</h3>`
+            : `<h3>${escapeHtml(site.name)}</h3>`
+        }
+        ${
+          isEditing
+            ? `<div class="inline-edit-grid">
+                <label class="small">${escapeHtml(texts[currentLang].adminLabelName)}
+                  <input id="editName-${site.id}" type="text" value="${escapeHtml(site.name)}" />
+                </label>
+                <label class="small">${escapeHtml(texts[currentLang].adminLabelUrl)}
+                  <input id="editUrl-${site.id}" type="text" value="${escapeHtml(site.url)}" />
+                </label>
+                <label class="small">${escapeHtml(texts[currentLang].adminLabelCategory)}
+                  <select id="editCategory-${site.id}">
+                    ${renderCategoryOptions(site.category)}
+                  </select>
+                </label>
+                <label class="small">${escapeHtml(texts[currentLang].adminLabelDesc)}
+                  <textarea id="editDesc-${site.id}" rows="3">${escapeHtml(site.description || '')}</textarea>
+                </label>
+              </div>`
+            : `<p><a href="${escapeHtml(site.url)}" target="_blank" rel="noopener">${escapeHtml(site.url)}</a></p>
+               <p>${escapeHtml(site.description || '')}</p>`
+        }
         <p class="small">${escapeHtml(t('category'))}：${escapeHtml(categoryLabel(site.category))} | ${escapeHtml(
           t('source')
         )}：${escapeHtml(sourceLabel(site.source))}</p>
@@ -897,14 +956,29 @@ async function loadList(status = 'pending') {
                 <button onclick="approveSite(${site.id})">${escapeHtml(t('approve'))}</button>
                 <button class="danger" onclick="rejectSite(${site.id})">${escapeHtml(t('reject'))}</button>
               </div>`
-            : `<div class="review-actions">
-                <button onclick="editSite(${site.id})">${escapeHtml(t('edit'))}</button>
-              </div>`
+            : isEditing
+              ? `<div class="inline-edit-actions">
+                  <button type="button" onclick="saveSiteEdit(${site.id})">${escapeHtml(t('save'))}</button>
+                  <button type="button" onclick="cancelSiteEdit()">${escapeHtml(t('cancel'))}</button>
+                  <button type="button" class="danger" onclick="deleteSite(${site.id})">${escapeHtml(t('delete'))}</button>
+                </div>`
+              : `<div class="review-actions">
+                  <button type="button" onclick="editSite(${site.id})">${escapeHtml(t('edit'))}</button>
+                </div>`
         }
       </article>
     `
+      }
     )
     .join('');
+
+  if (status !== 'pending' && editingSiteId) {
+    setTimeout(() => {
+      const el = document.getElementById(`editName-${editingSiteId}`);
+      el?.focus();
+      el?.select?.();
+    }, 0);
+  }
 }
 
 window.approveSite = async function approveSite(id) {
@@ -938,30 +1012,51 @@ window.rejectSite = async function rejectSite(id) {
 };
 
 window.editSite = async function editSite(id) {
+  // Keep old onclick hook, but switch to inline edit mode (no prompt popup).
+  try {
+    if (!managedCategories.length) await loadAdminCategories();
+  } catch {
+    // ignore
+  }
+  editingSiteId = id;
+  loadList(currentStatus);
+};
+
+window.cancelSiteEdit = function cancelSiteEdit() {
+  editingSiteId = null;
+  loadList(currentStatus);
+};
+
+window.saveSiteEdit = async function saveSiteEdit(id) {
   const site = currentItems.find((item) => item.id === id);
   if (!site) {
     alert(t('operationFailed'));
     return;
   }
 
-  const name = prompt(t('editNamePrompt'), site.name);
-  if (name === null) return;
-  const url = prompt(t('editUrlPrompt'), site.url);
-  if (url === null) return;
-  const description = prompt(t('editDescPrompt'), site.description || '');
-  if (description === null) return;
-  const categoryNames = managedCategories.length ? managedCategories.map((item) => item.name) : FIXED_CATEGORIES;
-  const categoryTip = `\n${categoryNames.join('\n')}`;
-  const categoryInput = prompt(`${t('editCategoryPrompt')}${categoryTip}`, site.category || categoryNames[0]);
-  if (categoryInput === null) return;
+  const name = String(document.getElementById(`editName-${id}`)?.value || '').trim();
+  const url = String(document.getElementById(`editUrl-${id}`)?.value || '').trim();
+  const category = String(document.getElementById(`editCategory-${id}`)?.value || '').trim();
+  const description = String(document.getElementById(`editDesc-${id}`)?.value || '').trim();
+
+  const sortInput = document.getElementById(`sortInput-${id}`);
+  const sortOrder = Number.isFinite(Number(sortInput?.value))
+    ? Number(sortInput.value)
+    : Number.isFinite(Number(site.sort_order))
+      ? Number(site.sort_order)
+      : 0;
+
+  if (!name || !url) {
+    alert(localizeApiError('name 和 url 必填'));
+    return;
+  }
 
   const payload = {
-    name: name.trim(),
-    url: url.trim(),
-    description: description.trim(),
-    category: normalizeCategoryInput(categoryInput),
-    // Keep existing sort unless explicitly changed elsewhere.
-    sortOrder: Number.isFinite(Number(site.sort_order)) ? Number(site.sort_order) : 0
+    name,
+    url,
+    description,
+    category: normalizeCategoryInput(category),
+    sortOrder
   };
 
   const putResult = await requestTutorialJson([`/api/admin/sites/${id}`, `/admin/sites/${id}`], {
@@ -991,7 +1086,36 @@ window.editSite = async function editSite(id) {
     return;
   }
 
+  editingSiteId = null;
   alert(t('editSaved'));
+  loadList(currentStatus);
+};
+
+window.deleteSite = async function deleteSite(id) {
+  if (!confirm(t('siteDeleteConfirm'))) return;
+
+  let res = await requestTutorialApi([`/api/admin/sites/${id}`, `/admin/sites/${id}`], { method: 'DELETE' });
+  if (!res) {
+    res = await requestTutorialApi([`/api/admin/sites/${id}/delete`, `/admin/sites/${id}/delete`], { method: 'POST' });
+  }
+  if (!res) {
+    alert(t('operationFailed'));
+    return;
+  }
+
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
+  if (!res.ok) {
+    alert(localizeApiError(data.error || t('operationFailed')));
+    return;
+  }
+
+  editingSiteId = null;
+  alert(t('siteDeleted'));
   loadList(currentStatus);
 };
 

@@ -730,6 +730,27 @@ app.post('/api/admin/sites/:id/reject', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+app.delete('/api/admin/sites/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare('DELETE FROM sites WHERE id = ?').run(id);
+  if (!result.changes) {
+    return res.status(404).json({ error: '记录不存在' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/sites/:id/delete', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare('DELETE FROM sites WHERE id = ?').run(id);
+  if (!result.changes) {
+    return res.status(404).json({ error: '记录不存在' });
+  }
+  res.json({ ok: true });
+});
+
+app.delete('/admin/sites/:id', requireAdmin, (req, res) => res.redirect(307, `/api/admin/sites/${req.params.id}`));
+app.post('/admin/sites/:id/delete', requireAdmin, (req, res) => res.redirect(307, `/api/admin/sites/${req.params.id}/delete`));
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'claw800' });
 });

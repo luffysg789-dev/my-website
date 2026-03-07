@@ -367,6 +367,23 @@ button.danger { background: var(--danger); }
   margin-top: 8px;
 }
 
+.inline-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.inline-edit-grid textarea {
+  grid-column: 1 / -1;
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .sort-row {
   align-items: end;
 }
