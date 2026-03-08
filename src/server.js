@@ -69,6 +69,77 @@ function getSetting(key, fallback = '') {
   return value || String(fallback || '');
 }
 
+function safeJsonParse(raw, fallback) {
+  try {
+    return JSON.parse(String(raw || ''));
+  } catch {
+    return fallback;
+  }
+}
+
+function dedupFooterLinks(items) {
+  const seen = new Set();
+  const out = [];
+  for (const it of items || []) {
+    const url = normalizeUrlForDedup(String(it?.url || '').trim());
+    if (!url || !isValidUrl(url)) continue;
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const nameZh = String(it?.nameZh || '').trim();
+    const nameEn = String(it?.nameEn || '').trim();
+    if (!nameZh && !nameEn) continue;
+    out.push({ nameZh: nameZh || nameEn, nameEn: nameEn || nameZh, url });
+    if (out.length >= 50) break;
+  }
+  return out;
+}
+
+function parseFooterLinks(raw) {
+  const input = String(raw || '').trim();
+  if (!input) return [];
+
+  // Accept JSON array for advanced usage:
+  // [{"nameZh":"OpenClaw","nameEn":"OpenClaw","url":"https://..."}]
+  const maybe = safeJsonParse(input, null);
+  if (Array.isArray(maybe)) {
+    const out = [];
+    for (const item of maybe) {
+      const url = String(item?.url || '').trim();
+      if (!isValidUrl(url)) continue;
+      const nameZh = String(item?.nameZh || item?.name || '').trim();
+      const nameEn = String(item?.nameEn || '').trim();
+      if (!nameZh && !nameEn) continue;
+      out.push({ nameZh: nameZh || nameEn, nameEn: nameEn || nameZh, url });
+      if (out.length >= 50) break;
+    }
+    return dedupFooterLinks(out);
+  }
+
+  // Simple line format:
+  // 名称|https://...|English Name
+  const lines = input.split(/\r?\n/);
+  const out = [];
+  for (const line of lines) {
+    const trimmed = String(line || '').trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith('#')) continue;
+    const parts = trimmed.split('|').map((s) => String(s || '').trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const nameZh = parts[0];
+    const url = parts[1];
+    const nameEn = parts[2] || '';
+    if (!isValidUrl(url)) continue;
+    out.push({ nameZh: nameZh || nameEn, nameEn: nameEn || nameZh, url: url.trim() });
+    if (out.length >= 50) break;
+  }
+  return dedupFooterLinks(out);
+}
+
+function stringifyFooterLinks(items) {
+  const safe = dedupFooterLinks(items || []);
+  return JSON.stringify(safe);
+}
+
 const upsertSettingStmt = db.prepare(`
   INSERT INTO settings (key, value, updated_at)
   VALUES (?, ?, datetime('now'))
@@ -213,30 +284,78 @@ app.get('/api/site-config', (_req, res) => {
   const title = getSetting('site_title', 'claw800.com');
   const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
   const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
-  res.json({ ok: true, title, subtitleZh, subtitleEn });
+  const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
+  const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
+  const footerContactZh = getSetting('site_footer_contact_zh', '');
+  const footerContactEn = getSetting('site_footer_contact_en', '');
+  const footerLinks = parseFooterLinks(getSetting('site_footer_links', ''));
+  res.json({
+    ok: true,
+    title,
+    subtitleZh,
+    subtitleEn,
+    footerCopyrightZh,
+    footerCopyrightEn,
+    footerContactZh,
+    footerContactEn,
+    footerLinks
+  });
 });
 
 app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
   const title = getSetting('site_title', 'claw800.com');
   const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
   const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
-  res.json({ ok: true, title, subtitleZh, subtitleEn });
+  const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
+  const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
+  const footerContactZh = getSetting('site_footer_contact_zh', '');
+  const footerContactEn = getSetting('site_footer_contact_en', '');
+  const footerLinksRaw = getSetting('site_footer_links', '');
+  const footerLinks = parseFooterLinks(footerLinksRaw);
+  res.json({
+    ok: true,
+    title,
+    subtitleZh,
+    subtitleEn,
+    footerCopyrightZh,
+    footerCopyrightEn,
+    footerContactZh,
+    footerContactEn,
+    footerLinksRaw,
+    footerLinks
+  });
 });
 
 app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   const title = String(req.body.title || '').trim();
   const subtitleZh = String(req.body.subtitleZh || '').trim();
   const subtitleEn = String(req.body.subtitleEn || '').trim();
+  const footerCopyrightZh = String(req.body.footerCopyrightZh || '').trim();
+  const footerCopyrightEn = String(req.body.footerCopyrightEn || '').trim();
+  const footerContactZh = String(req.body.footerContactZh || '').trim();
+  const footerContactEn = String(req.body.footerContactEn || '').trim();
+  const footerLinksRaw = String(req.body.footerLinksRaw || req.body.footerLinks || '').trim();
 
   if (!title) return res.status(400).json({ error: '网站名称必填' });
   if (Buffer.byteLength(title, 'utf8') > 200) return res.status(413).json({ error: '网站名称太长' });
   if (Buffer.byteLength(subtitleZh, 'utf8') > 2000) return res.status(413).json({ error: '中文简介太长' });
   if (Buffer.byteLength(subtitleEn, 'utf8') > 2000) return res.status(413).json({ error: '英文简介太长' });
+  if (Buffer.byteLength(footerCopyrightZh, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(中文)太长' });
+  if (Buffer.byteLength(footerCopyrightEn, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(英文)太长' });
+  if (Buffer.byteLength(footerContactZh, 'utf8') > 2000) return res.status(413).json({ error: '联系客服(中文)太长' });
+  if (Buffer.byteLength(footerContactEn, 'utf8') > 2000) return res.status(413).json({ error: '联系客服(英文)太长' });
+  if (Buffer.byteLength(footerLinksRaw, 'utf8') > 50000) return res.status(413).json({ error: '友情链接太长' });
 
   try {
+    const footerLinks = parseFooterLinks(footerLinksRaw);
     upsertSettingStmt.run('site_title', title);
     upsertSettingStmt.run('site_subtitle_zh', subtitleZh);
     upsertSettingStmt.run('site_subtitle_en', subtitleEn);
+    upsertSettingStmt.run('site_footer_copyright_zh', footerCopyrightZh);
+    upsertSettingStmt.run('site_footer_copyright_en', footerCopyrightEn);
+    upsertSettingStmt.run('site_footer_contact_zh', footerContactZh);
+    upsertSettingStmt.run('site_footer_contact_en', footerContactEn);
+    upsertSettingStmt.run('site_footer_links', stringifyFooterLinks(footerLinks));
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: '保存失败' });

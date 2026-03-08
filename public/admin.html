@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>claw800 后台</title>
-    <link rel="stylesheet" href="/styles.css?v=20260307-03" />
+    <link rel="stylesheet" href="/styles.css?v=20260308-01" />
   </head>
   <body>
     <main class="container admin">
@@ -67,6 +67,18 @@
                 <label id="siteTitleLabel">网站名称<input name="title" required /></label>
                 <label id="siteSubtitleZhLabel">中文简介<textarea name="subtitleZh" rows="2"></textarea></label>
                 <label id="siteSubtitleEnLabel">英文简介<textarea name="subtitleEn" rows="2"></textarea></label>
+                <label id="siteFooterCopyrightZhLabel">版权说明（中文）<textarea name="footerCopyrightZh" rows="2"></textarea></label>
+                <label id="siteFooterCopyrightEnLabel">版权说明（英文）<textarea name="footerCopyrightEn" rows="2"></textarea></label>
+                <label id="siteFooterLinksLabel"
+                  >友情链接（每行：中文名|链接|英文名，可省略英文名）
+                  <textarea
+                    name="footerLinksRaw"
+                    rows="4"
+                    placeholder="OpenClaw|https://openclaw.ai|OpenClaw&#10;Hugging Face|https://huggingface.co|Hugging Face"
+                  ></textarea>
+                </label>
+                <label id="siteFooterContactZhLabel">联系客服（中文）<textarea name="footerContactZh" rows="2"></textarea></label>
+                <label id="siteFooterContactEnLabel">联系客服（英文）<textarea name="footerContactEn" rows="2"></textarea></label>
                 <button id="siteConfigSaveBtn" type="submit">保存</button>
               </form>
               <p id="siteConfigMessage" class="message"></p>
@@ -173,6 +185,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260308-03"></script>
+    <script src="/admin.js?v=20260308-04"></script>
   </body>
 </html>

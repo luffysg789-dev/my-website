@@ -116,6 +116,11 @@ const texts = {
     siteTitleLabel: '网站名称',
     siteSubtitleZhLabel: '中文简介',
     siteSubtitleEnLabel: '英文简介',
+    siteFooterCopyrightZhLabel: '版权说明（中文）',
+    siteFooterCopyrightEnLabel: '版权说明（英文）',
+    siteFooterLinksLabel: '友情链接',
+    siteFooterContactZhLabel: '联系客服（中文）',
+    siteFooterContactEnLabel: '联系客服（英文）',
     siteConfigSaveBtn: '保存',
     siteConfigSaved: '已保存',
     siteConfigLoadFailed: '加载失败',
@@ -264,6 +269,11 @@ const texts = {
     siteTitleLabel: 'Site Name',
     siteSubtitleZhLabel: 'Subtitle (ZH)',
     siteSubtitleEnLabel: 'Subtitle (EN)',
+    siteFooterCopyrightZhLabel: 'Copyright (ZH)',
+    siteFooterCopyrightEnLabel: 'Copyright (EN)',
+    siteFooterLinksLabel: 'Links',
+    siteFooterContactZhLabel: 'Contact (ZH)',
+    siteFooterContactEnLabel: 'Contact (EN)',
     siteConfigSaveBtn: 'Save',
     siteConfigSaved: 'Saved.',
     siteConfigLoadFailed: 'Load failed.',
@@ -700,6 +710,11 @@ function applyLanguage() {
   document.getElementById('siteTitleLabel').childNodes[0].textContent = dict.siteTitleLabel;
   document.getElementById('siteSubtitleZhLabel').childNodes[0].textContent = dict.siteSubtitleZhLabel;
   document.getElementById('siteSubtitleEnLabel').childNodes[0].textContent = dict.siteSubtitleEnLabel;
+  document.getElementById('siteFooterCopyrightZhLabel').childNodes[0].textContent = dict.siteFooterCopyrightZhLabel;
+  document.getElementById('siteFooterCopyrightEnLabel').childNodes[0].textContent = dict.siteFooterCopyrightEnLabel;
+  document.getElementById('siteFooterLinksLabel').childNodes[0].textContent = dict.siteFooterLinksLabel;
+  document.getElementById('siteFooterContactZhLabel').childNodes[0].textContent = dict.siteFooterContactZhLabel;
+  document.getElementById('siteFooterContactEnLabel').childNodes[0].textContent = dict.siteFooterContactEnLabel;
   document.getElementById('siteConfigSaveBtn').textContent = dict.siteConfigSaveBtn;
   document.getElementById('autoCrawlTitle').textContent = dict.autoCrawlTitle;
   autoCrawlEnableBtn.textContent = dict.autoCrawlEnable;
@@ -958,9 +973,19 @@ async function loadSiteConfig() {
       const titleEl = getSiteConfigControl('title');
       const zhEl = getSiteConfigControl('subtitleZh');
       const enEl = getSiteConfigControl('subtitleEn');
+      const crZhEl = getSiteConfigControl('footerCopyrightZh');
+      const crEnEl = getSiteConfigControl('footerCopyrightEn');
+      const linksEl = getSiteConfigControl('footerLinksRaw');
+      const contactZhEl = getSiteConfigControl('footerContactZh');
+      const contactEnEl = getSiteConfigControl('footerContactEn');
       if (titleEl) titleEl.value = String(siteConfigCache.title || '');
       if (zhEl) zhEl.value = String(siteConfigCache.subtitleZh || '');
       if (enEl) enEl.value = String(siteConfigCache.subtitleEn || '');
+      if (crZhEl) crZhEl.value = String(siteConfigCache.footerCopyrightZh || '');
+      if (crEnEl) crEnEl.value = String(siteConfigCache.footerCopyrightEn || '');
+      if (linksEl) linksEl.value = String(siteConfigCache.footerLinksRaw || '');
+      if (contactZhEl) contactZhEl.value = String(siteConfigCache.footerContactZh || '');
+      if (contactEnEl) contactEnEl.value = String(siteConfigCache.footerContactEn || '');
       setTimeout(() => titleEl?.focus?.(), 0);
     }
   } catch {
@@ -1749,7 +1774,12 @@ if (siteConfigForm) {
     const body = {
       title: String(payload.title || '').trim(),
       subtitleZh: String(payload.subtitleZh || '').trim(),
-      subtitleEn: String(payload.subtitleEn || '').trim()
+      subtitleEn: String(payload.subtitleEn || '').trim(),
+      footerCopyrightZh: String(payload.footerCopyrightZh || '').trim(),
+      footerCopyrightEn: String(payload.footerCopyrightEn || '').trim(),
+      footerLinksRaw: String(payload.footerLinksRaw || '').trim(),
+      footerContactZh: String(payload.footerContactZh || '').trim(),
+      footerContactEn: String(payload.footerContactEn || '').trim()
     };
     try {
       const result = await requestTutorialJson(['/api/admin/site-config', '/admin/site-config'], {

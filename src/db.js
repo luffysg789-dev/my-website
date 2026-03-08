@@ -167,6 +167,23 @@ db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_subtitle_en', ?, datetime('now'))"
 ).run('OpenClaw ecosystem directory for AI websites');
 
+// Footer (editable from admin).
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_footer_copyright_zh', '', datetime('now'))"
+).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_footer_copyright_en', '', datetime('now'))"
+).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_footer_links', '', datetime('now'))"
+).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_footer_contact_zh', '', datetime('now'))"
+).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_footer_contact_en', '', datetime('now'))"
+).run();
+
 // Auto-crawl settings (admin toggles). Stored as strings in settings.
 db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('auto_crawl_enabled', '0', datetime('now'))"

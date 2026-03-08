@@ -14,6 +14,9 @@ const categorySelect = document.getElementById('categorySelect');
 const navView = document.getElementById('navView');
 const heroLogoEl = document.getElementById('heroLogo');
 const heroSubtitleEl = document.getElementById('heroSubtitle');
+const footerCopyrightEl = document.getElementById('footerCopyright');
+const footerLinksEl = document.getElementById('footerLinks');
+const footerContactEl = document.getElementById('footerContact');
 
 const CATEGORY_EN = {
   'AI 与大语言模型': 'AI & Large Language Models',
@@ -163,6 +166,88 @@ let currentLang = localStorage.getItem('claw800_lang') === 'en' ? 'en' : 'zh';
 let categoriesCache = [];
 const translationCache = new Map(); // key: `en|${source}` -> translated
 let siteConfig = null; // { title, subtitleZh, subtitleEn }
+
+function isProbablyUrl(text) {
+  const s = String(text || '').trim();
+  return /^https?:\/\/\S+$/i.test(s);
+}
+
+function isProbablyEmail(text) {
+  const s = String(text || '').trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+function renderFooter() {
+  if (!footerCopyrightEl || !footerLinksEl || !footerContactEl) return;
+  const cfg = siteConfig || {};
+
+  const copyright =
+    currentLang === 'en'
+      ? String(cfg.footerCopyrightEn || '').trim() || String(cfg.footerCopyrightZh || '').trim()
+      : String(cfg.footerCopyrightZh || '').trim() || String(cfg.footerCopyrightEn || '').trim();
+  const contact =
+    currentLang === 'en'
+      ? String(cfg.footerContactEn || '').trim() || String(cfg.footerContactZh || '').trim()
+      : String(cfg.footerContactZh || '').trim() || String(cfg.footerContactEn || '').trim();
+
+  footerCopyrightEl.textContent = '';
+  if (copyright) {
+    footerCopyrightEl.textContent = copyright;
+    footerCopyrightEl.classList.remove('hidden');
+  } else {
+    footerCopyrightEl.classList.add('hidden');
+  }
+
+  const links = Array.isArray(cfg.footerLinks) ? cfg.footerLinks : [];
+  footerLinksEl.innerHTML = '';
+  if (links.length) {
+    const frag = document.createDocumentFragment();
+    links.slice(0, 50).forEach((it, idx) => {
+      const a = document.createElement('a');
+      a.href = String(it.url || '#');
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const label =
+        currentLang === 'en'
+          ? String(it.nameEn || '').trim() || String(it.nameZh || '').trim() || a.href
+          : String(it.nameZh || '').trim() || String(it.nameEn || '').trim() || a.href;
+      a.textContent = label;
+      frag.appendChild(a);
+      if (idx !== links.length - 1) {
+        const sep = document.createElement('span');
+        sep.className = 'site-footer-sep';
+        sep.textContent = ' | ';
+        frag.appendChild(sep);
+      }
+    });
+    footerLinksEl.appendChild(frag);
+    footerLinksEl.classList.remove('hidden');
+  } else {
+    footerLinksEl.classList.add('hidden');
+  }
+
+  footerContactEl.innerHTML = '';
+  if (contact) {
+    if (isProbablyUrl(contact)) {
+      const a = document.createElement('a');
+      a.href = contact;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = contact;
+      footerContactEl.appendChild(a);
+    } else if (isProbablyEmail(contact)) {
+      const a = document.createElement('a');
+      a.href = `mailto:${contact}`;
+      a.textContent = contact;
+      footerContactEl.appendChild(a);
+    } else {
+      footerContactEl.textContent = contact;
+    }
+    footerContactEl.classList.remove('hidden');
+  } else {
+    footerContactEl.classList.add('hidden');
+  }
+}
 
 function t(key) {
   return texts[currentLang][key];
@@ -372,6 +457,7 @@ function applyLanguage() {
 
   renderCategoryOptions();
   renderCategories(categoriesCache);
+  renderFooter();
 }
 
 async function loadSiteConfig() {
@@ -382,7 +468,12 @@ async function loadSiteConfig() {
       siteConfig = {
         title: String(data.title || '').trim(),
         subtitleZh: String(data.subtitleZh || '').trim(),
-        subtitleEn: String(data.subtitleEn || '').trim()
+        subtitleEn: String(data.subtitleEn || '').trim(),
+        footerCopyrightZh: String(data.footerCopyrightZh || '').trim(),
+        footerCopyrightEn: String(data.footerCopyrightEn || '').trim(),
+        footerContactZh: String(data.footerContactZh || '').trim(),
+        footerContactEn: String(data.footerContactEn || '').trim(),
+        footerLinks: Array.isArray(data.footerLinks) ? data.footerLinks : []
       };
     } else {
       siteConfig = null;
