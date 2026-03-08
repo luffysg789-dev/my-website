@@ -6,7 +6,12 @@ const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '127.0.0.1';
+// Server default:
+// - Linux production: listen on 0.0.0.0 so nginx/proxy can reach it.
+// - Local dev: bind to loopback by default.
+const HOST =
+  process.env.HOST ||
+  (process.platform === 'linux' ? '0.0.0.0' : '127.0.0.1');
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
 const TUTORIAL_MAX_BYTES = 5000000;
 const tutorialUploadDrafts = new Map();
@@ -1109,15 +1114,34 @@ app.post('/api/translate', async (req, res) => {
   }
 });
 
-const AUTO_CRAWL_MAX_PER_RUN = Number(process.env.AUTO_CRAWL_MAX_PER_RUN || 5);
+const AUTO_CRAWL_MAX_PER_RUN_AI = Number(process.env.AUTO_CRAWL_MAX_PER_RUN_AI || 5);
+const AUTO_CRAWL_MAX_PER_RUN_OPENCLAW = Number(process.env.AUTO_CRAWL_MAX_PER_RUN_OPENCLAW || 5);
 const AUTO_CRAWL_INTERVAL_MS = Number(process.env.AUTO_CRAWL_INTERVAL_MS || 60 * 60 * 1000);
 const AUTO_CRAWL_DEFAULT_CATEGORY = String(process.env.AUTO_CRAWL_DEFAULT_CATEGORY || 'AI 与大语言模型');
-const AUTO_CRAWL_FEEDS = String(
-  process.env.AUTO_CRAWL_FEEDS ||
+
+// Separate feed sets: general AI projects vs OpenClaw/Claw-related projects.
+const AUTO_CRAWL_FEEDS_AI = String(
+  process.env.AUTO_CRAWL_FEEDS_AI ||
     [
+      'https://hnrss.org/newest?q=ai%20tool',
+      'https://hnrss.org/newest?q=llm%20tool',
+      'https://hnrss.org/newest?q=ai%20agent',
+      // Fallback feeds (we filter heavily; might still yield projects via outbound links).
       'https://www.therundown.ai/rss',
-      'https://aiweekly.co/rss',
-      'https://www.artificialintelligence-news.com/feed/'
+      'https://aiweekly.co/rss'
+    ].join(',')
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const AUTO_CRAWL_FEEDS_OPENCLAW = String(
+  process.env.AUTO_CRAWL_FEEDS_OPENCLAW ||
+    [
+      'https://hnrss.org/newest?q=openclaw',
+      'https://hnrss.org/newest?q=claw%20ai',
+      'https://hnrss.org/newest?q=openclaw%20project',
+      'https://hnrss.org/newest?q=openclaw%20tool'
     ].join(',')
 )
   .split(',')
@@ -1125,7 +1149,7 @@ const AUTO_CRAWL_FEEDS = String(
   .filter(Boolean);
 
 let autoCrawlRunning = false;
-let autoCrawlLastResult = null; // { at, added, checked, errors }
+let autoCrawlLastResult = null; // { at, ai: {added, checked, errors}, openclaw: {added, checked, errors} }
 
 function parseEpochMs(raw) {
   const n = Number(raw);
@@ -1250,12 +1274,127 @@ function parseRssItems(xml) {
   const items = text.match(/<item[\s\S]*?<\/item>/gi) || [];
   const out = [];
   for (const item of items) {
-    const link = (item.match(/<link[^>]*>([\s\S]*?)<\/link>/i)?.[1] || '').trim();
+    const link = (item.match(/<link[^>]*>([\s\S]*?)<\/link>/i)?.[1] || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim();
     const title = (item.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+    const description = (item.match(/<description[^>]*>([\s\S]*?)<\/description>/i)?.[1] || '')
+      .replace(/<!\[CDATA\[|\]\]>/g, '')
+      .trim();
     if (!link) continue;
-    out.push({ link, title });
+    out.push({ link, title, description });
   }
   return out;
+}
+
+function looksLikeNewsOrMediaSite({ url, title, description }) {
+  const u = String(url || '').toLowerCase();
+  const t = String(title || '').toLowerCase();
+  const d = String(description || '').toLowerCase();
+  const host = (() => {
+    try {
+      return new URL(u).hostname.replace(/^www\./i, '');
+    } catch {
+      return '';
+    }
+  })();
+
+  // Strong signals: matches the "latest news / analysis / events" style sites.
+  const strongSignals = [
+    'latest news',
+    'reports on the latest',
+    'analysis & events',
+    'analysis and events',
+    'from the frontline',
+    'breaking news'
+  ];
+  if (strongSignals.some((s) => t.includes(s) || d.includes(s))) return true;
+
+  // Hostname patterns.
+  const hostBad = /(news|weekly|journal|magazine|press|media|blog|newsletter|digest|reports?)\./i;
+  if (host && hostBad.test(host)) return true;
+
+  // Platform/blog hosts.
+  const platformBad = /(medium\.com|substack\.com|wordpress\.com|blogspot\.com)/i;
+  if (platformBad.test(u)) return true;
+
+  // Title-only "Home" is usually not a product page.
+  if (t === 'home' && (d.includes('news') || d.includes('reports'))) return true;
+  return false;
+}
+
+function looksLikeAiProject({ url, title, description }) {
+  const u = String(url || '').toLowerCase();
+  const t = String(title || '').toLowerCase();
+  const d = String(description || '').toLowerCase();
+
+  // Strong preference: claw/openclaw.
+  if (
+    u.includes('openclaw') ||
+    u.includes('claw') ||
+    t.includes('openclaw') ||
+    t.includes('claw') ||
+    d.includes('openclaw') ||
+    d.includes('claw')
+  ) {
+    return true;
+  }
+
+  const keywords = [
+    'ai',
+    'artificial intelligence',
+    'llm',
+    'gpt',
+    'agent',
+    'copilot',
+    'prompt',
+    'automation',
+    'workflow',
+    'vector',
+    'embedding',
+    'rag',
+    'chatbot',
+    'model'
+  ];
+  const hay = `${u} ${t} ${d}`;
+  return keywords.some((k) => hay.includes(k));
+}
+
+function classifyCategory({ url, title, description }) {
+  const u = String(url || '').toLowerCase();
+  const t = String(title || '').toLowerCase();
+  const d = String(description || '').toLowerCase();
+  const hay = `${u} ${t} ${d}`;
+
+  const rules = [
+    { name: 'DevOps 与云', keywords: ['devops', 'kubernetes', 'k8s', 'docker', 'container', 'ci/cd', 'cicd', 'observability', 'datadog', 'cloud'] },
+    { name: '开发与编码', keywords: ['github', 'gitlab', 'sdk', 'api', 'developer', 'devtool', 'cli', 'coding', 'code', 'programming', 'typescript', 'javascript', 'python', 'java', 'golang', 'rust'] },
+    { name: '浏览器与网页自动化', keywords: ['browser', 'web automation', 'playwright', 'selenium', 'puppeteer', 'scrape', 'scraping', 'crawler', 'crawl', 'firecrawl', 'skyvern'] },
+    { name: '营销与销售', keywords: ['marketing', 'sales', 'seo', 'lead', 'crm', 'outreach', 'campaign', 'ads', 'advertising'] },
+    { name: '生产力与工作流', keywords: ['productivity', 'workflow', 'zapier', 'notion', 'tasks', 'project management', 'smartsheet', 'calendar', 'meeting'] },
+    { name: '搜索与研究', keywords: ['search', 'research', 'paper', 'arxiv', 'literature', 'knowledge', 'perplexity', 'answer engine'] },
+    { name: '通信与社交', keywords: ['chat', 'messaging', 'social', 'community', 'feed', 'buffer', 'timeline'] },
+    { name: '媒体与内容', keywords: ['video', 'image', 'audio', 'content', 'writer', 'copywriting', 'subtitle', 'transcribe', 'podcast', 'synthesia', 'jasper'] },
+    { name: '金融与加密货币', keywords: ['crypto', 'wallet', 'trading', 'exchange', 'defi', 'blockchain', 'bitcoin', 'ethereum', 'quant'] },
+    { name: '健康与健身', keywords: ['health', 'fitness', 'workout', 'nutrition', 'sleep', 'coach', 'training'] },
+    { name: '安全与监控', keywords: ['security', 'vulnerability', 'snyk', 'monitoring', 'soc', 'siem', 'zero trust', 'threat'] },
+    { name: '自动化与实用工具', keywords: ['automation', 'agent', 'utility', 'tool', 'integration', 'integrations', 'bot'] },
+    { name: '业务运营', keywords: ['business', 'operations', 'support', 'customer', 'billing', 'invoice', 'back office', 'backoffice', 'hr'] },
+    { name: '代理协调', keywords: ['orchestration', 'multi-agent', 'agent orchestration', 'coordination', 'swarm'] },
+    { name: 'AI 与大语言模型', keywords: ['llm', 'gpt', 'chatgpt', 'gemini', 'claude', 'openai', 'model', 'rag', 'embedding', 'prompt', 'token'] }
+  ];
+
+  let bestName = 'AI 与大语言模型';
+  let bestScore = 0;
+  for (const rule of rules) {
+    let score = 0;
+    for (const kw of rule.keywords) {
+      if (hay.includes(kw)) score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestName = rule.name;
+    }
+  }
+  return bestName;
 }
 
 async function fetchText(url, timeoutMs = 8000) {
@@ -1299,7 +1438,7 @@ function siteExistsByUrl(url) {
   return false;
 }
 
-async function enqueuePendingSite({ name, url, description, category }) {
+async function enqueuePendingSite({ name, url, description, category, source = 'auto_crawl' }) {
   const trimmedName = String(name || '').trim();
   const trimmedUrl = normalizeUrlForDedup(url);
   const trimmedDesc = String(description || '').trim();
@@ -1315,22 +1454,29 @@ async function enqueuePendingSite({ name, url, description, category }) {
   try {
     const stmt = db.prepare(`
       INSERT OR IGNORE INTO sites (name, name_en, url, description, description_en, category, source, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'auto_crawl', 'pending')
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
     `);
-    const result = stmt.run(trimmedName, nameEnFinal, trimmedUrl, trimmedDesc, descEnFinal, trimmedCategory);
+    const result = stmt.run(trimmedName, nameEnFinal, trimmedUrl, trimmedDesc, descEnFinal, trimmedCategory, source);
     return Boolean(result.changes);
   } catch {
     return false;
   }
 }
 
-async function autoCrawlOnce() {
+function looksLikeOpenClawProject({ url, title, description }) {
+  const u = String(url || '').toLowerCase();
+  const t = String(title || '').toLowerCase();
+  const d = String(description || '').toLowerCase();
+  return u.includes('openclaw') || u.includes('claw') || t.includes('openclaw') || t.includes('claw') || d.includes('openclaw') || d.includes('claw');
+}
+
+async function autoCrawlOnce({ feeds, maxToAdd, requireOpenClaw = false, source }) {
   const checked = { feeds: 0, links: 0 };
   let added = 0;
   let errors = 0;
 
-  for (const feedUrl of AUTO_CRAWL_FEEDS) {
-    if (added >= AUTO_CRAWL_MAX_PER_RUN) break;
+  for (const feedUrl of feeds) {
+    if (added >= maxToAdd) break;
     checked.feeds += 1;
     let xml = '';
     try {
@@ -1339,13 +1485,46 @@ async function autoCrawlOnce() {
       errors += 1;
       continue;
     }
-    const items = parseRssItems(xml).slice(0, 30);
+    const items = parseRssItems(xml).slice(0, 40);
+    const isHnRss = /:\/\/hnrss\.org\//i.test(feedUrl);
     for (const it of items) {
-      if (added >= AUTO_CRAWL_MAX_PER_RUN) break;
+      if (added >= maxToAdd) break;
       checked.links += 1;
       const link = normalizeUrlForDedup(it.link);
       if (!link || !isValidUrl(link)) continue;
-      // RSS item itself is typically a news/article URL; we use it as a seed to discover outbound links.
+
+      // HNRSS items are already external links (often products/projects). Treat them as candidates directly.
+      if (isHnRss) {
+        if (siteExistsByUrl(link)) continue;
+        let siteHtml = '';
+        try {
+          siteHtml = await fetchText(link, 8000);
+        } catch {
+          errors += 1;
+          continue;
+        }
+        const meta = extractFromHtml(siteHtml, link);
+        const candidate = {
+          url: meta.url,
+          title: meta.title || it.title || '',
+          description: meta.description || it.description || ''
+        };
+        if (looksLikeNewsOrMediaSite(candidate)) continue;
+        if (!looksLikeAiProject(candidate)) continue;
+        if (requireOpenClaw && !looksLikeOpenClawProject(candidate)) continue;
+        const predictedCategory = classifyCategory(candidate);
+        const ok = await enqueuePendingSite({
+          name: candidate.title || candidate.url,
+          url: candidate.url,
+          description: candidate.description,
+          category: predictedCategory || AUTO_CRAWL_DEFAULT_CATEGORY,
+          source
+        });
+        if (ok) added += 1;
+        continue;
+      }
+
+      // For normal news-like feeds: use article as seed but only accept links that look like AI projects.
       let html = '';
       try {
         html = await fetchText(link, 8000);
@@ -1354,12 +1533,9 @@ async function autoCrawlOnce() {
         continue;
       }
 
-      // Prefer extracting external websites referenced in the article, then fetch their homepages.
-      const candidates = extractExternalLinksFromHtml(html, link).slice(0, 30);
-      let queuedAny = false;
-
+      const candidates = extractExternalLinksFromHtml(html, link).slice(0, 40);
       for (const candidateUrl of candidates) {
-        if (added >= AUTO_CRAWL_MAX_PER_RUN) break;
+        if (added >= maxToAdd) break;
         if (!candidateUrl || !isValidUrl(candidateUrl)) continue;
         if (siteExistsByUrl(candidateUrl)) continue;
 
@@ -1370,27 +1546,19 @@ async function autoCrawlOnce() {
           errors += 1;
           continue;
         }
-        const { title, description, url } = extractFromHtml(siteHtml, candidateUrl);
-        const ok = await enqueuePendingSite({
-          name: title || url,
-          url,
-          description,
-          category: AUTO_CRAWL_DEFAULT_CATEGORY
-        });
-        if (ok) {
-          added += 1;
-          queuedAny = true;
-        }
-      }
+        const meta = extractFromHtml(siteHtml, candidateUrl);
+        const candidate = { url: meta.url, title: meta.title || '', description: meta.description || '' };
+        if (looksLikeNewsOrMediaSite(candidate)) continue;
+        if (!looksLikeAiProject(candidate)) continue;
+        if (requireOpenClaw && !looksLikeOpenClawProject(candidate)) continue;
+        const predictedCategory = classifyCategory(candidate);
 
-      // Fallback: if we couldn't find any external links, enqueue the RSS item itself (rare).
-      if (!queuedAny && added < AUTO_CRAWL_MAX_PER_RUN) {
-        const { title, description, url } = extractFromHtml(html, link);
         const ok = await enqueuePendingSite({
-          name: title || it.title || url,
-          url,
-          description,
-          category: AUTO_CRAWL_DEFAULT_CATEGORY
+          name: candidate.title || candidate.url,
+          url: candidate.url,
+          description: candidate.description,
+          category: predictedCategory || AUTO_CRAWL_DEFAULT_CATEGORY,
+          source
         });
         if (ok) added += 1;
       }
@@ -1402,15 +1570,19 @@ async function autoCrawlOnce() {
 
 app.get('/api/admin/auto-crawl/status', requireAdmin, (_req, res) => {
   const enabled = getSetting('auto_crawl_enabled', '0') === '1';
-  const lastRunMs = parseEpochMs(getSetting('auto_crawl_last_run', '0'));
+  const lastRunMsAi = parseEpochMs(getSetting('auto_crawl_last_run_ai', '0'));
+  const lastRunMsOpenclaw = parseEpochMs(getSetting('auto_crawl_last_run_openclaw', '0'));
   res.json({
     ok: true,
     enabled,
     running: autoCrawlRunning,
-    lastRunMs,
+    lastRunMsAi,
+    lastRunMsOpenclaw,
     intervalMs: AUTO_CRAWL_INTERVAL_MS,
-    maxPerRun: AUTO_CRAWL_MAX_PER_RUN,
-    feeds: AUTO_CRAWL_FEEDS,
+    maxPerRunAi: AUTO_CRAWL_MAX_PER_RUN_AI,
+    maxPerRunOpenclaw: AUTO_CRAWL_MAX_PER_RUN_OPENCLAW,
+    feedsAi: AUTO_CRAWL_FEEDS_AI,
+    feedsOpenclaw: AUTO_CRAWL_FEEDS_OPENCLAW,
     lastResult: autoCrawlLastResult
   });
 });
@@ -1429,11 +1601,28 @@ app.post('/api/admin/auto-crawl/run-now', requireAdmin, async (_req, res) => {
   if (autoCrawlRunning) return res.status(409).json({ error: '正在抓取中，请稍后再试' });
   autoCrawlRunning = true;
   try {
-    const result = await autoCrawlOnce();
     const now = Date.now();
-    upsertSettingStmt.run('auto_crawl_last_run', String(now));
-    autoCrawlLastResult = { at: now, ...result };
-    res.json({ ok: true, ...result });
+    const openclaw = await autoCrawlOnce({
+      feeds: AUTO_CRAWL_FEEDS_OPENCLAW,
+      maxToAdd: AUTO_CRAWL_MAX_PER_RUN_OPENCLAW,
+      requireOpenClaw: true,
+      source: 'auto_crawl_openclaw'
+    });
+    upsertSettingStmt.run('auto_crawl_last_run_openclaw', String(now));
+
+    // If OpenClaw projects are fewer than expected, top up from general AI so total is still 10.
+    const openclawAdded = Number(openclaw?.added || 0);
+    const aiMax = AUTO_CRAWL_MAX_PER_RUN_AI + Math.max(0, AUTO_CRAWL_MAX_PER_RUN_OPENCLAW - openclawAdded);
+    const ai = await autoCrawlOnce({
+      feeds: AUTO_CRAWL_FEEDS_AI,
+      maxToAdd: aiMax,
+      requireOpenClaw: false,
+      source: 'auto_crawl_ai'
+    });
+    upsertSettingStmt.run('auto_crawl_last_run_ai', String(now));
+
+    autoCrawlLastResult = { at: now, ai, openclaw };
+    res.json({ ok: true, at: now, ai, openclaw });
   } catch {
     res.status(500).json({ error: '抓取失败' });
   } finally {
@@ -1441,19 +1630,58 @@ app.post('/api/admin/auto-crawl/run-now', requireAdmin, async (_req, res) => {
   }
 });
 
+app.post('/api/admin/auto-crawl/clear-pending', requireAdmin, (_req, res) => {
+  const result = db
+    .prepare(
+      `
+      UPDATE sites
+      SET status = 'rejected',
+          reviewer_note = 'auto_crawl cleared',
+          reviewed_by = 'admin',
+          reviewed_at = datetime('now')
+      WHERE status = 'pending' AND source IN ('auto_crawl','auto_crawl_ai','auto_crawl_openclaw')
+    `
+    )
+    .run();
+  res.json({ ok: true, cleared: Number(result.changes || 0) });
+});
+
 async function autoCrawlTick() {
   if (autoCrawlRunning) return;
   const enabled = getSetting('auto_crawl_enabled', '0') === '1';
   if (!enabled) return;
-  const lastRunMs = parseEpochMs(getSetting('auto_crawl_last_run', '0'));
   const now = Date.now();
-  if (lastRunMs && now - lastRunMs < AUTO_CRAWL_INTERVAL_MS) return;
+  const lastRunMsAi = parseEpochMs(getSetting('auto_crawl_last_run_ai', '0'));
+  const lastRunMsOpenclaw = parseEpochMs(getSetting('auto_crawl_last_run_openclaw', '0'));
+  const dueAi = !lastRunMsAi || now - lastRunMsAi >= AUTO_CRAWL_INTERVAL_MS;
+  const dueOpenclaw = !lastRunMsOpenclaw || now - lastRunMsOpenclaw >= AUTO_CRAWL_INTERVAL_MS;
+  if (!dueAi && !dueOpenclaw) return;
 
   autoCrawlRunning = true;
   try {
-    const result = await autoCrawlOnce();
-    upsertSettingStmt.run('auto_crawl_last_run', String(now));
-    autoCrawlLastResult = { at: now, ...result };
+    const openclaw = dueOpenclaw
+      ? await autoCrawlOnce({
+          feeds: AUTO_CRAWL_FEEDS_OPENCLAW,
+          maxToAdd: AUTO_CRAWL_MAX_PER_RUN_OPENCLAW,
+          requireOpenClaw: true,
+          source: 'auto_crawl_openclaw'
+        })
+      : null;
+    if (dueOpenclaw) upsertSettingStmt.run('auto_crawl_last_run_openclaw', String(now));
+
+    const openclawAdded = Number(openclaw?.added || 0);
+    const aiMax = AUTO_CRAWL_MAX_PER_RUN_AI + Math.max(0, AUTO_CRAWL_MAX_PER_RUN_OPENCLAW - openclawAdded);
+    const ai = dueAi
+      ? await autoCrawlOnce({
+          feeds: AUTO_CRAWL_FEEDS_AI,
+          maxToAdd: aiMax,
+          requireOpenClaw: false,
+          source: 'auto_crawl_ai'
+        })
+      : null;
+    if (dueAi) upsertSettingStmt.run('auto_crawl_last_run_ai', String(now));
+
+    autoCrawlLastResult = { at: now, ai, openclaw };
   } catch {
     // ignore
   } finally {

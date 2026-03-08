@@ -2,8 +2,53 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const dataDir = path.join(__dirname, '..', 'data');
-const dbPath = path.join(dataDir, 'claw800.db');
+const projectDataDir = path.join(__dirname, '..', 'data');
+const projectDbPath = path.join(projectDataDir, 'claw800.db');
+
+function ensureDir(p) {
+  try {
+    fs.mkdirSync(p, { recursive: true });
+  } catch {
+    // ignore
+  }
+}
+
+function pickPersistentDbPath() {
+  // Highest priority: explicit path.
+  if (process.env.CLAW800_DB_PATH) return String(process.env.CLAW800_DB_PATH);
+  if (process.env.CLAW800_DATA_DIR) return path.join(String(process.env.CLAW800_DATA_DIR), 'claw800.db');
+
+  // On Linux servers, prefer an external persistent dir so code updates won't wipe data.
+  if (process.platform === 'linux') {
+    const candidates = [
+      process.env.CLAW800_PERSIST_DIR ? String(process.env.CLAW800_PERSIST_DIR) : '',
+      '/www/wwwroot/claw800-data',
+      '/var/lib/claw800',
+      '/opt/claw800-data'
+    ].filter(Boolean);
+
+    for (const dir of candidates) {
+      try {
+        ensureDir(dir);
+        const dbPath = path.join(dir, 'claw800.db');
+        // If we already have a db in the project folder, but not in the persistent folder,
+        // copy it once so future deployments keep the same data.
+        if (fs.existsSync(projectDbPath) && !fs.existsSync(dbPath)) {
+          fs.copyFileSync(projectDbPath, dbPath);
+        }
+        return dbPath;
+      } catch {
+        // try next dir
+      }
+    }
+  }
+
+  // Default (local dev / macOS): keep DB in project folder.
+  return projectDbPath;
+}
+
+const dbPath = pickPersistentDbPath();
+const dataDir = path.dirname(dbPath);
 
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -129,6 +174,12 @@ db.prepare(
 db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('auto_crawl_last_run', '', datetime('now'))"
 ).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('auto_crawl_last_run_ai', '', datetime('now'))"
+).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('auto_crawl_last_run_openclaw', '', datetime('now'))"
+).run();
 
 function migrateUniqueUrlToUrlCategory() {
   const tableSqlRow = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sites'").get();
@@ -139,14 +190,21 @@ function migrateUniqueUrlToUrlCategory() {
     return;
   }
 
+  // Run at most once per DB to avoid repeated table rebuilds.
+  const flagKey = 'migration:unique_url_to_url_category_v1';
+  const already = db.prepare('SELECT 1 FROM settings WHERE key = ?').get(flagKey);
+  if (already) return;
+
   db.exec(`
     BEGIN;
     ALTER TABLE sites RENAME TO sites_old;
     CREATE TABLE sites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      name_en TEXT DEFAULT '',
       url TEXT NOT NULL,
       description TEXT DEFAULT '',
+      description_en TEXT DEFAULT '',
       category TEXT DEFAULT 'OpenClaw 生态',
       source TEXT DEFAULT 'admin',
       submitter_name TEXT DEFAULT '',
@@ -159,14 +217,23 @@ function migrateUniqueUrlToUrlCategory() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO sites (
-      id, name, url, description, category, source, submitter_name, submitter_email,
+      id, name, name_en, url, description, description_en, category, source, submitter_name, submitter_email,
       status, reviewer_note, reviewed_by, reviewed_at, created_at
     )
     SELECT
-      id, name, url, description, category, source, submitter_name, submitter_email,
+      id, name,
+      COALESCE(name_en, ''),
+      url,
+      COALESCE(description, ''),
+      COALESCE(description_en, ''),
+      COALESCE(category, 'OpenClaw 生态'),
+      COALESCE(source, 'admin'),
+      COALESCE(submitter_name, ''),
+      COALESCE(submitter_email, ''),
       status, reviewer_note, reviewed_by, reviewed_at, created_at
     FROM sites_old;
     DROP TABLE sites_old;
+    INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('migration:unique_url_to_url_category_v1', '1', datetime('now'));
     COMMIT;
   `);
 }

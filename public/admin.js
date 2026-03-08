@@ -26,6 +26,7 @@ const autoCrawlMessage = document.getElementById('autoCrawlMessage');
 const autoCrawlEnableBtn = document.getElementById('autoCrawlEnableBtn');
 const autoCrawlDisableBtn = document.getElementById('autoCrawlDisableBtn');
 const autoCrawlRunBtn = document.getElementById('autoCrawlRunBtn');
+const autoCrawlClearBtn = document.getElementById('autoCrawlClearBtn');
 const adminImportSection = document.getElementById('adminImportSection');
 const adminCategoryAddSection = document.getElementById('adminCategoryAddSection');
 const adminCategoryListSection = document.getElementById('adminCategoryListSection');
@@ -123,13 +124,16 @@ const texts = {
     autoCrawlEnable: '开启',
     autoCrawlDisable: '关闭',
     autoCrawlRunNow: '立即抓取一次',
+    autoCrawlClearPending: '清空自动抓取待审核',
+    autoCrawlClearConfirm: '确定清空“自动抓取”来源的待审核列表吗？（会全部驳回）',
+    autoCrawlCleared: (n) => `已清空自动抓取待审核：${n} 条`,
     autoCrawlEnabled: '已开启',
     autoCrawlDisabled: '已关闭',
     autoCrawlRunning: '抓取中...',
     autoCrawlLastRun: (t) => `上次抓取：${t}`,
     autoCrawlNever: '从未抓取',
     autoCrawlSaved: '设置已更新',
-    autoCrawlRunDone: (n) => `本次新增待审核：${n} 条`,
+    autoCrawlRunDone: (ai, openclaw) => `本次新增待审核：AI 项目 ${ai} 条 + OpenClaw 项目 ${openclaw} 条`,
     autoCrawlRouteMissing: '自动抓取接口不存在（404）。请重启后端后再试。',
     searchPlaceholder: '搜索已上线网站（名称/网址/简介/分类）',
     searchBtn: '搜索',
@@ -231,7 +235,9 @@ const texts = {
       user_submit: '用户投稿',
       seed_openclaw: 'OpenClaw 首批',
       admin_import: '后台导入',
-      auto_crawl: '自动抓取'
+      auto_crawl: '自动抓取',
+      auto_crawl_ai: '自动抓取(AI项目)',
+      auto_crawl_openclaw: '自动抓取(OpenClaw)'
     }
   },
   en: {
@@ -266,13 +272,16 @@ const texts = {
     autoCrawlEnable: 'Enable',
     autoCrawlDisable: 'Disable',
     autoCrawlRunNow: 'Run Now',
+    autoCrawlClearPending: 'Clear Auto Pending',
+    autoCrawlClearConfirm: 'Clear all pending items from Auto Crawl? (They will be rejected)',
+    autoCrawlCleared: (n) => `Cleared auto-crawl pending: ${n}`,
     autoCrawlEnabled: 'Enabled',
     autoCrawlDisabled: 'Disabled',
     autoCrawlRunning: 'Running...',
     autoCrawlLastRun: (t) => `Last run: ${t}`,
     autoCrawlNever: 'Never',
     autoCrawlSaved: 'Saved.',
-    autoCrawlRunDone: (n) => `Added to pending: ${n}`,
+    autoCrawlRunDone: (ai, openclaw) => `Added to pending: AI ${ai} + OpenClaw ${openclaw}`,
     autoCrawlRouteMissing: 'Auto crawl API not found (404). Please restart backend and retry.',
     searchPlaceholder: 'Search approved websites (name/URL/description/category)',
     searchBtn: 'Search',
@@ -374,7 +383,9 @@ const texts = {
       user_submit: 'User Submission',
       seed_openclaw: 'OpenClaw Seed',
       admin_import: 'Admin Import',
-      auto_crawl: 'Auto Crawl'
+      auto_crawl: 'Auto Crawl',
+      auto_crawl_ai: 'Auto Crawl (AI)',
+      auto_crawl_openclaw: 'Auto Crawl (OpenClaw)'
     }
   }
 };
@@ -694,6 +705,7 @@ function applyLanguage() {
   autoCrawlEnableBtn.textContent = dict.autoCrawlEnable;
   autoCrawlDisableBtn.textContent = dict.autoCrawlDisable;
   autoCrawlRunBtn.textContent = dict.autoCrawlRunNow;
+  autoCrawlClearBtn.textContent = dict.autoCrawlClearPending;
   document.getElementById('categoriesAddTitle').textContent = dict.categoriesAddTitle;
   document.getElementById('categoriesListTitle').textContent = dict.categoriesListTitle;
   refreshTutorialEditorTitleAndButton();
@@ -783,17 +795,22 @@ function renderAutoCrawlStatusLine(data) {
   else parts.push(t('autoCrawlDisabled'));
   if (data.running) parts.push(t('autoCrawlRunning'));
 
-  const lastRun = data.lastRunMs ? formatTime(data.lastRunMs) : '';
-  parts.push(lastRun ? t('autoCrawlLastRun')(lastRun) : t('autoCrawlNever'));
+  const lastAi = data.lastRunMsAi ? formatTime(data.lastRunMsAi) : '';
+  const lastOpenclaw = data.lastRunMsOpenclaw ? formatTime(data.lastRunMsOpenclaw) : '';
+  parts.push(lastAi ? `AI: ${t('autoCrawlLastRun')(lastAi)}` : `AI: ${t('autoCrawlNever')}`);
+  parts.push(lastOpenclaw ? `OpenClaw: ${t('autoCrawlLastRun')(lastOpenclaw)}` : `OpenClaw: ${t('autoCrawlNever')}`);
 
-  const maxPerRun = Number.isFinite(Number(data.maxPerRun)) ? Number(data.maxPerRun) : 5;
-  parts.push(`max/run: ${maxPerRun}`);
+  const maxAi = Number.isFinite(Number(data.maxPerRunAi)) ? Number(data.maxPerRunAi) : 5;
+  const maxOpenclaw = Number.isFinite(Number(data.maxPerRunOpenclaw)) ? Number(data.maxPerRunOpenclaw) : 5;
+  parts.push(`max/run: AI ${maxAi} + OpenClaw ${maxOpenclaw}`);
 
   if (data.lastResult && typeof data.lastResult === 'object') {
-    const added = Number(data.lastResult.added || 0);
-    const errors = Number(data.lastResult.errors || 0);
-    parts.push(`last added: ${added}`);
-    parts.push(`errors: ${errors}`);
+    const aiAdded = Number(data.lastResult.ai?.added || 0);
+    const aiErrors = Number(data.lastResult.ai?.errors || 0);
+    const ocAdded = Number(data.lastResult.openclaw?.added || 0);
+    const ocErrors = Number(data.lastResult.openclaw?.errors || 0);
+    parts.push(`last added: AI ${aiAdded} / OpenClaw ${ocAdded}`);
+    parts.push(`errors: AI ${aiErrors} / OpenClaw ${ocErrors}`);
   }
 
   autoCrawlStatus.textContent = parts.join(' | ');
@@ -1851,10 +1868,38 @@ autoCrawlRunBtn.addEventListener('click', async () => {
     autoCrawlMessage.className = 'message error';
     return;
   }
-  const n = Number(result.data?.added || 0);
-  autoCrawlMessage.textContent = t('autoCrawlRunDone')(n);
+  const ai = Number(result.data?.ai?.added || 0);
+  const openclaw = Number(result.data?.openclaw?.added || 0);
+  autoCrawlMessage.textContent = t('autoCrawlRunDone')(ai, openclaw);
   autoCrawlMessage.className = 'message success';
   loadAutoCrawlStatus();
+});
+
+autoCrawlClearBtn.addEventListener('click', async () => {
+  if (!confirm(t('autoCrawlClearConfirm'))) return;
+  autoCrawlMessage.textContent = '';
+  autoCrawlMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/auto-crawl/clear-pending'], { method: 'POST' });
+  if (!result.res) {
+    autoCrawlMessage.textContent = t('autoCrawlRouteMissing');
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    autoCrawlMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  const n = Number(result.data?.cleared || 0);
+  autoCrawlMessage.textContent = t('autoCrawlCleared')(n);
+  autoCrawlMessage.className = 'message success';
+  loadAutoCrawlStatus();
+  // If admin is currently on pending list, refresh it.
+  if (currentView === 'pending') loadList('pending');
 });
 
 adminLangZhBtn.addEventListener('click', () => {
