@@ -13,12 +13,19 @@ const adminCategorySelect = document.getElementById('adminCategorySelect');
 const adminLangZhBtn = document.getElementById('adminLangZhBtn');
 const adminLangEnBtn = document.getElementById('adminLangEnBtn');
 const navSiteConfig = document.getElementById('navSiteConfig');
+const navAutoCrawl = document.getElementById('navAutoCrawl');
 const adminSearchInput = document.getElementById('adminSearchInput');
 const adminSearchToolbar = document.getElementById('adminSearchToolbar');
 const adminAddSection = document.getElementById('adminAddSection');
 const adminSiteConfigSection = document.getElementById('adminSiteConfigSection');
 const siteConfigForm = document.getElementById('siteConfigForm');
 const siteConfigMessage = document.getElementById('siteConfigMessage');
+const adminAutoCrawlSection = document.getElementById('adminAutoCrawlSection');
+const autoCrawlStatus = document.getElementById('autoCrawlStatus');
+const autoCrawlMessage = document.getElementById('autoCrawlMessage');
+const autoCrawlEnableBtn = document.getElementById('autoCrawlEnableBtn');
+const autoCrawlDisableBtn = document.getElementById('autoCrawlDisableBtn');
+const autoCrawlRunBtn = document.getElementById('autoCrawlRunBtn');
 const adminImportSection = document.getElementById('adminImportSection');
 const adminCategoryAddSection = document.getElementById('adminCategoryAddSection');
 const adminCategoryListSection = document.getElementById('adminCategoryListSection');
@@ -93,6 +100,7 @@ const texts = {
     panelTitle: '审核后台',
     navHome: '前端首页',
     navSiteConfig: '站点设置',
+    navAutoCrawl: '自动抓取',
     navAdd: '手动新增',
     navImport: '批量导入',
     navCategoryList: '分类列表',
@@ -111,6 +119,18 @@ const texts = {
     siteConfigSaved: '已保存',
     siteConfigLoadFailed: '加载失败',
     siteConfigRouteMissing: '站点设置接口不存在（404）。请重启后端后再试。',
+    autoCrawlTitle: '自动抓取',
+    autoCrawlEnable: '开启',
+    autoCrawlDisable: '关闭',
+    autoCrawlRunNow: '立即抓取一次',
+    autoCrawlEnabled: '已开启',
+    autoCrawlDisabled: '已关闭',
+    autoCrawlRunning: '抓取中...',
+    autoCrawlLastRun: (t) => `上次抓取：${t}`,
+    autoCrawlNever: '从未抓取',
+    autoCrawlSaved: '设置已更新',
+    autoCrawlRunDone: (n) => `本次新增待审核：${n} 条`,
+    autoCrawlRouteMissing: '自动抓取接口不存在（404）。请重启后端后再试。',
     searchPlaceholder: '搜索已上线网站（名称/网址/简介/分类）',
     searchBtn: '搜索',
     clearSearchBtn: '清空',
@@ -210,7 +230,8 @@ const texts = {
       admin: '后台添加',
       user_submit: '用户投稿',
       seed_openclaw: 'OpenClaw 首批',
-      admin_import: '后台导入'
+      admin_import: '后台导入',
+      auto_crawl: '自动抓取'
     }
   },
   en: {
@@ -222,6 +243,7 @@ const texts = {
     panelTitle: 'Review Console',
     navHome: 'Frontend Home',
     navSiteConfig: 'Site Settings',
+    navAutoCrawl: 'Auto Crawl',
     navAdd: 'Add Website',
     navImport: 'Bulk Import',
     navCategoryList: 'Category List',
@@ -240,6 +262,18 @@ const texts = {
     siteConfigSaved: 'Saved.',
     siteConfigLoadFailed: 'Load failed.',
     siteConfigRouteMissing: 'Site settings API not found (404). Please restart backend and retry.',
+    autoCrawlTitle: 'Auto Crawl',
+    autoCrawlEnable: 'Enable',
+    autoCrawlDisable: 'Disable',
+    autoCrawlRunNow: 'Run Now',
+    autoCrawlEnabled: 'Enabled',
+    autoCrawlDisabled: 'Disabled',
+    autoCrawlRunning: 'Running...',
+    autoCrawlLastRun: (t) => `Last run: ${t}`,
+    autoCrawlNever: 'Never',
+    autoCrawlSaved: 'Saved.',
+    autoCrawlRunDone: (n) => `Added to pending: ${n}`,
+    autoCrawlRouteMissing: 'Auto crawl API not found (404). Please restart backend and retry.',
     searchPlaceholder: 'Search approved websites (name/URL/description/category)',
     searchBtn: 'Search',
     clearSearchBtn: 'Clear',
@@ -339,7 +373,8 @@ const texts = {
       admin: 'Admin Added',
       user_submit: 'User Submission',
       seed_openclaw: 'OpenClaw Seed',
-      admin_import: 'Admin Import'
+      admin_import: 'Admin Import',
+      auto_crawl: 'Auto Crawl'
     }
   }
 };
@@ -626,6 +661,7 @@ function applyLanguage() {
   document.getElementById('panelTitle').textContent = dict.panelTitle;
   document.getElementById('navHome').textContent = dict.navHome;
   document.getElementById('navSiteConfig').textContent = dict.navSiteConfig;
+  document.getElementById('navAutoCrawl').textContent = dict.navAutoCrawl;
   document.getElementById('navAdd').textContent = dict.navAdd;
   document.getElementById('navImport').textContent = dict.navImport;
   document.getElementById('navCategoryList').textContent = dict.navCategoryList;
@@ -654,6 +690,10 @@ function applyLanguage() {
   document.getElementById('siteSubtitleZhLabel').childNodes[0].textContent = dict.siteSubtitleZhLabel;
   document.getElementById('siteSubtitleEnLabel').childNodes[0].textContent = dict.siteSubtitleEnLabel;
   document.getElementById('siteConfigSaveBtn').textContent = dict.siteConfigSaveBtn;
+  document.getElementById('autoCrawlTitle').textContent = dict.autoCrawlTitle;
+  autoCrawlEnableBtn.textContent = dict.autoCrawlEnable;
+  autoCrawlDisableBtn.textContent = dict.autoCrawlDisable;
+  autoCrawlRunBtn.textContent = dict.autoCrawlRunNow;
   document.getElementById('categoriesAddTitle').textContent = dict.categoriesAddTitle;
   document.getElementById('categoriesListTitle').textContent = dict.categoriesListTitle;
   refreshTutorialEditorTitleAndButton();
@@ -695,6 +735,7 @@ function setView(view) {
   currentView = view;
   adminAddSection.classList.toggle('hidden', view !== 'add');
   adminSiteConfigSection.classList.toggle('hidden', view !== 'site-config');
+  adminAutoCrawlSection.classList.toggle('hidden', view !== 'auto-crawl');
   adminImportSection.classList.toggle('hidden', view !== 'import');
   adminCategoryAddSection.classList.toggle('hidden', view !== 'category-add');
   adminCategoryListSection.classList.toggle('hidden', view !== 'category-list');
@@ -710,6 +751,9 @@ function setView(view) {
   if (view === 'site-config') {
     loadSiteConfig();
   }
+  if (view === 'auto-crawl') {
+    loadAutoCrawlStatus();
+  }
   if (view === 'tutorial-list') {
     loadTutorialList();
   }
@@ -721,6 +765,59 @@ function setView(view) {
   } else if (view === 'approved') {
     loadList('approved');
   }
+}
+
+function formatTime(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  try {
+    return new Date(n).toLocaleString();
+  } catch {
+    return String(n);
+  }
+}
+
+function renderAutoCrawlStatusLine(data) {
+  const parts = [];
+  if (data.enabled) parts.push(t('autoCrawlEnabled'));
+  else parts.push(t('autoCrawlDisabled'));
+  if (data.running) parts.push(t('autoCrawlRunning'));
+
+  const lastRun = data.lastRunMs ? formatTime(data.lastRunMs) : '';
+  parts.push(lastRun ? t('autoCrawlLastRun')(lastRun) : t('autoCrawlNever'));
+
+  const maxPerRun = Number.isFinite(Number(data.maxPerRun)) ? Number(data.maxPerRun) : 5;
+  parts.push(`max/run: ${maxPerRun}`);
+
+  if (data.lastResult && typeof data.lastResult === 'object') {
+    const added = Number(data.lastResult.added || 0);
+    const errors = Number(data.lastResult.errors || 0);
+    parts.push(`last added: ${added}`);
+    parts.push(`errors: ${errors}`);
+  }
+
+  autoCrawlStatus.textContent = parts.join(' | ');
+}
+
+async function loadAutoCrawlStatus() {
+  autoCrawlMessage.textContent = '';
+  autoCrawlMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/auto-crawl/status']);
+  if (!result.res) {
+    autoCrawlMessage.textContent = t('autoCrawlRouteMissing');
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    autoCrawlMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  renderAutoCrawlStatusLine(result.data || {});
 }
 
 function renderTutorialList(items) {
@@ -1239,13 +1336,31 @@ window.saveCategoryConfig = async function saveCategoryConfig(id) {
   const sortOrder = Number(document.getElementById(`catSort-${id}`)?.value || 0);
   const isEnabled = Number(document.getElementById(`catEnabled-${id}`)?.value || 0);
 
-  const res = await fetch(`/api/admin/categories/${id}`, {
+  const payload = { name, sortOrder, isEnabled };
+  const put = await requestTutorialJson([`/api/admin/categories/${id}`], {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, sortOrder, isEnabled }),
-    credentials: 'include'
+    body: JSON.stringify(payload)
   });
-  const data = await res.json();
+
+  let res = put.res;
+  let data = put.data || {};
+
+  // Some servers/WAFs block PUT; retry with POST update endpoints to avoid accidental "create new".
+  if (!res || res.status === 404 || res.status === 405) {
+    const post = await requestTutorialJson([`/api/admin/categories/${id}/update`, `/api/admin/categories/${id}`], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    res = post.res;
+    data = post.data || {};
+  }
+
+  if (!res) {
+    alert(t('operationFailed'));
+    return;
+  }
   if (!res.ok) {
     alert(localizeApiError(data.error || t('operationFailed')));
     return;
@@ -1647,6 +1762,7 @@ if (siteConfigForm) {
 
 document.getElementById('navAdd').addEventListener('click', () => setView('add'));
 document.getElementById('navSiteConfig').addEventListener('click', () => setView('site-config'));
+document.getElementById('navAutoCrawl').addEventListener('click', () => setView('auto-crawl'));
 document.getElementById('navImport').addEventListener('click', () => setView('import'));
 document.getElementById('navCategoryList').addEventListener('click', () => setView('category-list'));
 document.getElementById('navCategoryAdd').addEventListener('click', () => setView('category-add'));
@@ -1669,6 +1785,76 @@ document.getElementById('navHome').addEventListener('click', () => {
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
   showLogin();
+});
+
+autoCrawlEnableBtn.addEventListener('click', async () => {
+  autoCrawlMessage.textContent = '';
+  autoCrawlMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/auto-crawl/enable'], { method: 'POST' });
+  if (!result.res) {
+    autoCrawlMessage.textContent = t('autoCrawlRouteMissing');
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    autoCrawlMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  autoCrawlMessage.textContent = t('autoCrawlSaved');
+  autoCrawlMessage.className = 'message success';
+  loadAutoCrawlStatus();
+});
+
+autoCrawlDisableBtn.addEventListener('click', async () => {
+  autoCrawlMessage.textContent = '';
+  autoCrawlMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/auto-crawl/disable'], { method: 'POST' });
+  if (!result.res) {
+    autoCrawlMessage.textContent = t('autoCrawlRouteMissing');
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    autoCrawlMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  autoCrawlMessage.textContent = t('autoCrawlSaved');
+  autoCrawlMessage.className = 'message success';
+  loadAutoCrawlStatus();
+});
+
+autoCrawlRunBtn.addEventListener('click', async () => {
+  autoCrawlMessage.textContent = t('autoCrawlRunning');
+  autoCrawlMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/auto-crawl/run-now'], { method: 'POST' });
+  if (!result.res) {
+    autoCrawlMessage.textContent = t('autoCrawlRouteMissing');
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    autoCrawlMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    autoCrawlMessage.className = 'message error';
+    return;
+  }
+  const n = Number(result.data?.added || 0);
+  autoCrawlMessage.textContent = t('autoCrawlRunDone')(n);
+  autoCrawlMessage.className = 'message success';
+  loadAutoCrawlStatus();
 });
 
 adminLangZhBtn.addEventListener('click', () => {

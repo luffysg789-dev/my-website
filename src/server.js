@@ -495,7 +495,7 @@ app.post('/api/admin/categories', requireAdmin, async (req, res) => {
   }
 });
 
-app.put('/api/admin/categories/:id', requireAdmin, async (req, res) => {
+async function updateCategory(req, res) {
   const id = Number(req.params.id);
   const name = String(req.body.name || '').trim();
   const sortOrder = Number.isFinite(Number(req.body.sortOrder)) ? Number(req.body.sortOrder) : 0;
@@ -550,7 +550,13 @@ app.put('/api/admin/categories/:id', requireAdmin, async (req, res) => {
     }
     res.status(500).json({ error: '更新失败' });
   }
-});
+}
+
+app.put('/api/admin/categories/:id', requireAdmin, updateCategory);
+// Some environments/proxies may block PUT; provide POST fallbacks to avoid accidental "create new".
+app.post('/api/admin/categories/:id', requireAdmin, updateCategory);
+app.post('/api/admin/categories/:id/update', requireAdmin, updateCategory);
+app.post('/admin/categories/:id/update', requireAdmin, (req, res) => res.redirect(307, `/api/admin/categories/${req.params.id}/update`));
 
 app.delete('/api/admin/categories/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
@@ -1102,6 +1108,363 @@ app.post('/api/translate', async (req, res) => {
     res.status(502).json({ error: '翻译服务不可用' });
   }
 });
+
+const AUTO_CRAWL_MAX_PER_RUN = Number(process.env.AUTO_CRAWL_MAX_PER_RUN || 5);
+const AUTO_CRAWL_INTERVAL_MS = Number(process.env.AUTO_CRAWL_INTERVAL_MS || 60 * 60 * 1000);
+const AUTO_CRAWL_DEFAULT_CATEGORY = String(process.env.AUTO_CRAWL_DEFAULT_CATEGORY || 'AI 与大语言模型');
+const AUTO_CRAWL_FEEDS = String(
+  process.env.AUTO_CRAWL_FEEDS ||
+    [
+      'https://www.therundown.ai/rss',
+      'https://aiweekly.co/rss',
+      'https://www.artificialintelligence-news.com/feed/'
+    ].join(',')
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+let autoCrawlRunning = false;
+let autoCrawlLastResult = null; // { at, added, checked, errors }
+
+function parseEpochMs(raw) {
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) return n;
+  const t = Date.parse(String(raw || ''));
+  return Number.isFinite(t) ? t : 0;
+}
+
+function normalizeUrlForDedup(raw) {
+  try {
+    const u = new URL(String(raw || '').trim());
+    u.hash = '';
+    // Drop common tracking params.
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref', 'source'].forEach((k) =>
+      u.searchParams.delete(k)
+    );
+    // Normalize trailing slash.
+    if (u.pathname !== '/' && u.pathname.endsWith('/')) u.pathname = u.pathname.slice(0, -1);
+    return u.toString();
+  } catch {
+    return String(raw || '').trim();
+  }
+}
+
+function extractFromHtml(html, fallbackUrl) {
+  const text = String(html || '');
+  const titleMatch = text.match(/<title[^>]*>([^<]{1,200})<\/title>/i);
+  const ogTitleMatch = text.match(/<meta[^>]+property=[\"']og:title[\"'][^>]+content=[\"']([^\"']{1,200})[\"'][^>]*>/i);
+  const descMatch = text.match(/<meta[^>]+name=[\"']description[\"'][^>]+content=[\"']([^\"']{1,500})[\"'][^>]*>/i);
+  const ogDescMatch = text.match(/<meta[^>]+property=[\"']og:description[\"'][^>]+content=[\"']([^\"']{1,500})[\"'][^>]*>/i);
+  const title = String((ogTitleMatch?.[1] || titleMatch?.[1] || '')).replace(/\s+/g, ' ').trim();
+  const description = String((ogDescMatch?.[1] || descMatch?.[1] || '')).replace(/\s+/g, ' ').trim();
+  const url = normalizeUrlForDedup(fallbackUrl);
+  return { title, description, url };
+}
+
+function decodeHtmlEntitiesBasic(text) {
+  // Only decode a small safe subset for URLs/text extraction.
+  return String(text || '')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&nbsp;', ' ');
+}
+
+function canonicalHomepageUrl(raw) {
+  try {
+    const u = new URL(String(raw || '').trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return `${u.protocol}//${u.hostname}/`;
+  } catch {
+    return '';
+  }
+}
+
+function extractExternalLinksFromHtml(html, baseUrl) {
+  const out = [];
+  const text = String(html || '');
+  const re = /<a\s+[^>]*href=["']([^"']+)["']/gi;
+
+  let baseHost = '';
+  try {
+    baseHost = new URL(String(baseUrl || '')).hostname.replace(/^www\./i, '');
+  } catch {
+    baseHost = '';
+  }
+
+  const blockedHosts = new Set([
+    'twitter.com',
+    'x.com',
+    't.co',
+    'facebook.com',
+    'm.facebook.com',
+    'linkedin.com',
+    'instagram.com',
+    'youtube.com',
+    'youtu.be',
+    'discord.gg',
+    'discord.com',
+    't.me',
+    'telegram.me',
+    'reddit.com'
+  ]);
+
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    const rawHref = decodeHtmlEntitiesBasic(String(m[1] || '')).trim();
+    if (!rawHref) continue;
+    if (rawHref.startsWith('#')) continue;
+    if (rawHref.startsWith('mailto:') || rawHref.startsWith('tel:') || rawHref.startsWith('javascript:')) continue;
+    if (/\.(png|jpg|jpeg|gif|webp|svg|pdf|zip|rar)(\?|#|$)/i.test(rawHref)) continue;
+
+    let abs = '';
+    try {
+      abs = new URL(rawHref, baseUrl).toString();
+    } catch {
+      continue;
+    }
+    if (!isValidUrl(abs)) continue;
+
+    let host = '';
+    try {
+      host = new URL(abs).hostname.replace(/^www\./i, '');
+    } catch {
+      host = '';
+    }
+    if (!host) continue;
+    if (blockedHosts.has(host)) continue;
+    if (baseHost && host === baseHost) continue;
+
+    const home = canonicalHomepageUrl(abs);
+    if (!home) continue;
+    out.push(home);
+  }
+
+  return Array.from(new Set(out));
+}
+
+function parseRssItems(xml) {
+  const text = String(xml || '');
+  const items = text.match(/<item[\s\S]*?<\/item>/gi) || [];
+  const out = [];
+  for (const item of items) {
+    const link = (item.match(/<link[^>]*>([\s\S]*?)<\/link>/i)?.[1] || '').trim();
+    const title = (item.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+    if (!link) continue;
+    out.push({ link, title });
+  }
+  return out;
+}
+
+async function fetchText(url, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { method: 'GET', signal: controller.signal, redirect: 'follow' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const body = await resp.text();
+    return body.slice(0, 300000); // cap
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function siteExistsByUrl(url) {
+  const u = normalizeUrlForDedup(url);
+  if (!u) return true;
+  const candidates = new Set();
+  candidates.add(u);
+  candidates.add(u.endsWith('/') ? u.slice(0, -1) : `${u}/`);
+  try {
+    const parsed = new URL(u);
+    const hostname = parsed.hostname || '';
+    const toggled = hostname.startsWith('www.') ? hostname.slice(4) : `www.${hostname}`;
+    if (toggled && toggled !== hostname) {
+      const alt = new URL(u);
+      alt.hostname = toggled;
+      const altStr = alt.toString();
+      candidates.add(altStr);
+      candidates.add(altStr.endsWith('/') ? altStr.slice(0, -1) : `${altStr}/`);
+    }
+  } catch {
+    // ignore
+  }
+
+  for (const candidate of candidates) {
+    const row = db.prepare('SELECT 1 FROM sites WHERE url = ? LIMIT 1').get(candidate);
+    if (row) return true;
+  }
+  return false;
+}
+
+async function enqueuePendingSite({ name, url, description, category }) {
+  const trimmedName = String(name || '').trim();
+  const trimmedUrl = normalizeUrlForDedup(url);
+  const trimmedDesc = String(description || '').trim();
+  const trimmedCategory = String(category || AUTO_CRAWL_DEFAULT_CATEGORY).trim();
+  if (!trimmedName || !trimmedUrl || !isValidUrl(trimmedUrl)) return false;
+  if (siteExistsByUrl(trimmedUrl)) return false;
+
+  const nameEn = await autoTranslateToEn(trimmedName);
+  const descEn = await autoTranslateToEn(trimmedDesc);
+  const nameEnFinal = nameEn || (hasCjk(trimmedName) ? '' : trimmedName);
+  const descEnFinal = descEn || (hasCjk(trimmedDesc) ? '' : trimmedDesc);
+
+  try {
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO sites (name, name_en, url, description, description_en, category, source, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'auto_crawl', 'pending')
+    `);
+    const result = stmt.run(trimmedName, nameEnFinal, trimmedUrl, trimmedDesc, descEnFinal, trimmedCategory);
+    return Boolean(result.changes);
+  } catch {
+    return false;
+  }
+}
+
+async function autoCrawlOnce() {
+  const checked = { feeds: 0, links: 0 };
+  let added = 0;
+  let errors = 0;
+
+  for (const feedUrl of AUTO_CRAWL_FEEDS) {
+    if (added >= AUTO_CRAWL_MAX_PER_RUN) break;
+    checked.feeds += 1;
+    let xml = '';
+    try {
+      xml = await fetchText(feedUrl, 8000);
+    } catch {
+      errors += 1;
+      continue;
+    }
+    const items = parseRssItems(xml).slice(0, 30);
+    for (const it of items) {
+      if (added >= AUTO_CRAWL_MAX_PER_RUN) break;
+      checked.links += 1;
+      const link = normalizeUrlForDedup(it.link);
+      if (!link || !isValidUrl(link)) continue;
+      // RSS item itself is typically a news/article URL; we use it as a seed to discover outbound links.
+      let html = '';
+      try {
+        html = await fetchText(link, 8000);
+      } catch {
+        errors += 1;
+        continue;
+      }
+
+      // Prefer extracting external websites referenced in the article, then fetch their homepages.
+      const candidates = extractExternalLinksFromHtml(html, link).slice(0, 30);
+      let queuedAny = false;
+
+      for (const candidateUrl of candidates) {
+        if (added >= AUTO_CRAWL_MAX_PER_RUN) break;
+        if (!candidateUrl || !isValidUrl(candidateUrl)) continue;
+        if (siteExistsByUrl(candidateUrl)) continue;
+
+        let siteHtml = '';
+        try {
+          siteHtml = await fetchText(candidateUrl, 8000);
+        } catch {
+          errors += 1;
+          continue;
+        }
+        const { title, description, url } = extractFromHtml(siteHtml, candidateUrl);
+        const ok = await enqueuePendingSite({
+          name: title || url,
+          url,
+          description,
+          category: AUTO_CRAWL_DEFAULT_CATEGORY
+        });
+        if (ok) {
+          added += 1;
+          queuedAny = true;
+        }
+      }
+
+      // Fallback: if we couldn't find any external links, enqueue the RSS item itself (rare).
+      if (!queuedAny && added < AUTO_CRAWL_MAX_PER_RUN) {
+        const { title, description, url } = extractFromHtml(html, link);
+        const ok = await enqueuePendingSite({
+          name: title || it.title || url,
+          url,
+          description,
+          category: AUTO_CRAWL_DEFAULT_CATEGORY
+        });
+        if (ok) added += 1;
+      }
+    }
+  }
+
+  return { added, checked, errors };
+}
+
+app.get('/api/admin/auto-crawl/status', requireAdmin, (_req, res) => {
+  const enabled = getSetting('auto_crawl_enabled', '0') === '1';
+  const lastRunMs = parseEpochMs(getSetting('auto_crawl_last_run', '0'));
+  res.json({
+    ok: true,
+    enabled,
+    running: autoCrawlRunning,
+    lastRunMs,
+    intervalMs: AUTO_CRAWL_INTERVAL_MS,
+    maxPerRun: AUTO_CRAWL_MAX_PER_RUN,
+    feeds: AUTO_CRAWL_FEEDS,
+    lastResult: autoCrawlLastResult
+  });
+});
+
+app.post('/api/admin/auto-crawl/enable', requireAdmin, (_req, res) => {
+  upsertSettingStmt.run('auto_crawl_enabled', '1');
+  res.json({ ok: true, enabled: true });
+});
+
+app.post('/api/admin/auto-crawl/disable', requireAdmin, (_req, res) => {
+  upsertSettingStmt.run('auto_crawl_enabled', '0');
+  res.json({ ok: true, enabled: false });
+});
+
+app.post('/api/admin/auto-crawl/run-now', requireAdmin, async (_req, res) => {
+  if (autoCrawlRunning) return res.status(409).json({ error: '正在抓取中，请稍后再试' });
+  autoCrawlRunning = true;
+  try {
+    const result = await autoCrawlOnce();
+    const now = Date.now();
+    upsertSettingStmt.run('auto_crawl_last_run', String(now));
+    autoCrawlLastResult = { at: now, ...result };
+    res.json({ ok: true, ...result });
+  } catch {
+    res.status(500).json({ error: '抓取失败' });
+  } finally {
+    autoCrawlRunning = false;
+  }
+});
+
+async function autoCrawlTick() {
+  if (autoCrawlRunning) return;
+  const enabled = getSetting('auto_crawl_enabled', '0') === '1';
+  if (!enabled) return;
+  const lastRunMs = parseEpochMs(getSetting('auto_crawl_last_run', '0'));
+  const now = Date.now();
+  if (lastRunMs && now - lastRunMs < AUTO_CRAWL_INTERVAL_MS) return;
+
+  autoCrawlRunning = true;
+  try {
+    const result = await autoCrawlOnce();
+    upsertSettingStmt.run('auto_crawl_last_run', String(now));
+    autoCrawlLastResult = { at: now, ...result };
+  } catch {
+    // ignore
+  } finally {
+    autoCrawlRunning = false;
+  }
+}
+
+// Poll every minute; run at most once per hour when enabled.
+setInterval(() => {
+  autoCrawlTick();
+}, 60 * 1000).unref?.();
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'claw800' });

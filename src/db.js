@@ -122,6 +122,14 @@ db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_subtitle_en', ?, datetime('now'))"
 ).run('OpenClaw ecosystem directory for AI websites');
 
+// Auto-crawl settings (admin toggles). Stored as strings in settings.
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('auto_crawl_enabled', '0', datetime('now'))"
+).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('auto_crawl_last_run', '', datetime('now'))"
+).run();
+
 function migrateUniqueUrlToUrlCategory() {
   const tableSqlRow = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sites'").get();
   const tableSql = String(tableSqlRow?.sql || '').toLowerCase();

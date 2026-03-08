@@ -28,6 +28,7 @@
           <aside class="admin-nav">
             <button id="navHome">首页</button>
             <button id="navSiteConfig">站点设置</button>
+            <button id="navAutoCrawl">自动抓取</button>
             <button id="navAdd">手动新增</button>
             <button id="navImport">批量导入</button>
             <button id="navCategoryList">分类列表</button>
@@ -69,6 +70,17 @@
                 <button id="siteConfigSaveBtn" type="submit">保存</button>
               </form>
               <p id="siteConfigMessage" class="message"></p>
+            </div>
+
+            <div id="adminAutoCrawlSection" class="hidden">
+              <h2 id="autoCrawlTitle">自动抓取</h2>
+              <p id="autoCrawlStatus" class="small"></p>
+              <div class="toolbar">
+                <button id="autoCrawlEnableBtn" type="button">开启</button>
+                <button id="autoCrawlDisableBtn" type="button" class="danger">关闭</button>
+                <button id="autoCrawlRunBtn" type="button">立即抓取一次</button>
+              </div>
+              <p id="autoCrawlMessage" class="message"></p>
             </div>
 
             <div id="adminImportSection" class="hidden">
@@ -160,6 +172,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260307-05"></script>
+    <script src="/admin.js?v=20260308-01"></script>
   </body>
 </html>
