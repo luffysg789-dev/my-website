@@ -90,6 +90,7 @@ db.exec(`
     reviewed_by TEXT DEFAULT '',
     reviewed_at TEXT DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0,
+    is_hot INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
@@ -102,6 +103,10 @@ if (!hasNameEn) {
 const hasDescEn = db.prepare("SELECT 1 FROM pragma_table_info('sites') WHERE name = 'description_en'").get();
 if (!hasDescEn) {
   db.exec("ALTER TABLE sites ADD COLUMN description_en TEXT DEFAULT ''");
+}
+const hasIsHot = db.prepare("SELECT 1 FROM pragma_table_info('sites') WHERE name = 'is_hot'").get();
+if (!hasIsHot) {
+  db.exec('ALTER TABLE sites ADD COLUMN is_hot INTEGER NOT NULL DEFAULT 0');
 }
 
 db.exec(`

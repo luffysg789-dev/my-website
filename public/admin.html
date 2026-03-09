@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>claw800 后台</title>
-    <link rel="stylesheet" href="/styles.css?v=20260308-01" />
+    <link rel="stylesheet" href="/styles.css?v=20260310-01" />
   </head>
   <body>
     <main class="container admin">
@@ -56,6 +56,12 @@
                 <label id="adminLabelDesc">简介<textarea name="description" rows="2"></textarea></label>
                 <label id="adminLabelCategory">分类<select id="adminCategorySelect" name="category"></select></label>
                 <label id="adminLabelSort">排序<input name="sortOrder" type="number" value="0" /></label>
+                <label id="adminLabelHot">热门
+                  <select name="isHot">
+                    <option value="0">否</option>
+                    <option value="1">是</option>
+                  </select>
+                </label>
                 <button id="adminAddBtn" type="submit">直接上线</button>
               </form>
               <p id="adminMessage" class="message"></p>
@@ -196,6 +202,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260310-02"></script>
+    <script src="/admin.js?v=20260310-03"></script>
   </body>
 </html>

@@ -344,12 +344,28 @@ button.danger { background: var(--danger); }
 }
 
 .site-card {
+  position: relative;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .site-card:hover {
   background: #bfe5c7;
   border-color: #79b589;
+}
+
+.hot-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #d92c2c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
 .review-card h3 {

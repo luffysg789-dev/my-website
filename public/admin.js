@@ -156,6 +156,7 @@ const texts = {
     adminLabelDesc: '简介',
     adminLabelCategory: '分类',
     adminLabelSort: '排序',
+    adminLabelHot: '热门',
     adminAddBtn: '直接上线',
     importTitle: '批量导入（JSON）',
     importLabel: '粘贴 JSON 数组',
@@ -312,6 +313,7 @@ const texts = {
     adminLabelDesc: 'Description',
     adminLabelCategory: 'Category',
     adminLabelSort: 'Sort',
+    adminLabelHot: 'Hot',
     adminAddBtn: 'Publish Now',
     importTitle: 'Bulk Import (JSON)',
     importLabel: 'Paste JSON Array',
@@ -712,6 +714,7 @@ function applyLanguage() {
   document.getElementById('adminLabelDesc').childNodes[0].textContent = dict.adminLabelDesc;
   document.getElementById('adminLabelCategory').childNodes[0].textContent = dict.adminLabelCategory;
   document.getElementById('adminLabelSort').childNodes[0].textContent = dict.adminLabelSort;
+  document.getElementById('adminLabelHot').childNodes[0].textContent = dict.adminLabelHot;
   document.getElementById('adminAddBtn').textContent = dict.adminAddBtn;
   document.getElementById('importTitle').textContent = dict.importTitle;
   document.getElementById('importLabel').childNodes[0].textContent = dict.importLabel;
@@ -1181,6 +1184,12 @@ async function loadList(status = 'pending') {
                     ${renderCategoryOptions(site.category)}
                   </select>
                 </label>
+                <label class="small">${escapeHtml(texts[currentLang].adminLabelHot)}
+                  <select id="editHot-${site.id}">
+                    <option value="0" ${site.is_hot ? '' : 'selected'}>${escapeHtml(t('enabledNo'))}</option>
+                    <option value="1" ${site.is_hot ? 'selected' : ''}>${escapeHtml(t('enabledYes'))}</option>
+                  </select>
+                </label>
                 <label class="small">${escapeHtml(texts[currentLang].adminLabelDesc)}
                   <textarea id="editDesc-${site.id}" rows="3">${escapeHtml(site.description || '')}</textarea>
                 </label>
@@ -1298,6 +1307,7 @@ window.saveSiteEdit = async function saveSiteEdit(id) {
   const url = String(document.getElementById(`editUrl-${id}`)?.value || '').trim();
   const category = String(document.getElementById(`editCategory-${id}`)?.value || '').trim();
   const description = String(document.getElementById(`editDesc-${id}`)?.value || '').trim();
+  const isHot = String(document.getElementById(`editHot-${id}`)?.value || '0').trim();
 
   const sortInput = document.getElementById(`sortInput-${id}`);
   const sortOrder = Number.isFinite(Number(sortInput?.value))
@@ -1316,7 +1326,8 @@ window.saveSiteEdit = async function saveSiteEdit(id) {
     url,
     description,
     category: normalizeCategoryInput(category),
-    sortOrder
+    sortOrder,
+    isHot
   };
 
   const putResult = await requestTutorialJson([`/api/admin/sites/${id}`, `/admin/sites/${id}`], {
@@ -1505,6 +1516,9 @@ adminAddForm.addEventListener('submit', async (e) => {
   adminAddForm.reset();
   renderAdminCategoryOptions();
   loadList(currentStatus);
+  // Default: not hot
+  const hotEl = adminAddForm.querySelector('select[name="isHot"]');
+  if (hotEl) hotEl.value = '0';
 });
 
 adminImportForm.addEventListener('submit', async (e) => {

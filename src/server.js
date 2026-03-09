@@ -254,7 +254,7 @@ async function autoTranslateToEn(text) {
 
 app.get('/api/sites', (req, res) => {
   const { category, q } = req.query;
-  let sql = `SELECT id, name, name_en, url, description, description_en, category, source, sort_order, created_at FROM sites WHERE status = 'approved'`;
+  let sql = `SELECT id, name, name_en, url, description, description_en, category, source, sort_order, is_hot, created_at FROM sites WHERE status = 'approved'`;
   const params = [];
 
   if (category) {
@@ -538,8 +538,8 @@ app.post('/api/submit', async (req, res) => {
   const descEn = await autoTranslateToEn(trimmedDesc);
 
   const stmt = db.prepare(`
-    INSERT INTO sites (name, name_en, url, description, description_en, category, source, submitter_name, submitter_email, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'user_submit', ?, ?, 'pending')
+    INSERT INTO sites (name, name_en, url, description, description_en, category, source, submitter_name, submitter_email, status, is_hot)
+    VALUES (?, ?, ?, ?, ?, ?, 'user_submit', ?, ?, 'pending', 0)
   `);
 
   try {
@@ -740,7 +740,7 @@ app.get('/api/admin/sites', requireAdmin, (req, res) => {
   const status = String(req.query.status || 'pending');
   const q = String(req.query.q || '').trim();
   let sql = `
-      SELECT id, name, url, description, category, source, submitter_name, submitter_email, status, reviewer_note, reviewed_by, reviewed_at, sort_order, created_at
+      SELECT id, name, url, description, category, source, submitter_name, submitter_email, status, reviewer_note, reviewed_by, reviewed_at, sort_order, is_hot, created_at
       FROM sites
       WHERE status = ?
   `;
@@ -914,7 +914,7 @@ app.get('/tutorial/:id', (req, res) => {
 });
 
 app.post('/api/admin/sites', requireAdmin, async (req, res) => {
-  const { name, url, description = '', category = 'OpenClaw 生态', status = 'approved', sortOrder } = req.body;
+  const { name, url, description = '', category = 'OpenClaw 生态', status = 'approved', sortOrder, isHot } = req.body;
 
   if (!name || !url) {
     return res.status(400).json({ error: 'name 和 url 必填' });
@@ -925,6 +925,7 @@ app.post('/api/admin/sites', requireAdmin, async (req, res) => {
   }
 
   const parsedSortOrder = Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0;
+  const parsedIsHot = isHot === true || isHot === 1 || isHot === '1' || isHot === 'on' ? 1 : 0;
   const trimmedName = String(name || '').trim();
   const trimmedDesc = String(description || '').trim();
   const nameEn = await autoTranslateToEn(trimmedName);
@@ -933,10 +934,10 @@ app.post('/api/admin/sites', requireAdmin, async (req, res) => {
   try {
     const result = db
       .prepare(`
-        INSERT INTO sites (name, name_en, url, description, description_en, category, source, status, sort_order, reviewed_by, reviewed_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 'admin', datetime('now'))
+        INSERT INTO sites (name, name_en, url, description, description_en, category, source, status, sort_order, is_hot, reviewed_by, reviewed_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, ?, 'admin', datetime('now'))
       `)
-      .run(trimmedName, nameEn || '', url.trim(), trimmedDesc, descEn || '', category.trim(), status, parsedSortOrder);
+      .run(trimmedName, nameEn || '', url.trim(), trimmedDesc, descEn || '', category.trim(), status, parsedSortOrder, parsedIsHot);
 
     res.json({ ok: true, id: result.lastInsertRowid });
   } catch (err) {
@@ -956,8 +957,8 @@ app.post('/api/admin/import', requireAdmin, async (req, res) => {
 
   // Support optional pre-translated fields from clients: name_en/description_en.
   const insert = db.prepare(`
-    INSERT OR IGNORE INTO sites (name, name_en, url, description, description_en, category, source, status, reviewed_by, reviewed_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'admin_import', 'approved', 'admin', datetime('now'))
+    INSERT OR IGNORE INTO sites (name, name_en, url, description, description_en, category, source, status, is_hot, reviewed_by, reviewed_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'admin_import', 'approved', ?, 'admin', datetime('now'))
   `);
 
   let imported = 0;
@@ -968,6 +969,7 @@ app.post('/api/admin/import', requireAdmin, async (req, res) => {
     const description = String(item.description || '').trim();
     const nameEnIn = String(item.name_en || item.nameEn || '').trim();
     const descEnIn = String(item.description_en || item.descriptionEn || '').trim();
+    const isHotIn = item.is_hot ?? item.isHot ?? item.hot ?? 0;
     const category = String(item.category || 'OpenClaw 生态').trim();
 
     if (!name || !url || !isValidUrl(url)) {
@@ -977,7 +979,8 @@ app.post('/api/admin/import', requireAdmin, async (req, res) => {
 
     const nameEn = nameEnIn || (await autoTranslateToEn(name)) || '';
     const descEn = descEnIn || (await autoTranslateToEn(description)) || '';
-    const result = insert.run(name, nameEn, url, description, descEn, category);
+    const parsedIsHot = isHotIn === true || isHotIn === 1 || isHotIn === '1' || isHotIn === 'on' ? 1 : 0;
+    const result = insert.run(name, nameEn, url, description, descEn, category, parsedIsHot);
     if (result.changes) {
       imported += 1;
     } else {
@@ -990,7 +993,7 @@ app.post('/api/admin/import', requireAdmin, async (req, res) => {
 
 async function updateSite(req, res) {
   const id = Number(req.params.id);
-  const { name, url, description = '', category = 'OpenClaw 生态', sortOrder } = req.body;
+  const { name, url, description = '', category = 'OpenClaw 生态', sortOrder, isHot } = req.body;
 
   if (!name || !url) {
     return res.status(400).json({ error: 'name 和 url 必填' });
@@ -1001,6 +1004,7 @@ async function updateSite(req, res) {
   }
 
   const parsedSortOrder = Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0;
+  const parsedIsHot = isHot === true || isHot === 1 || isHot === '1' || isHot === 'on' ? 1 : 0;
   const trimmedName = String(name || '').trim();
   const trimmedDesc = String(description || '').trim();
   const nameEn = await autoTranslateToEn(trimmedName);
@@ -1010,10 +1014,10 @@ async function updateSite(req, res) {
     const result = db
       .prepare(`
         UPDATE sites
-        SET name = ?, name_en = ?, url = ?, description = ?, description_en = ?, category = ?, sort_order = ?, reviewed_by = 'admin', reviewed_at = datetime('now')
+        SET name = ?, name_en = ?, url = ?, description = ?, description_en = ?, category = ?, sort_order = ?, is_hot = ?, reviewed_by = 'admin', reviewed_at = datetime('now')
         WHERE id = ?
       `)
-      .run(trimmedName, nameEn || '', url.trim(), trimmedDesc, descEn || '', category.trim(), parsedSortOrder, id);
+      .run(trimmedName, nameEn || '', url.trim(), trimmedDesc, descEn || '', category.trim(), parsedSortOrder, parsedIsHot, id);
 
     if (!result.changes) {
       return res.status(404).json({ error: '记录不存在' });

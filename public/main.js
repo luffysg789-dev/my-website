@@ -116,6 +116,7 @@ const texts = {
     defaultCategory: '未分类',
     submitSuccess: '提交成功，等待管理员审核',
     submitFailed: '提交失败',
+    hotBadge: '热门',
     source: {
       admin: '后台添加',
       user_submit: '用户投稿',
@@ -153,6 +154,7 @@ const texts = {
     defaultCategory: 'Uncategorized',
     submitSuccess: 'Submitted successfully. Waiting for admin review.',
     submitFailed: 'Submission failed',
+    hotBadge: 'HOT',
     source: {
       admin: 'Admin Added',
       user_submit: 'User Submission',
@@ -539,9 +541,12 @@ async function loadSites() {
       const nameAttr = needsNameTranslate ? ` data-src="${escapeHtml(zhName)}"` : '';
       const descAttr = needsDescTranslate ? ` data-src="${escapeHtml(zhDesc)}"` : '';
       const descDisplay = descriptionLabel(displayDescRaw);
+      const isHot = Number(site.is_hot || 0) === 1;
+      const hotBadge = isHot ? `<div class="hot-badge">${escapeHtml(t('hotBadge'))}</div>` : '';
       return `
       <a class="site-card-link" href="${escapeHtml(site.url)}" target="_blank" rel="noopener">
         <article class="site-card">
+          ${hotBadge}
           <div class="site-row">
             <span class="site-value"${nameAttr}>${escapeHtml(displayName)}</span>
           </div>
