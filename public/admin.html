@@ -67,6 +67,15 @@
                 <label id="siteTitleLabel">网站名称<input name="title" required /></label>
                 <label id="siteSubtitleZhLabel">中文简介<textarea name="subtitleZh" rows="2"></textarea></label>
                 <label id="siteSubtitleEnLabel">英文简介<textarea name="subtitleEn" rows="2"></textarea></label>
+                <label id="siteIconLabel"
+                  >网站 Icon（favicon）
+                  <div class="toolbar">
+                    <input id="siteIconFile" type="file" accept="image/*" />
+                    <button id="siteIconClearBtn" type="button" class="danger">清除</button>
+                  </div>
+                  <input id="siteIconInput" name="icon" placeholder="https://... 或 data:image/...base64" />
+                  <img id="siteIconPreview" class="icon-preview hidden" alt="icon preview" />
+                </label>
                 <label id="siteFooterCopyrightZhLabel">版权说明（中文）<textarea name="footerCopyrightZh" rows="2"></textarea></label>
                 <label id="siteFooterCopyrightEnLabel">版权说明（英文）<textarea name="footerCopyrightEn" rows="2"></textarea></label>
                 <label id="siteFooterLinksLabel"
@@ -185,6 +194,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260308-04"></script>
+    <script src="/admin.js?v=20260310-01"></script>
   </body>
 </html>

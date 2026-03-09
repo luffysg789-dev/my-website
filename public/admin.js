@@ -20,6 +20,10 @@ const adminAddSection = document.getElementById('adminAddSection');
 const adminSiteConfigSection = document.getElementById('adminSiteConfigSection');
 const siteConfigForm = document.getElementById('siteConfigForm');
 const siteConfigMessage = document.getElementById('siteConfigMessage');
+const siteIconInput = document.getElementById('siteIconInput');
+const siteIconFile = document.getElementById('siteIconFile');
+const siteIconClearBtn = document.getElementById('siteIconClearBtn');
+const siteIconPreview = document.getElementById('siteIconPreview');
 const adminAutoCrawlSection = document.getElementById('adminAutoCrawlSection');
 const autoCrawlStatus = document.getElementById('autoCrawlStatus');
 const autoCrawlMessage = document.getElementById('autoCrawlMessage');
@@ -116,6 +120,7 @@ const texts = {
     siteTitleLabel: '网站名称',
     siteSubtitleZhLabel: '中文简介',
     siteSubtitleEnLabel: '英文简介',
+    siteIconLabel: '网站 Icon（favicon）',
     siteFooterCopyrightZhLabel: '版权说明（中文）',
     siteFooterCopyrightEnLabel: '版权说明（英文）',
     siteFooterLinksLabel: '友情链接',
@@ -269,6 +274,7 @@ const texts = {
     siteTitleLabel: 'Site Name',
     siteSubtitleZhLabel: 'Subtitle (ZH)',
     siteSubtitleEnLabel: 'Subtitle (EN)',
+    siteIconLabel: 'Site Icon (favicon)',
     siteFooterCopyrightZhLabel: 'Copyright (ZH)',
     siteFooterCopyrightEnLabel: 'Copyright (EN)',
     siteFooterLinksLabel: 'Links',
@@ -710,6 +716,7 @@ function applyLanguage() {
   document.getElementById('siteTitleLabel').childNodes[0].textContent = dict.siteTitleLabel;
   document.getElementById('siteSubtitleZhLabel').childNodes[0].textContent = dict.siteSubtitleZhLabel;
   document.getElementById('siteSubtitleEnLabel').childNodes[0].textContent = dict.siteSubtitleEnLabel;
+  document.getElementById('siteIconLabel').childNodes[0].textContent = dict.siteIconLabel;
   document.getElementById('siteFooterCopyrightZhLabel').childNodes[0].textContent = dict.siteFooterCopyrightZhLabel;
   document.getElementById('siteFooterCopyrightEnLabel').childNodes[0].textContent = dict.siteFooterCopyrightEnLabel;
   document.getElementById('siteFooterLinksLabel').childNodes[0].textContent = dict.siteFooterLinksLabel;
@@ -947,6 +954,18 @@ function getSiteConfigControl(name) {
   return siteConfigForm.elements.namedItem(name);
 }
 
+function refreshSiteIconPreview() {
+  if (!siteIconPreview || !siteIconInput) return;
+  const icon = String(siteIconInput.value || '').trim();
+  if (!icon) {
+    siteIconPreview.classList.add('hidden');
+    siteIconPreview.removeAttribute('src');
+    return;
+  }
+  siteIconPreview.src = icon;
+  siteIconPreview.classList.remove('hidden');
+}
+
 async function loadSiteConfig() {
   siteConfigMessage.textContent = '';
   siteConfigMessage.className = 'message';
@@ -978,14 +997,17 @@ async function loadSiteConfig() {
       const linksEl = getSiteConfigControl('footerLinksRaw');
       const contactZhEl = getSiteConfigControl('footerContactZh');
       const contactEnEl = getSiteConfigControl('footerContactEn');
+      const iconEl = getSiteConfigControl('icon');
       if (titleEl) titleEl.value = String(siteConfigCache.title || '');
       if (zhEl) zhEl.value = String(siteConfigCache.subtitleZh || '');
       if (enEl) enEl.value = String(siteConfigCache.subtitleEn || '');
+      if (iconEl) iconEl.value = String(siteConfigCache.icon || '');
       if (crZhEl) crZhEl.value = String(siteConfigCache.footerCopyrightZh || '');
       if (crEnEl) crEnEl.value = String(siteConfigCache.footerCopyrightEn || '');
       if (linksEl) linksEl.value = String(siteConfigCache.footerLinksRaw || '');
       if (contactZhEl) contactZhEl.value = String(siteConfigCache.footerContactZh || '');
       if (contactEnEl) contactEnEl.value = String(siteConfigCache.footerContactEn || '');
+      refreshSiteIconPreview();
       setTimeout(() => titleEl?.focus?.(), 0);
     }
   } catch {
@@ -1833,6 +1855,41 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
   showLogin();
 });
+
+if (siteIconInput) {
+  siteIconInput.addEventListener('input', () => refreshSiteIconPreview());
+}
+
+if (siteIconClearBtn && siteIconInput && siteIconFile) {
+  siteIconClearBtn.addEventListener('click', () => {
+    siteIconInput.value = '';
+    siteIconFile.value = '';
+    refreshSiteIconPreview();
+  });
+}
+
+if (siteIconFile && siteIconInput) {
+  siteIconFile.addEventListener('change', () => {
+    const file = siteIconFile.files?.[0];
+    if (!file) return;
+    // Keep icon small: favicon shouldn't be huge.
+    if (file.size > 200 * 1024) {
+      alert(currentLang === 'en' ? 'Icon is too large (max 200KB).' : 'icon 太大（最大 200KB）');
+      siteIconFile.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result || '').trim();
+      siteIconInput.value = src;
+      refreshSiteIconPreview();
+    };
+    reader.onerror = () => {
+      alert(t('tutorialNetworkError'));
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 autoCrawlEnableBtn.addEventListener('click', async () => {
   autoCrawlMessage.textContent = '';

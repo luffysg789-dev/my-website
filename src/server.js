@@ -140,6 +140,15 @@ function stringifyFooterLinks(items) {
   return JSON.stringify(safe);
 }
 
+function isProbablyDataUrl(value) {
+  const v = String(value || '').trim();
+  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(v);
+}
+
+function isProbablyAbsoluteUrl(value) {
+  return isValidUrl(String(value || '').trim());
+}
+
 const upsertSettingStmt = db.prepare(`
   INSERT INTO settings (key, value, updated_at)
   VALUES (?, ?, datetime('now'))
@@ -284,6 +293,7 @@ app.get('/api/site-config', (_req, res) => {
   const title = getSetting('site_title', 'claw800.com');
   const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
   const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
+  const icon = getSetting('site_icon', '');
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
   const footerContactZh = getSetting('site_footer_contact_zh', '');
@@ -294,6 +304,7 @@ app.get('/api/site-config', (_req, res) => {
     title,
     subtitleZh,
     subtitleEn,
+    icon,
     footerCopyrightZh,
     footerCopyrightEn,
     footerContactZh,
@@ -306,6 +317,7 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
   const title = getSetting('site_title', 'claw800.com');
   const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
   const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
+  const icon = getSetting('site_icon', '');
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
   const footerContactZh = getSetting('site_footer_contact_zh', '');
@@ -317,6 +329,7 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
     title,
     subtitleZh,
     subtitleEn,
+    icon,
     footerCopyrightZh,
     footerCopyrightEn,
     footerContactZh,
@@ -330,6 +343,7 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   const title = String(req.body.title || '').trim();
   const subtitleZh = String(req.body.subtitleZh || '').trim();
   const subtitleEn = String(req.body.subtitleEn || '').trim();
+  const icon = String(req.body.icon || '').trim();
   const footerCopyrightZh = String(req.body.footerCopyrightZh || '').trim();
   const footerCopyrightEn = String(req.body.footerCopyrightEn || '').trim();
   const footerContactZh = String(req.body.footerContactZh || '').trim();
@@ -340,17 +354,23 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   if (Buffer.byteLength(title, 'utf8') > 200) return res.status(413).json({ error: '网站名称太长' });
   if (Buffer.byteLength(subtitleZh, 'utf8') > 2000) return res.status(413).json({ error: '中文简介太长' });
   if (Buffer.byteLength(subtitleEn, 'utf8') > 2000) return res.status(413).json({ error: '英文简介太长' });
+  if (Buffer.byteLength(icon, 'utf8') > 600000) return res.status(413).json({ error: 'icon 太大（请使用小图标）' });
   if (Buffer.byteLength(footerCopyrightZh, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(中文)太长' });
   if (Buffer.byteLength(footerCopyrightEn, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(英文)太长' });
   if (Buffer.byteLength(footerContactZh, 'utf8') > 2000) return res.status(413).json({ error: '联系客服(中文)太长' });
   if (Buffer.byteLength(footerContactEn, 'utf8') > 2000) return res.status(413).json({ error: '联系客服(英文)太长' });
   if (Buffer.byteLength(footerLinksRaw, 'utf8') > 50000) return res.status(413).json({ error: '友情链接太长' });
 
+  if (icon && !isProbablyDataUrl(icon) && !isProbablyAbsoluteUrl(icon)) {
+    return res.status(400).json({ error: 'icon 必须是图片 dataURL 或 http(s) 链接' });
+  }
+
   try {
     const footerLinks = parseFooterLinks(footerLinksRaw);
     upsertSettingStmt.run('site_title', title);
     upsertSettingStmt.run('site_subtitle_zh', subtitleZh);
     upsertSettingStmt.run('site_subtitle_en', subtitleEn);
+    upsertSettingStmt.run('site_icon', icon);
     upsertSettingStmt.run('site_footer_copyright_zh', footerCopyrightZh);
     upsertSettingStmt.run('site_footer_copyright_en', footerCopyrightEn);
     upsertSettingStmt.run('site_footer_contact_zh', footerContactZh);

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>教程 - claw800.com</title>
+    <link id="siteFavicon" rel="icon" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css?v=20260308-01" />
   </head>
   <body>
@@ -78,6 +79,7 @@
       const translationCache = new Map(); // key: `en|${source}` -> translated
       let tutorialLoadToken = 0;
       let siteConfig = null;
+      const faviconEl = document.getElementById('siteFavicon');
       const footerCopyrightEl = document.getElementById('footerCopyright');
       const footerLinksEl = document.getElementById('footerLinks');
       const footerContactEl = document.getElementById('footerContact');
@@ -162,6 +164,12 @@
         } else {
           footerContactEl.classList.add('hidden');
         }
+      }
+
+      function renderFavicon() {
+        if (!faviconEl) return;
+        const icon = String(siteConfig?.icon || '').trim();
+        faviconEl.href = icon || '/favicon.svg';
       }
 
       function t(key) {
@@ -320,6 +328,7 @@
         const logoEl = document.getElementById('tutorialHeroLogo');
         if (logoEl) logoEl.textContent = safeTitle;
         renderFooter();
+        renderFavicon();
       }
 
       async function loadSiteConfig() {
@@ -331,6 +340,7 @@
               title: String(data.title || '').trim(),
               subtitleZh: String(data.subtitleZh || '').trim(),
               subtitleEn: String(data.subtitleEn || '').trim(),
+              icon: String(data.icon || '').trim(),
               footerCopyrightZh: String(data.footerCopyrightZh || '').trim(),
               footerCopyrightEn: String(data.footerCopyrightEn || '').trim(),
               footerContactZh: String(data.footerContactZh || '').trim(),

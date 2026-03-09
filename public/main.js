@@ -14,6 +14,7 @@ const categorySelect = document.getElementById('categorySelect');
 const navView = document.getElementById('navView');
 const heroLogoEl = document.getElementById('heroLogo');
 const heroSubtitleEl = document.getElementById('heroSubtitle');
+const faviconEl = document.getElementById('siteFavicon');
 const footerCopyrightEl = document.getElementById('footerCopyright');
 const footerLinksEl = document.getElementById('footerLinks');
 const footerContactEl = document.getElementById('footerContact');
@@ -249,6 +250,12 @@ function renderFooter() {
   }
 }
 
+function renderFavicon() {
+  if (!faviconEl) return;
+  const icon = String(siteConfig?.icon || '').trim();
+  faviconEl.href = icon || '/favicon.svg';
+}
+
 function t(key) {
   return texts[currentLang][key];
 }
@@ -458,6 +465,7 @@ function applyLanguage() {
   renderCategoryOptions();
   renderCategories(categoriesCache);
   renderFooter();
+  renderFavicon();
 }
 
 async function loadSiteConfig() {
@@ -469,6 +477,7 @@ async function loadSiteConfig() {
         title: String(data.title || '').trim(),
         subtitleZh: String(data.subtitleZh || '').trim(),
         subtitleEn: String(data.subtitleEn || '').trim(),
+        icon: String(data.icon || '').trim(),
         footerCopyrightZh: String(data.footerCopyrightZh || '').trim(),
         footerCopyrightEn: String(data.footerCopyrightEn || '').trim(),
         footerContactZh: String(data.footerContactZh || '').trim(),

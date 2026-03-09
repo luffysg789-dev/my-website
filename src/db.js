@@ -184,6 +184,11 @@ db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_footer_contact_en', '', datetime('now'))"
 ).run();
 
+// Site icon (favicon). Can be a URL or a data URL.
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_icon', '', datetime('now'))"
+).run();
+
 // Auto-crawl settings (admin toggles). Stored as strings in settings.
 db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('auto_crawl_enabled', '0', datetime('now'))"
