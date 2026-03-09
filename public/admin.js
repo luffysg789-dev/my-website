@@ -120,6 +120,8 @@ const texts = {
     siteTitleLabel: '网站名称',
     siteSubtitleZhLabel: '中文简介',
     siteSubtitleEnLabel: '英文简介',
+    siteHtmlTitleZhLabel: '网站 title（中文）',
+    siteHtmlTitleEnLabel: '网站 title（英文）',
     siteIconLabel: '网站 Icon（favicon）',
     siteFooterCopyrightZhLabel: '版权说明（中文）',
     siteFooterCopyrightEnLabel: '版权说明（英文）',
@@ -274,6 +276,8 @@ const texts = {
     siteTitleLabel: 'Site Name',
     siteSubtitleZhLabel: 'Subtitle (ZH)',
     siteSubtitleEnLabel: 'Subtitle (EN)',
+    siteHtmlTitleZhLabel: 'HTML Title (ZH)',
+    siteHtmlTitleEnLabel: 'HTML Title (EN)',
     siteIconLabel: 'Site Icon (favicon)',
     siteFooterCopyrightZhLabel: 'Copyright (ZH)',
     siteFooterCopyrightEnLabel: 'Copyright (EN)',
@@ -716,6 +720,8 @@ function applyLanguage() {
   document.getElementById('siteTitleLabel').childNodes[0].textContent = dict.siteTitleLabel;
   document.getElementById('siteSubtitleZhLabel').childNodes[0].textContent = dict.siteSubtitleZhLabel;
   document.getElementById('siteSubtitleEnLabel').childNodes[0].textContent = dict.siteSubtitleEnLabel;
+  document.getElementById('siteHtmlTitleZhLabel').childNodes[0].textContent = dict.siteHtmlTitleZhLabel;
+  document.getElementById('siteHtmlTitleEnLabel').childNodes[0].textContent = dict.siteHtmlTitleEnLabel;
   document.getElementById('siteIconLabel').childNodes[0].textContent = dict.siteIconLabel;
   document.getElementById('siteFooterCopyrightZhLabel').childNodes[0].textContent = dict.siteFooterCopyrightZhLabel;
   document.getElementById('siteFooterCopyrightEnLabel').childNodes[0].textContent = dict.siteFooterCopyrightEnLabel;
@@ -992,6 +998,8 @@ async function loadSiteConfig() {
       const titleEl = getSiteConfigControl('title');
       const zhEl = getSiteConfigControl('subtitleZh');
       const enEl = getSiteConfigControl('subtitleEn');
+      const htmlTitleZhEl = getSiteConfigControl('htmlTitleZh');
+      const htmlTitleEnEl = getSiteConfigControl('htmlTitleEn');
       const crZhEl = getSiteConfigControl('footerCopyrightZh');
       const crEnEl = getSiteConfigControl('footerCopyrightEn');
       const linksEl = getSiteConfigControl('footerLinksRaw');
@@ -1001,6 +1009,8 @@ async function loadSiteConfig() {
       if (titleEl) titleEl.value = String(siteConfigCache.title || '');
       if (zhEl) zhEl.value = String(siteConfigCache.subtitleZh || '');
       if (enEl) enEl.value = String(siteConfigCache.subtitleEn || '');
+      if (htmlTitleZhEl) htmlTitleZhEl.value = String(siteConfigCache.htmlTitleZh || '');
+      if (htmlTitleEnEl) htmlTitleEnEl.value = String(siteConfigCache.htmlTitleEn || '');
       if (iconEl) iconEl.value = String(siteConfigCache.icon || '');
       if (crZhEl) crZhEl.value = String(siteConfigCache.footerCopyrightZh || '');
       if (crEnEl) crEnEl.value = String(siteConfigCache.footerCopyrightEn || '');
@@ -1797,6 +1807,8 @@ if (siteConfigForm) {
       title: String(payload.title || '').trim(),
       subtitleZh: String(payload.subtitleZh || '').trim(),
       subtitleEn: String(payload.subtitleEn || '').trim(),
+      htmlTitleZh: String(payload.htmlTitleZh || '').trim(),
+      htmlTitleEn: String(payload.htmlTitleEn || '').trim(),
       footerCopyrightZh: String(payload.footerCopyrightZh || '').trim(),
       footerCopyrightEn: String(payload.footerCopyrightEn || '').trim(),
       footerLinksRaw: String(payload.footerLinksRaw || '').trim(),

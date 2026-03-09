@@ -166,6 +166,12 @@ db.prepare(
 db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_subtitle_en', ?, datetime('now'))"
 ).run('OpenClaw ecosystem directory for AI websites');
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_html_title_zh', '', datetime('now'))"
+).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_html_title_en', '', datetime('now'))"
+).run();
 
 // Footer (editable from admin).
 db.prepare(

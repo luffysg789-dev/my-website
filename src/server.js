@@ -293,6 +293,8 @@ app.get('/api/site-config', (_req, res) => {
   const title = getSetting('site_title', 'claw800.com');
   const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
   const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
+  const htmlTitleZh = getSetting('site_html_title_zh', '');
+  const htmlTitleEn = getSetting('site_html_title_en', '');
   const icon = getSetting('site_icon', '');
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
@@ -304,6 +306,8 @@ app.get('/api/site-config', (_req, res) => {
     title,
     subtitleZh,
     subtitleEn,
+    htmlTitleZh,
+    htmlTitleEn,
     icon,
     footerCopyrightZh,
     footerCopyrightEn,
@@ -317,6 +321,8 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
   const title = getSetting('site_title', 'claw800.com');
   const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
   const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
+  const htmlTitleZh = getSetting('site_html_title_zh', '');
+  const htmlTitleEn = getSetting('site_html_title_en', '');
   const icon = getSetting('site_icon', '');
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
@@ -329,6 +335,8 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
     title,
     subtitleZh,
     subtitleEn,
+    htmlTitleZh,
+    htmlTitleEn,
     icon,
     footerCopyrightZh,
     footerCopyrightEn,
@@ -343,6 +351,8 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   const title = String(req.body.title || '').trim();
   const subtitleZh = String(req.body.subtitleZh || '').trim();
   const subtitleEn = String(req.body.subtitleEn || '').trim();
+  const htmlTitleZh = String(req.body.htmlTitleZh || '').trim();
+  const htmlTitleEn = String(req.body.htmlTitleEn || '').trim();
   const icon = String(req.body.icon || '').trim();
   const footerCopyrightZh = String(req.body.footerCopyrightZh || '').trim();
   const footerCopyrightEn = String(req.body.footerCopyrightEn || '').trim();
@@ -354,6 +364,8 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   if (Buffer.byteLength(title, 'utf8') > 200) return res.status(413).json({ error: '网站名称太长' });
   if (Buffer.byteLength(subtitleZh, 'utf8') > 2000) return res.status(413).json({ error: '中文简介太长' });
   if (Buffer.byteLength(subtitleEn, 'utf8') > 2000) return res.status(413).json({ error: '英文简介太长' });
+  if (Buffer.byteLength(htmlTitleZh, 'utf8') > 200) return res.status(413).json({ error: '网站title(中文)太长' });
+  if (Buffer.byteLength(htmlTitleEn, 'utf8') > 200) return res.status(413).json({ error: '网站title(英文)太长' });
   if (Buffer.byteLength(icon, 'utf8') > 600000) return res.status(413).json({ error: 'icon 太大（请使用小图标）' });
   if (Buffer.byteLength(footerCopyrightZh, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(中文)太长' });
   if (Buffer.byteLength(footerCopyrightEn, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(英文)太长' });
@@ -370,6 +382,8 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
     upsertSettingStmt.run('site_title', title);
     upsertSettingStmt.run('site_subtitle_zh', subtitleZh);
     upsertSettingStmt.run('site_subtitle_en', subtitleEn);
+    upsertSettingStmt.run('site_html_title_zh', htmlTitleZh);
+    upsertSettingStmt.run('site_html_title_en', htmlTitleEn);
     upsertSettingStmt.run('site_icon', icon);
     upsertSettingStmt.run('site_footer_copyright_zh', footerCopyrightZh);
     upsertSettingStmt.run('site_footer_copyright_en', footerCopyrightEn);

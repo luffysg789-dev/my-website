@@ -434,8 +434,12 @@ function applyLanguage() {
   document.documentElement.lang = dict.htmlLang;
   const titleFromConfig = String(siteConfig?.title || '').trim();
   const safeTitle = titleFromConfig || 'claw800.com';
+  const htmlTitle =
+    currentLang === 'en'
+      ? String(siteConfig?.htmlTitleEn || '').trim()
+      : String(siteConfig?.htmlTitleZh || '').trim();
   const titleSuffix = currentLang === 'en' ? 'OpenClaw AI Directory' : 'OpenClaw AI 导航';
-  document.title = `${safeTitle} - ${titleSuffix}`;
+  document.title = htmlTitle || `${safeTitle} - ${titleSuffix}`;
 
   if (heroLogoEl) heroLogoEl.textContent = safeTitle;
 
@@ -477,6 +481,8 @@ async function loadSiteConfig() {
         title: String(data.title || '').trim(),
         subtitleZh: String(data.subtitleZh || '').trim(),
         subtitleEn: String(data.subtitleEn || '').trim(),
+        htmlTitleZh: String(data.htmlTitleZh || '').trim(),
+        htmlTitleEn: String(data.htmlTitleEn || '').trim(),
         icon: String(data.icon || '').trim(),
         footerCopyrightZh: String(data.footerCopyrightZh || '').trim(),
         footerCopyrightEn: String(data.footerCopyrightEn || '').trim(),
