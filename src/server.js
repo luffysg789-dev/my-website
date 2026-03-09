@@ -268,7 +268,8 @@ app.get('/api/sites', (req, res) => {
     params.push(kw, kw, kw, kw, kw);
   }
 
-  sql += ' ORDER BY sort_order ASC, created_at DESC';
+  // Higher sort_order should rank higher (appear earlier).
+  sql += ' ORDER BY sort_order DESC, created_at DESC';
   const rows = db.prepare(sql).all(...params);
 
   res.json({ items: rows });
@@ -751,7 +752,8 @@ app.get('/api/admin/sites', requireAdmin, (req, res) => {
     params.push(kw, kw, kw, kw);
   }
 
-  sql += status === 'approved' ? ' ORDER BY sort_order ASC, created_at DESC' : ' ORDER BY created_at DESC';
+  // Higher sort_order should rank higher (appear earlier).
+  sql += status === 'approved' ? ' ORDER BY sort_order DESC, created_at DESC' : ' ORDER BY created_at DESC';
   const rows = db.prepare(sql).all(...params);
 
   res.json({ items: rows });
