@@ -117,6 +117,7 @@ const texts = {
     submitSuccess: '提交成功，等待管理员审核',
     submitFailed: '提交失败',
     hotBadge: '热门',
+    newBadge: '新',
     source: {
       admin: '后台添加',
       user_submit: '用户投稿',
@@ -155,6 +156,7 @@ const texts = {
     submitSuccess: 'Submitted successfully. Waiting for admin review.',
     submitFailed: 'Submission failed',
     hotBadge: 'HOT',
+    newBadge: 'NEW',
     source: {
       admin: 'Admin Added',
       user_submit: 'User Submission',
@@ -312,6 +314,14 @@ function descriptionLabel(description) {
 
 function hasCjk(text) {
   return /[\u3400-\u9FBF]/.test(String(text || ''));
+}
+
+function isNewSite(createdAt) {
+  const raw = String(createdAt || '').trim();
+  if (!raw) return false;
+  const parsed = new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return Date.now() - parsed.getTime() <= 24 * 60 * 60 * 1000;
 }
 
 function getApiCandidates(path) {
@@ -675,11 +685,15 @@ async function loadSites() {
       const descAttr = needsDescTranslate ? ` data-src="${escapeHtml(zhDesc)}"` : '';
       const descDisplay = descriptionLabel(displayDescRaw);
       const isHot = Number(site.is_hot || 0) === 1;
-      const hotBadge = isHot ? `<div class="hot-badge">${escapeHtml(t('hotBadge'))}</div>` : '';
+      const isNew = isNewSite(site.created_at);
+      const badges = [];
+      if (isNew) badges.push(`<div class="site-badge site-badge--new">${escapeHtml(t('newBadge'))}</div>`);
+      if (isHot) badges.push(`<div class="site-badge site-badge--hot">${escapeHtml(t('hotBadge'))}</div>`);
+      const badgeHtml = badges.length ? `<div class="site-badge-stack">${badges.join('')}</div>` : '';
       return `
       <a class="site-card-link" href="${escapeHtml(site.url)}" target="_blank" rel="noopener">
         <article class="site-card">
-          ${hotBadge}
+          ${badgeHtml}
           <div class="site-row">
             <span class="site-value"${nameAttr}>${escapeHtml(displayName)}</span>
           </div>

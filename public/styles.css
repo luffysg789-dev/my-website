@@ -355,6 +355,34 @@ button.danger { background: var(--danger); }
   border-color: #79b589;
 }
 
+.site-badge-stack {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.site-badge {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.site-badge--hot {
+  background: #d92c2c;
+}
+
+.site-badge--new {
+  background: #2f6fed;
+}
+
 .hot-badge {
   position: absolute;
   top: 10px;
