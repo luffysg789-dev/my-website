@@ -27,12 +27,3 @@ npm install
 如果某个 URL 已存在，不会重复导入。
 
 ## 4. API（核心）
-
-- `GET /api/sites`：获取已上线列表
-- `POST /api/submit`：用户投稿
-- `POST /api/admin/login`：后台登录
-- `GET /api/admin/sites?status=pending|approved|rejected`：后台列表
-- `POST /api/admin/sites/:id/approve`：审核通过
-- `POST /api/admin/sites/:id/reject`：审核驳回
-- `POST /api/admin/sites`：后台直接新增
-- `POST /api/admin/import`：后台批量导入并上线
