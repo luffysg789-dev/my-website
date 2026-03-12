@@ -116,6 +116,7 @@ const texts = {
     defaultCategory: '未分类',
     submitSuccess: '提交成功，等待管理员审核',
     submitFailed: '提交失败',
+    pinnedBadge: '置顶',
     hotBadge: '热门',
     newBadge: '新',
     source: {
@@ -155,6 +156,7 @@ const texts = {
     defaultCategory: 'Uncategorized',
     submitSuccess: 'Submitted successfully. Waiting for admin review.',
     submitFailed: 'Submission failed',
+    pinnedBadge: 'PINNED',
     hotBadge: 'HOT',
     newBadge: 'NEW',
     source: {
@@ -684,9 +686,11 @@ async function loadSites() {
       const nameAttr = needsNameTranslate ? ` data-src="${escapeHtml(zhName)}"` : '';
       const descAttr = needsDescTranslate ? ` data-src="${escapeHtml(zhDesc)}"` : '';
       const descDisplay = descriptionLabel(displayDescRaw);
+      const isPinned = Number(site.is_pinned || 0) === 1;
       const isHot = Number(site.is_hot || 0) === 1;
       const isNew = isNewSite(site.created_at);
       const badges = [];
+      if (isPinned) badges.push(`<div class="site-badge site-badge--pinned">${escapeHtml(t('pinnedBadge'))}</div>`);
       if (isNew) badges.push(`<div class="site-badge site-badge--new">${escapeHtml(t('newBadge'))}</div>`);
       if (isHot) badges.push(`<div class="site-badge site-badge--hot">${escapeHtml(t('hotBadge'))}</div>`);
       const badgeHtml = badges.length ? `<div class="site-badge-stack">${badges.join('')}</div>` : '';

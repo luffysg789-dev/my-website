@@ -379,6 +379,10 @@ button.danger { background: var(--danger); }
   background: #d92c2c;
 }
 
+.site-badge--pinned {
+  background: #d6a312;
+}
+
 .site-badge--new {
   background: #2f6fed;
 }
