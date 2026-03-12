@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claw123 龙虾技能大全 — OpenClaw 精选技能导航</title>
+  <meta name="description" content="同步 claw123.ai 技能目录，分类浏览，一键查看与复制安装提示词。">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f7f2;
+      --card: #ffffff;
+      --border: #d9e1d8;
+      --border-hover: rgba(46,111,64,0.35);
+      --accent: #2e6f40;
+      --accent-hover: #183d25;
+      --accent-muted: rgba(46,111,64,0.08);
+      --text-main: #1f2a20;
+      --text-title: #183d25;
+      --text-muted: #5d6a5e;
+      --tag-bg: #eef3ed;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(circle at 10% 0%, #d9eed7 0%, transparent 36%),
+        radial-gradient(circle at 90% 100%, #dce8ff 0%, transparent 30%),
+        var(--bg);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, 'PingFang SC', sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(130deg, var(--accent), var(--accent-hover));
+      padding: 52px 20px 36px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.16;
+      background-image: radial-gradient(rgba(255,255,255,0.65) 0.5px, transparent 0.5px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+
+    .lang-switch {
+      position: absolute;
+      top: 20px; right: 20px;
+      display: flex;
+      background: rgba(255,255,255,0.14);
+      padding: 3px;
+      border-radius: 99px;
+      border: 1px solid rgba(255,255,255,0.28);
+      z-index: 10;
+    }
+
+    .home-link {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.28);
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      z-index: 10;
+      transition: all 0.2s ease;
+    }
+
+    .home-link:hover {
+      background: #fff;
+      color: var(--accent-hover);
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.82);
+      padding: 5px 14px;
+      border-radius: 99px;
+      cursor: pointer;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .lang-btn.active {
+      background: white;
+      color: var(--accent-hover);
+      box-shadow: none;
+    }
+
+    .lang-btn:not(.active):hover { color: #fff; }
+    .lang-loading { font-size: 0.75rem; color: rgba(255,255,255,0.86); margin-top: 8px; text-align: center; display: none; }
+
+    header h1 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 400;
+      color: #fff;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    header p {
+      color: rgba(255,255,255,0.9);
+      font-size: 1rem;
+      max-width: 560px;
+      margin: 0 auto;
+      position: relative;
+      line-height: 1.7;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 28px;
+      position: relative;
+      flex-wrap: wrap;
+    }
+
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.375rem; font-weight: 700; color: #fff; }
+    .stat-label { font-size: 0.8125rem; color: rgba(255,255,255,0.82); margin-top: 3px; }
+
+    .bot-banner {
+      background: #f6fbf6;
+      border: 1px solid #d9e9dd;
+      border-radius: var(--radius);
+      margin: 24px auto;
+      max-width: 900px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .bot-banner-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .bot-copy-btn {
+      border: 1px solid rgba(46,111,64,0.22);
+      background: #fff;
+      color: var(--accent);
+      border-radius: 999px;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .bot-copy-btn:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .bot-banner code {
+      background: var(--accent-muted);
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 0.8125rem;
+      color: var(--accent);
+      cursor: pointer;
+      word-break: break-all;
+      border: 1px solid rgba(46,111,64,0.2);
+      transition: background 0.2s;
+    }
+
+    .bot-banner code:hover { background: rgba(46,111,64,0.14); }
+
+    .search-wrap { max-width: 900px; margin: 36px auto 20px; padding: 0 20px; }
+    #search {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text-title);
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: all 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    #search:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(46,111,64,0.1);
+    }
+
+    .meta-row {
+      max-width: 900px;
+      margin: 0 auto 18px;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      flex-wrap: wrap;
+    }
+
+    .categories-wrap {
+      max-width: 900px;
+      margin: 0 auto 22px;
+      padding: 0 20px;
+    }
+
+    .categories {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .cat-btn {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-main);
+      border-radius: 999px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .cat-btn .count {
+      color: var(--text-muted);
+      margin-left: 6px;
+    }
+
+    .cat-btn:hover,
+    .cat-btn.active {
+      border-color: var(--accent);
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .cat-btn:hover .count,
+    .cat-btn.active .count {
+      color: #fff;
+    }
+
+    .skills-wrap { max-width: 900px; margin: 0 auto; padding: 0 20px 80px; }
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+      gap: 16px;
+    }
+
+    .skill-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 210px;
+    }
+
+    .skill-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-hover);
+    }
+
+    .skill-name {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-title);
+    }
+
+    .skill-desc {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .skill-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .skill-cat {
+      display: inline-flex;
+      align-items: center;
+      background: var(--tag-bg);
+      border-radius: 999px;
+      color: var(--text-main);
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      max-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .skill-btns {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn-detail, .btn-copy {
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-detail {
+      background: white;
+      color: var(--text-title);
+    }
+
+    .btn-detail:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: #eef3ed;
+    }
+
+    .btn-copy {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .btn-copy:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .no-results {
+      display: none;
+      text-align: center;
+      color: var(--text-muted);
+      padding: 48px 20px;
+      font-size: 0.9375rem;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    .page-btn {
+      min-width: 40px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text-main);
+      cursor: pointer;
+      font-size: 0.875rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .page-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .page-ellipsis {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 4px;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .footer-note {
+      max-width: 900px;
+      margin: 0 auto 40px;
+      padding: 0 20px;
+      color: var(--text-muted);
+      text-align: center;
+      font-size: 0.8125rem;
+    }
+
+    .footer-note a {
+      color: var(--accent-hover);
+      text-decoration: none;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #1f1b18;
+      color: white;
+      border-radius: 14px;
+      padding: 14px 16px;
+      min-width: 280px;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 50;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast strong {
+      display: block;
+      font-size: 0.9375rem;
+      margin-bottom: 4px;
+    }
+
+    .toast span {
+      color: rgba(255,255,255,0.8);
+      font-size: 0.8125rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 720px) {
+      header {
+        padding-top: 86px;
+      }
+
+      .lang-switch {
+        right: 50%;
+        transform: translateX(50%);
+      }
+
+      .bot-banner,
+      .meta-row,
+      .skill-footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .skill-btns {
+        width: 100%;
+      }
+
+      .btn-detail, .btn-copy {
+        flex: 1;
+        text-align: center;
+      }
+
+      .toast {
+        left: 14px;
+        right: 14px;
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="home-link" id="backHomeLink" href="/">← 返回首页</a>
+
+    <div class="lang-switch">
+      <button class="lang-btn active" id="btn-zh" type="button">中文</button>
+      <button class="lang-btn" id="btn-en" type="button">EN</button>
+    </div>
+
+    <h1 id="header-title">Claw123 龙虾技能大全</h1>
+    <p id="header-sub">同步 claw123.ai 的 OpenClaw 精选技能目录，分类浏览，一键查看和复制安装提示词。</p>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="total-count">0</div><div class="stat-label" id="label-skills">技能总数</div></div>
+      <div class="stat"><div class="stat-num" id="cat-count">0</div><div class="stat-label" id="label-cats">分类数</div></div>
+    </div>
+    <div class="lang-loading" id="lang-loading">⏳ 正在加载中文数据...</div>
+  </header>
+
+  <div class="bot-banner">
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;">
+      <div class="bot-banner-top">
+        <strong id="bot-label">给 Bot 的推荐提示词</strong>
+        <button id="bot-copy-btn" class="bot-copy-btn" type="button" title="复制">⧉</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <code id="bot-prompt" title="点击复制">claw123.ai 是 OpenClaw 精选技能导航站...</code>
+        <span id="prompt-copied" style="display:none;color:var(--accent);font-size:0.8125rem;">已复制</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input id="search" type="text" placeholder="🔍 搜索技能名称 / 简介 / 分类..." />
+  </div>
+
+  <div class="meta-row">
+    <div id="search-count"></div>
+    <div id="sync-note">数据源：claw123.ai / 每天早上自动同步</div>
+  </div>
+
+  <div class="categories-wrap">
+    <div class="categories" id="categories"></div>
+  </div>
+
+  <div class="skills-wrap">
+    <div class="skills-grid" id="skills-grid"></div>
+    <div class="no-results" id="no-results">🔍 没有找到相关技能，试试别的关键词？</div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <div class="footer-note" id="footer-note">
+    数据同步自 <a href="https://claw123.ai/" target="_blank" rel="noopener">claw123.ai</a> · JSON 接口：<a href="/api/skills.json" target="_blank" rel="noopener">/api/skills.json</a> / <a href="/api/skills.zh.json" target="_blank" rel="noopener">/api/skills.zh.json</a>
+  </div>
+
+  <div class="toast" id="toast">
+    <strong id="toast-msg"></strong>
+    <span id="toast-sub"></span>
+  </div>
+
+  <script src="/skills.js?v=20260313-04"></script>
+</body>
+</html>

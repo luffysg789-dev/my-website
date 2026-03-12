@@ -1,9 +1,12 @@
 const path = require('path');
 const crypto = require('crypto');
 const net = require('net');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
+const execFileAsync = promisify(execFile);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -122,7 +125,7 @@ function getVisitDateKey(date = new Date()) {
 function shouldTrackVisit(req) {
   if (req.method !== 'GET') return false;
   const pathName = String(req.path || '');
-  return pathName === '/' || pathName === '/index.html' || pathName === '/tutorial.html';
+  return pathName === '/' || pathName === '/index.html' || pathName === '/tutorial.html' || pathName === '/skills.html';
 }
 
 app.use((req, res, next) => {
@@ -257,6 +260,69 @@ const upsertSettingStmt = db.prepare(`
   INSERT INTO settings (key, value, updated_at)
   VALUES (?, ?, datetime('now'))
   ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+`);
+const DEFAULT_SKILLS_PAGE_BOT_LABEL_ZH = 'Bot 安装提示词 — 复制给你的 Bot，它就学会了：';
+const DEFAULT_SKILLS_PAGE_BOT_LABEL_EN = 'Bot Install Prompt — copy this to your Bot and it will learn it:';
+const DEFAULT_SKILLS_PAGE_BOT_PROMPT_ZH = 'claw123.ai 是 OpenClaw 精选技能导航站，收录 5000+ 可信技能。请学会搜索方法，当主人需要某个技能时优先来这里查找。搜索：fetch https://claw123.ai/api/skills.zh.json 获取完整技能列表，字段包括 name（技能名）、description_zh（中文描述）、category_zh（分类）、url（源地址）。当主人需要某个功能时，先搜索推荐给主人，经主人确认后再安装。不要一次性安装所有技能，按需查找、按需安装。';
+const DEFAULT_SKILLS_PAGE_BOT_PROMPT_EN = 'claw123.ai is a curated OpenClaw skills directory with 5000+ trusted skills. Learn to search this directory so you can find the right skill when your user needs one. Fetch https://claw123.ai/api/skills.json to get the full list with fields: name, description, category, url. When your user needs a skill, search the list, recommend matching options, and only install after confirmation. Do NOT install all at once — search on demand, install on demand.';
+const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_ZH = '你是 OpenClaw 用户的技能安装助手。现在请帮我安装技能「{{name}}」。\n技能简介：{{description}}\n详情链接：{{url}}\n请按这个流程执行：\n1. 先打开详情链接，阅读 README、SKILL.md 或安装说明。\n2. 用中文告诉我这个技能做什么、是否安全、安装后会影响什么。\n3. 如果需要环境变量、依赖或权限，先明确列出来，再征求我确认。\n4. 只有在我确认后，才开始安装。\n5. 安装完成后，告诉我验证方法、使用方法，以及如何卸载或回滚。\n不要跳过确认步骤，也不要一次性安装无关技能。';
+const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_EN = 'You are an OpenClaw skill installation assistant. Help me install the skill "{{name}}".\nSkill summary: {{description}}\nDetail URL: {{url}}\nFollow this process:\n1. Open the detail page and read the README, SKILL.md, or install docs.\n2. Explain what the skill does, whether it looks safe, and what it may change.\n3. List any dependencies, env vars, permissions, or prerequisites before installing.\n4. Wait for my confirmation before you run or install anything.\n5. After installation, tell me how to verify it, use it, and uninstall or roll it back.\nDo not skip confirmation and do not install unrelated skills.';
+
+const skillsCatalogCountStmt = db.prepare('SELECT COUNT(*) as c FROM skills_catalog');
+const skillsCatalogStagingCountStmt = db.prepare('SELECT COUNT(*) as c FROM skills_catalog_staging');
+const listSkillsCatalogStmt = db.prepare(`
+  SELECT id, name, name_en, url, description, description_en, category, category_en, icon, created_at, updated_at
+  FROM skills_catalog
+  WHERE (? = '' OR category = ?)
+    AND (? = '' OR name LIKE ? OR name_en LIKE ? OR description LIKE ? OR description_en LIKE ? OR category LIKE ? OR category_en LIKE ? OR url LIKE ?)
+  ORDER BY updated_at DESC, created_at DESC, id DESC
+  LIMIT ?
+`);
+const listSkillsCatalogCategoriesStmt = db.prepare(`
+  SELECT category, category_en, COUNT(*) as count
+  FROM skills_catalog
+  GROUP BY category, category_en
+  ORDER BY count DESC, category ASC
+`);
+const listAdminSkillsStmt = db.prepare(`
+  SELECT id, name, name_en, url, description, description_en, category, category_en, icon, created_at, updated_at
+  FROM skills_catalog
+  WHERE (? = '' OR name LIKE ? OR name_en LIKE ? OR description LIKE ? OR description_en LIKE ? OR category LIKE ? OR category_en LIKE ? OR url LIKE ?)
+  ORDER BY updated_at DESC, created_at DESC, id DESC
+`);
+const selectSkillByUrlStmt = db.prepare('SELECT 1 FROM skills_catalog WHERE url = ? LIMIT 1');
+const upsertSkillCatalogStagingStmt = db.prepare(`
+  INSERT INTO skills_catalog_staging (name, name_en, url, description, description_en, category, category_en, icon, fetched_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+  ON CONFLICT(url) DO UPDATE SET
+    name = COALESCE(NULLIF(excluded.name, ''), skills_catalog_staging.name),
+    name_en = COALESCE(NULLIF(excluded.name_en, ''), skills_catalog_staging.name_en),
+    description = COALESCE(NULLIF(excluded.description, ''), skills_catalog_staging.description),
+    description_en = COALESCE(NULLIF(excluded.description_en, ''), skills_catalog_staging.description_en),
+    category = COALESCE(NULLIF(excluded.category, ''), skills_catalog_staging.category),
+    category_en = COALESCE(NULLIF(excluded.category_en, ''), skills_catalog_staging.category_en),
+    icon = COALESCE(NULLIF(excluded.icon, ''), skills_catalog_staging.icon),
+    fetched_at = datetime('now'),
+    updated_at = datetime('now')
+`);
+const listAdminStagingSkillsStmt = db.prepare(`
+  SELECT id, name, name_en, url, description, description_en, category, category_en, icon, fetched_at, updated_at
+  FROM skills_catalog_staging
+  WHERE (? = '' OR name LIKE ? OR name_en LIKE ? OR description LIKE ? OR description_en LIKE ? OR category LIKE ? OR category_en LIKE ? OR url LIKE ?)
+  ORDER BY updated_at DESC, fetched_at DESC, id DESC
+`);
+const upsertSkillCatalogStmt = db.prepare(`
+  INSERT INTO skills_catalog (name, name_en, url, description, description_en, category, category_en, icon, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+  ON CONFLICT(url) DO UPDATE SET
+    name = COALESCE(NULLIF(excluded.name, ''), skills_catalog.name),
+    name_en = COALESCE(NULLIF(excluded.name_en, ''), skills_catalog.name_en),
+    description = COALESCE(NULLIF(excluded.description, ''), skills_catalog.description),
+    description_en = COALESCE(NULLIF(excluded.description_en, ''), skills_catalog.description_en),
+    category = COALESCE(NULLIF(excluded.category, ''), skills_catalog.category),
+    category_en = COALESCE(NULLIF(excluded.category_en, ''), skills_catalog.category_en),
+    icon = COALESCE(NULLIF(excluded.icon, ''), skills_catalog.icon),
+    updated_at = datetime('now')
 `);
 
 function adminTokenForPassword(password) {
@@ -393,7 +459,10 @@ app.get('/api/categories', (_req, res) => {
 });
 
 app.get('/api/site-config', (_req, res) => {
-  res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
   const title = getSetting('site_title', 'claw800.com');
   const subtitleZh = getSetting('site_subtitle_zh', 'OpenClaw 生态导航，收录 AI 领域优质网站');
   const subtitleEn = getSetting('site_subtitle_en', 'OpenClaw ecosystem directory for AI websites');
@@ -401,6 +470,16 @@ app.get('/api/site-config', (_req, res) => {
   const htmlTitleEn = getSetting('site_html_title_en', '');
   const icon = getSetting('site_icon', '');
   const logo = getSetting('site_logo', '');
+  const skillsPageTitleZh = getSetting('skills_page_title_zh', 'Claw123 龙虾技能大全');
+  const skillsPageTitleEn = getSetting('skills_page_title_en', 'Claw123 Skills Directory');
+  const skillsPageSubtitleZh = getSetting('skills_page_subtitle_zh', '同步 claw123.ai 的 OpenClaw 精选技能目录，分类浏览，一键查看和复制安装提示词。');
+  const skillsPageSubtitleEn = getSetting('skills_page_subtitle_en', 'Synced from claw123.ai. Browse curated OpenClaw skills by category and copy install prompts in one click.');
+  const skillsPageBotLabelZh = getSetting('skills_page_bot_label_zh', DEFAULT_SKILLS_PAGE_BOT_LABEL_ZH);
+  const skillsPageBotLabelEn = getSetting('skills_page_bot_label_en', DEFAULT_SKILLS_PAGE_BOT_LABEL_EN);
+  const skillsPageBotPromptZh = getSetting('skills_page_bot_prompt_zh', DEFAULT_SKILLS_PAGE_BOT_PROMPT_ZH);
+  const skillsPageBotPromptEn = getSetting('skills_page_bot_prompt_en', DEFAULT_SKILLS_PAGE_BOT_PROMPT_EN);
+  const skillsPageInstallPromptZh = getSetting('skills_page_install_prompt_zh', DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_ZH);
+  const skillsPageInstallPromptEn = getSetting('skills_page_install_prompt_en', DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_EN);
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
   const footerContactZh = getSetting('site_footer_contact_zh', '');
@@ -415,6 +494,16 @@ app.get('/api/site-config', (_req, res) => {
     htmlTitleEn,
     icon,
     logo,
+    skillsPageTitleZh,
+    skillsPageTitleEn,
+    skillsPageSubtitleZh,
+    skillsPageSubtitleEn,
+    skillsPageBotLabelZh,
+    skillsPageBotLabelEn,
+    skillsPageBotPromptZh,
+    skillsPageBotPromptEn,
+    skillsPageInstallPromptZh,
+    skillsPageInstallPromptEn,
     footerCopyrightZh,
     footerCopyrightEn,
     footerContactZh,
@@ -431,6 +520,16 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
   const htmlTitleEn = getSetting('site_html_title_en', '');
   const icon = getSetting('site_icon', '');
   const logo = getSetting('site_logo', '');
+  const skillsPageTitleZh = getSetting('skills_page_title_zh', 'Claw123 龙虾技能大全');
+  const skillsPageTitleEn = getSetting('skills_page_title_en', 'Claw123 Skills Directory');
+  const skillsPageSubtitleZh = getSetting('skills_page_subtitle_zh', '同步 claw123.ai 的 OpenClaw 精选技能目录，分类浏览，一键查看和复制安装提示词。');
+  const skillsPageSubtitleEn = getSetting('skills_page_subtitle_en', 'Synced from claw123.ai. Browse curated OpenClaw skills by category and copy install prompts in one click.');
+  const skillsPageBotLabelZh = getSetting('skills_page_bot_label_zh', DEFAULT_SKILLS_PAGE_BOT_LABEL_ZH);
+  const skillsPageBotLabelEn = getSetting('skills_page_bot_label_en', DEFAULT_SKILLS_PAGE_BOT_LABEL_EN);
+  const skillsPageBotPromptZh = getSetting('skills_page_bot_prompt_zh', DEFAULT_SKILLS_PAGE_BOT_PROMPT_ZH);
+  const skillsPageBotPromptEn = getSetting('skills_page_bot_prompt_en', DEFAULT_SKILLS_PAGE_BOT_PROMPT_EN);
+  const skillsPageInstallPromptZh = getSetting('skills_page_install_prompt_zh', DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_ZH);
+  const skillsPageInstallPromptEn = getSetting('skills_page_install_prompt_en', DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_EN);
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
   const footerContactZh = getSetting('site_footer_contact_zh', '');
@@ -446,6 +545,16 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
     htmlTitleEn,
     icon,
     logo,
+    skillsPageTitleZh,
+    skillsPageTitleEn,
+    skillsPageSubtitleZh,
+    skillsPageSubtitleEn,
+    skillsPageBotLabelZh,
+    skillsPageBotLabelEn,
+    skillsPageBotPromptZh,
+    skillsPageBotPromptEn,
+    skillsPageInstallPromptZh,
+    skillsPageInstallPromptEn,
     footerCopyrightZh,
     footerCopyrightEn,
     footerContactZh,
@@ -463,6 +572,16 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   const htmlTitleEn = String(req.body.htmlTitleEn || '').trim();
   const icon = String(req.body.icon || '').trim();
   const logo = String(req.body.logo || '').trim();
+  const skillsPageTitleZh = String(req.body.skillsPageTitleZh || '').trim();
+  const skillsPageTitleEn = String(req.body.skillsPageTitleEn || '').trim();
+  const skillsPageSubtitleZh = String(req.body.skillsPageSubtitleZh || '').trim();
+  const skillsPageSubtitleEn = String(req.body.skillsPageSubtitleEn || '').trim();
+  const skillsPageBotLabelZh = String(req.body.skillsPageBotLabelZh || '').trim();
+  const skillsPageBotLabelEn = String(req.body.skillsPageBotLabelEn || '').trim();
+  const skillsPageBotPromptZh = String(req.body.skillsPageBotPromptZh || '').trim();
+  const skillsPageBotPromptEn = String(req.body.skillsPageBotPromptEn || '').trim();
+  const skillsPageInstallPromptZh = String(req.body.skillsPageInstallPromptZh || '').trim();
+  const skillsPageInstallPromptEn = String(req.body.skillsPageInstallPromptEn || '').trim();
   const footerCopyrightZh = String(req.body.footerCopyrightZh || '').trim();
   const footerCopyrightEn = String(req.body.footerCopyrightEn || '').trim();
   const footerContactZh = String(req.body.footerContactZh || '').trim();
@@ -477,6 +596,16 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   if (Buffer.byteLength(htmlTitleEn, 'utf8') > 200) return res.status(413).json({ error: '网站title(英文)太长' });
   if (Buffer.byteLength(icon, 'utf8') > 600000) return res.status(413).json({ error: 'icon 太大（请使用小图标）' });
   if (Buffer.byteLength(logo, 'utf8') > 3000000) return res.status(413).json({ error: 'logo 太大（请压缩后再上传）' });
+  if (Buffer.byteLength(skillsPageTitleZh, 'utf8') > 200) return res.status(413).json({ error: '技能页标题(中文)太长' });
+  if (Buffer.byteLength(skillsPageTitleEn, 'utf8') > 200) return res.status(413).json({ error: '技能页标题(英文)太长' });
+  if (Buffer.byteLength(skillsPageSubtitleZh, 'utf8') > 4000) return res.status(413).json({ error: '技能页简介(中文)太长' });
+  if (Buffer.byteLength(skillsPageSubtitleEn, 'utf8') > 4000) return res.status(413).json({ error: '技能页简介(英文)太长' });
+  if (Buffer.byteLength(skillsPageBotLabelZh, 'utf8') > 500) return res.status(413).json({ error: '技能页Bot标签(中文)太长' });
+  if (Buffer.byteLength(skillsPageBotLabelEn, 'utf8') > 500) return res.status(413).json({ error: '技能页Bot标签(英文)太长' });
+  if (Buffer.byteLength(skillsPageBotPromptZh, 'utf8') > 20000) return res.status(413).json({ error: '技能页提示词(中文)太长' });
+  if (Buffer.byteLength(skillsPageBotPromptEn, 'utf8') > 20000) return res.status(413).json({ error: '技能页提示词(英文)太长' });
+  if (Buffer.byteLength(skillsPageInstallPromptZh, 'utf8') > 20000) return res.status(413).json({ error: '技能页安装提示词(中文)太长' });
+  if (Buffer.byteLength(skillsPageInstallPromptEn, 'utf8') > 20000) return res.status(413).json({ error: '技能页安装提示词(英文)太长' });
   if (Buffer.byteLength(footerCopyrightZh, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(中文)太长' });
   if (Buffer.byteLength(footerCopyrightEn, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(英文)太长' });
   if (Buffer.byteLength(footerContactZh, 'utf8') > 2000) return res.status(413).json({ error: '联系客服(中文)太长' });
@@ -499,6 +628,16 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
     upsertSettingStmt.run('site_html_title_en', htmlTitleEn);
     upsertSettingStmt.run('site_icon', icon);
     upsertSettingStmt.run('site_logo', logo);
+    upsertSettingStmt.run('skills_page_title_zh', skillsPageTitleZh);
+    upsertSettingStmt.run('skills_page_title_en', skillsPageTitleEn);
+    upsertSettingStmt.run('skills_page_subtitle_zh', skillsPageSubtitleZh);
+    upsertSettingStmt.run('skills_page_subtitle_en', skillsPageSubtitleEn);
+    upsertSettingStmt.run('skills_page_bot_label_zh', skillsPageBotLabelZh);
+    upsertSettingStmt.run('skills_page_bot_label_en', skillsPageBotLabelEn);
+    upsertSettingStmt.run('skills_page_bot_prompt_zh', skillsPageBotPromptZh);
+    upsertSettingStmt.run('skills_page_bot_prompt_en', skillsPageBotPromptEn);
+    upsertSettingStmt.run('skills_page_install_prompt_zh', skillsPageInstallPromptZh);
+    upsertSettingStmt.run('skills_page_install_prompt_en', skillsPageInstallPromptEn);
     upsertSettingStmt.run('site_footer_copyright_zh', footerCopyrightZh);
     upsertSettingStmt.run('site_footer_copyright_en', footerCopyrightEn);
     upsertSettingStmt.run('site_footer_contact_zh', footerContactZh);
@@ -1103,6 +1242,230 @@ app.get('/tutorial/:id', (req, res) => {
   res.json({ item: row });
 });
 
+app.get('/api/skills-catalog', async (req, res) => {
+  const category = String(req.query.category || '').trim();
+  const q = String(req.query.q || '').trim();
+  const keyword = q ? `%${q}%` : '';
+  const limitRaw = Number(req.query.limit || 600);
+  const limit = Math.max(1, Math.min(2000, Number.isFinite(limitRaw) ? limitRaw : 600));
+  const items = listSkillsCatalogStmt.all(
+    category,
+    category,
+    q,
+    keyword,
+    keyword,
+    keyword,
+    keyword,
+    keyword,
+    keyword,
+    keyword,
+    limit
+  );
+  const categories = listSkillsCatalogCategoriesStmt.all();
+  const lastSyncMs = parseEpochMs(getSetting('skills_catalog_last_sync_ms', '0'));
+  const total = Number(skillsCatalogCountStmt.get()?.c || 0);
+
+  res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.json({
+    ok: true,
+    items,
+    categories,
+    total,
+    lastSyncMs,
+    sourceUrl: 'https://claw123.ai/'
+  });
+});
+
+app.get('/api/skills.json', async (_req, res) => {
+  const rows = db
+    .prepare(`
+      SELECT name, name_en, url, description, description_en, category, category_en
+      FROM skills_catalog
+      ORDER BY updated_at DESC, created_at DESC, id DESC
+    `)
+    .all();
+
+  const categories = {};
+  const skills = rows.map((row) => {
+    const category = String(row.category_en || row.category || 'Other').trim() || 'Other';
+    categories[category] = (categories[category] || 0) + 1;
+    return {
+      name: String(row.name_en || row.name || '').trim(),
+      description: String(row.description_en || row.description || '').trim(),
+      description_zh: String(row.description || '').trim(),
+      category,
+      category_zh: String(row.category || '').trim(),
+      url: String(row.url || '').trim()
+    };
+  });
+
+  res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.json({ skills, categories });
+});
+
+app.get('/api/skills.zh.json', async (_req, res) => {
+  const rows = db
+    .prepare(`
+      SELECT name, name_en, url, description, description_en, category, category_en
+      FROM skills_catalog
+      ORDER BY updated_at DESC, created_at DESC, id DESC
+    `)
+    .all();
+
+  const categories = {};
+  const categoriesZh = {};
+  const skills = rows.map((row) => {
+    const category = String(row.category_en || row.category || 'Other').trim() || 'Other';
+    const categoryZh = String(row.category || row.category_en || '').trim() || category;
+    categories[category] = (categories[category] || 0) + 1;
+    categoriesZh[category] = categoryZh;
+    return {
+      name: String(row.name_en || row.name || '').trim(),
+      description: String(row.description_en || row.description || '').trim(),
+      description_zh: String(row.description || row.description_en || '').trim(),
+      category,
+      category_zh: categoryZh,
+      url: String(row.url || '').trim()
+    };
+  });
+
+  res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+  res.json({ skills, categories, categories_zh: categoriesZh });
+});
+
+app.get('/api/admin/skills', requireAdmin, (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const keyword = q ? `%${q}%` : '';
+  const items = listAdminSkillsStmt.all(q, keyword, keyword, keyword, keyword, keyword, keyword, keyword);
+  res.json({ ok: true, items });
+});
+
+app.get('/api/admin/skills-staging', requireAdmin, (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const keyword = q ? `%${q}%` : '';
+  const items = listAdminStagingSkillsStmt.all(q, keyword, keyword, keyword, keyword, keyword, keyword, keyword);
+  res.json({ ok: true, items });
+});
+
+function updateAdminSkill(req, res) {
+  const id = Number(req.params.id);
+  const name = String(req.body.name || '').trim();
+  const nameEn = String(req.body.nameEn || req.body.name_en || '').trim();
+  const url = normalizeUrlForDedup(String(req.body.url || '').trim());
+  const description = String(req.body.description || '').trim();
+  const descriptionEn = String(req.body.descriptionEn || req.body.description_en || '').trim();
+  const category = String(req.body.category || '').trim();
+  const categoryEn = String(req.body.categoryEn || req.body.category_en || '').trim();
+  const icon = String(req.body.icon || '').trim();
+
+  if (!name || !url) return res.status(400).json({ error: 'name 和 url 必填' });
+  if (!isValidUrl(url)) return res.status(400).json({ error: 'url 格式不正确' });
+  if (icon && !isProbablyAbsoluteUrl(icon) && !isProbablyDataUrl(icon)) {
+    return res.status(400).json({ error: 'icon 必须是图片 dataURL 或 http(s) 链接' });
+  }
+
+  try {
+    const result = db
+      .prepare(`
+        UPDATE skills_catalog
+        SET name = ?, name_en = ?, url = ?, description = ?, description_en = ?, category = ?, category_en = ?, icon = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `)
+      .run(name, nameEn, url, description, descriptionEn, category, categoryEn, icon, id);
+    if (!result.changes) return res.status(404).json({ error: '记录不存在' });
+    res.json({ ok: true });
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: '技能已存在' });
+    }
+    res.status(500).json({ error: '更新失败' });
+  }
+}
+
+app.put('/api/admin/skills/:id', requireAdmin, updateAdminSkill);
+app.post('/api/admin/skills/:id/update', requireAdmin, updateAdminSkill);
+
+app.delete('/api/admin/skills/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare('DELETE FROM skills_catalog WHERE id = ?').run(id);
+  if (!result.changes) return res.status(404).json({ error: '记录不存在' });
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/skills/:id/delete', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare('DELETE FROM skills_catalog WHERE id = ?').run(id);
+  if (!result.changes) return res.status(404).json({ error: '记录不存在' });
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/skills/fetch-now', requireAdmin, async (_req, res) => {
+  if (skillsCatalogSyncRunning) return res.status(409).json({ error: '技能抓取进行中，请稍后再试' });
+  try {
+    const result = await skillsCatalogTick({ forceIfEmpty: true }) || (await fetchSkillsCatalogDraftOnce());
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    res.status(500).json({ error: `技能抓取失败：${String(error?.message || '未知错误')}` });
+  }
+});
+
+app.post('/api/admin/skills/sync-now', requireAdmin, async (_req, res) => {
+  if (skillsCatalogSyncRunning) return res.status(409).json({ error: '技能抓取进行中，请稍后再试' });
+  try {
+    const result = await skillsCatalogTick({ forceIfEmpty: true }) || (await fetchSkillsCatalogDraftOnce());
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    res.status(500).json({ error: `技能抓取失败：${String(error?.message || '未知错误')}` });
+  }
+});
+
+app.post('/api/admin/skills/upload-fetched', requireAdmin, (_req, res) => {
+  try {
+    const result = uploadFetchedSkillsToCatalog();
+    res.json({ ok: true, ...result });
+  } catch {
+    res.status(500).json({ error: '技能上传失败' });
+  }
+});
+
+app.get('/api/admin/skills-sync/status', requireAdmin, (_req, res) => {
+  const config = getSkillsSyncConfig();
+  const lastFetchMs = parseEpochMs(getSetting('skills_catalog_last_fetch_ms', '0'));
+  const fetchedTotal = Number(getSetting('skills_catalog_last_fetch_count', '0')) || 0;
+  const fetchedNewCount = Number(getSetting('skills_catalog_last_fetch_new_count', '0')) || 0;
+  const lastUploadMs = parseEpochMs(getSetting('skills_catalog_last_sync_ms', '0'));
+  const uploadedTotal = Number(getSetting('skills_catalog_last_sync_count', '0')) || 0;
+  const uploadedNewCount = Number(getSetting('skills_catalog_last_sync_new_count', '0')) || 0;
+  const stagingTotal = Number(skillsCatalogStagingCountStmt.get()?.c || 0);
+  res.json({
+    ok: true,
+    ...config,
+    lastFetchMs,
+    fetchedTotal,
+    fetchedNewCount,
+    lastUploadMs,
+    uploadedTotal,
+    uploadedNewCount,
+    stagingTotal,
+    lastSyncMs: lastFetchMs,
+    total: fetchedTotal,
+    newCount: fetchedNewCount,
+    running: skillsCatalogSyncRunning
+  });
+});
+
+app.post('/api/admin/skills-sync/config', requireAdmin, (req, res) => {
+  const enabled = req.body.enabled === true || req.body.enabled === 1 || req.body.enabled === '1' || req.body.enabled === 'on';
+  const hour = clampHour(req.body.hour, SKILLS_CATALOG_SYNC_HOUR);
+  const minute = clampMinute(req.body.minute, SKILLS_CATALOG_SYNC_MINUTE);
+
+  upsertSettingStmt.run('skills_catalog_sync_enabled', enabled ? '1' : '0');
+  upsertSettingStmt.run('skills_catalog_sync_hour', String(hour));
+  upsertSettingStmt.run('skills_catalog_sync_minute', String(minute));
+
+  res.json({ ok: true, enabled, hour, minute });
+});
+
 app.post('/api/admin/sites', requireAdmin, async (req, res) => {
   const { name, url, description = '', category = 'OpenClaw 生态', status = 'approved', sortOrder, isPinned, isHot } = req.body;
 
@@ -1533,6 +1896,12 @@ const AUTO_CRAWL_MAX_PER_RUN_AI = Number(process.env.AUTO_CRAWL_MAX_PER_RUN_AI |
 const AUTO_CRAWL_MAX_PER_RUN_OPENCLAW = Number(process.env.AUTO_CRAWL_MAX_PER_RUN_OPENCLAW || 5);
 const AUTO_CRAWL_INTERVAL_MS = Number(process.env.AUTO_CRAWL_INTERVAL_MS || 60 * 60 * 1000);
 const AUTO_CRAWL_DEFAULT_CATEGORY = String(process.env.AUTO_CRAWL_DEFAULT_CATEGORY || 'AI 与大语言模型');
+const SKILLS_CATALOG_SOURCE_ZH = String(process.env.SKILLS_CATALOG_SOURCE_ZH || 'https://claw123.ai/api/skills.zh.json');
+const SKILLS_CATALOG_SOURCE_EN = String(process.env.SKILLS_CATALOG_SOURCE_EN || 'https://claw123.ai/api/skills.json');
+const SKILLS_CATALOG_SOURCE_RESOLVE_IP = String(process.env.SKILLS_CATALOG_SOURCE_RESOLVE_IP || '100.23.41.145').trim();
+const SKILLS_CATALOG_SYNC_HOUR = Math.max(0, Math.min(23, Number(process.env.SKILLS_CATALOG_SYNC_HOUR || 10)));
+const SKILLS_CATALOG_SYNC_MINUTE = Math.max(0, Math.min(59, Number(process.env.SKILLS_CATALOG_SYNC_MINUTE || 0)));
+const SKILLS_CATALOG_SYNC_CHECK_MS = Number(process.env.SKILLS_CATALOG_SYNC_CHECK_MS || 10 * 60 * 1000);
 
 // Separate feed sets: general AI projects vs OpenClaw/Claw-related projects.
 const AUTO_CRAWL_FEEDS_AI = String(
@@ -1565,6 +1934,346 @@ const AUTO_CRAWL_FEEDS_OPENCLAW = String(
 
 let autoCrawlRunning = false;
 let autoCrawlLastResult = null; // { at, ai: {added, checked, errors}, openclaw: {added, checked, errors} }
+let skillsCatalogSyncRunning = false;
+
+function getDateKeyLocal(input = Date.now()) {
+  const d = input instanceof Date ? input : new Date(input);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function clampHour(value, fallback = 10) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(23, Math.floor(n)));
+}
+
+function clampMinute(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(59, Math.floor(n)));
+}
+
+function getSkillsSyncConfig() {
+  const enabled = getSetting('skills_catalog_sync_enabled', '1') === '1';
+  const hour = clampHour(getSetting('skills_catalog_sync_hour', String(SKILLS_CATALOG_SYNC_HOUR)), SKILLS_CATALOG_SYNC_HOUR);
+  const minute = clampMinute(getSetting('skills_catalog_sync_minute', String(SKILLS_CATALOG_SYNC_MINUTE)), SKILLS_CATALOG_SYNC_MINUTE);
+  return { enabled, hour, minute };
+}
+
+function shouldRunDailyAt(lastRunMs, hour, minute) {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const targetMinutes = clampHour(hour) * 60 + clampMinute(minute);
+  if (nowMinutes < targetMinutes) return false;
+  if (!lastRunMs) return true;
+  return getDateKeyLocal(now) !== getDateKeyLocal(lastRunMs);
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    const trimmed = String(value || '').trim();
+    if (trimmed) return trimmed;
+  }
+  return '';
+}
+
+function absoluteHttpUrl(raw, baseUrl) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    return new URL(value, baseUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
+async function fetchJson(url, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { method: 'GET', signal: controller.signal, redirect: 'follow' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return await resp.json();
+  } catch (error) {
+    return await fetchJsonViaCurl(url, timeoutMs, error);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchJsonViaCurl(url, timeoutMs = 12000, originalError = null) {
+  const maxTimeSeconds = Math.max(5, Math.ceil(timeoutMs / 1000));
+  try {
+    const parsedUrl = new URL(String(url || ''));
+    const curlArgs = [
+      '-L',
+      '--silent',
+      '--show-error',
+      '--fail',
+      '--max-time',
+      String(maxTimeSeconds),
+      '-H',
+      'Accept: application/json',
+      '-A',
+      'Mozilla/5.0 claw800-skills-fetcher',
+    ];
+    if ((parsedUrl.hostname === 'claw123.ai' || parsedUrl.hostname === 'www.claw123.ai') && SKILLS_CATALOG_SOURCE_RESOLVE_IP) {
+      curlArgs.push('--resolve', `${parsedUrl.hostname}:443:${SKILLS_CATALOG_SOURCE_RESOLVE_IP}`);
+    }
+    curlArgs.push(String(url || ''));
+    const { stdout } = await execFileAsync('curl', curlArgs, {
+      maxBuffer: 20 * 1024 * 1024
+    });
+    return JSON.parse(String(stdout || ''));
+  } catch (curlError) {
+    const fallbackError = originalError || curlError;
+    const details = [
+      fallbackError?.message || '',
+      fallbackError?.cause?.code || '',
+      curlError?.message || ''
+    ]
+      .filter(Boolean)
+      .join(' | ');
+    throw new Error(details || 'fetch failed');
+  }
+}
+
+function normalizeSkillCatalogItem(raw, langHint, sourceUrl) {
+  const url = normalizeUrlForDedup(
+    firstNonEmpty(raw?.url, raw?.href, raw?.link, raw?.website, raw?.site_url, raw?.siteUrl)
+  );
+  if (!url || !isValidUrl(url)) return null;
+
+  const zhName = firstNonEmpty(
+    raw?.name_zh,
+    raw?.nameZh,
+    raw?.title_zh,
+    raw?.titleZh,
+    raw?.name_cn,
+    langHint === 'zh' ? raw?.name : '',
+    langHint === 'zh' ? raw?.title : ''
+  );
+  const enName = firstNonEmpty(
+    raw?.name_en,
+    raw?.nameEn,
+    raw?.title_en,
+    raw?.titleEn,
+    langHint === 'en' ? raw?.name : '',
+    langHint === 'en' ? raw?.title : ''
+  );
+  const zhDesc = firstNonEmpty(
+    raw?.description_zh,
+    raw?.descriptionZh,
+    raw?.desc_zh,
+    raw?.descZh,
+    langHint === 'zh' ? raw?.description : '',
+    langHint === 'zh' ? raw?.desc : ''
+  );
+  const enDesc = firstNonEmpty(
+    raw?.description_en,
+    raw?.descriptionEn,
+    raw?.desc_en,
+    raw?.descEn,
+    langHint === 'en' ? raw?.description : '',
+    langHint === 'en' ? raw?.desc : ''
+  );
+  const zhCategory = firstNonEmpty(
+    raw?.category_zh,
+    raw?.categoryZh,
+    raw?.group_zh,
+    raw?.groupZh,
+    langHint === 'zh' ? raw?.category : '',
+    langHint === 'zh' ? raw?.group : ''
+  );
+  const enCategory = firstNonEmpty(
+    raw?.category_en,
+    raw?.categoryEn,
+    raw?.group_en,
+    raw?.groupEn,
+    langHint === 'en' ? raw?.category : '',
+    langHint === 'en' ? raw?.group : ''
+  );
+  const icon = absoluteHttpUrl(
+    firstNonEmpty(raw?.icon, raw?.logo, raw?.image, raw?.favicon, raw?.icon_url, raw?.iconUrl),
+    sourceUrl
+  );
+
+  return {
+    url,
+    name: zhName,
+    nameEn: enName,
+    description: zhDesc,
+    descriptionEn: enDesc,
+    category: zhCategory,
+    categoryEn: enCategory,
+    icon: isValidUrl(icon) ? icon : ''
+  };
+}
+
+function extractSkillFeedItems(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.skills)) return payload.skills;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
+}
+
+function mergeSkillCatalogFeeds(zhItems, enItems) {
+  const merged = new Map();
+
+  function absorb(items, langHint, sourceUrl) {
+    for (const raw of Array.isArray(items) ? items : []) {
+      const normalized = normalizeSkillCatalogItem(raw, langHint, sourceUrl);
+      if (!normalized) continue;
+      const key = normalized.url;
+      const prev = merged.get(key) || {
+        url: key,
+        name: '',
+        nameEn: '',
+        description: '',
+        descriptionEn: '',
+        category: '',
+        categoryEn: '',
+        icon: ''
+      };
+      merged.set(key, {
+        url: key,
+        name: prev.name || normalized.name,
+        nameEn: prev.nameEn || normalized.nameEn,
+        description: prev.description || normalized.description,
+        descriptionEn: prev.descriptionEn || normalized.descriptionEn,
+        category: prev.category || normalized.category,
+        categoryEn: prev.categoryEn || normalized.categoryEn,
+        icon: prev.icon || normalized.icon
+      });
+    }
+  }
+
+  absorb(zhItems, 'zh', SKILLS_CATALOG_SOURCE_ZH);
+  absorb(enItems, 'en', SKILLS_CATALOG_SOURCE_EN);
+
+  return Array.from(merged.values()).filter((item) => item.name || item.nameEn);
+}
+
+async function syncSkillsCatalogOnce() {
+  const mergedItems = await fetchSkillsCatalogRemoteItems();
+  return saveSkillsToCatalog(mergedItems);
+}
+
+async function fetchSkillsCatalogRemoteItems() {
+  const [zhResult, enResult] = await Promise.allSettled([
+    fetchJson(SKILLS_CATALOG_SOURCE_ZH, 15000),
+    fetchJson(SKILLS_CATALOG_SOURCE_EN, 15000)
+  ]);
+
+  const zhItems = zhResult.status === 'fulfilled' ? extractSkillFeedItems(zhResult.value) : [];
+  const enItems = enResult.status === 'fulfilled' ? extractSkillFeedItems(enResult.value) : [];
+  const mergedItems = mergeSkillCatalogFeeds(zhItems, enItems);
+  if (!mergedItems.length) throw new Error('skills catalog empty');
+  return mergedItems;
+}
+
+function saveSkillsToCatalog(mergedItems) {
+  let newCount = 0;
+  const saveMany = db.transaction((items) => {
+    for (const item of items) {
+      const existed = Boolean(selectSkillByUrlStmt.get(item.url));
+      upsertSkillCatalogStmt.run(
+        String(item.name || '').trim(),
+        String(item.nameEn || '').trim(),
+        item.url,
+        String(item.description || '').trim(),
+        String(item.descriptionEn || '').trim(),
+        String(item.category || '').trim(),
+        String(item.categoryEn || '').trim(),
+        String(item.icon || '').trim()
+      );
+      if (!existed) newCount += 1;
+    }
+  });
+  saveMany(mergedItems);
+
+  const now = Date.now();
+  upsertSettingStmt.run('skills_catalog_last_sync_ms', String(now));
+  upsertSettingStmt.run('skills_catalog_last_sync_count', String(mergedItems.length));
+  upsertSettingStmt.run('skills_catalog_last_sync_new_count', String(newCount));
+
+  return { at: now, total: mergedItems.length, newCount };
+}
+
+async function fetchSkillsCatalogDraftOnce() {
+  const mergedItems = await fetchSkillsCatalogRemoteItems();
+  let newCount = 0;
+  let stagingTotal = 0;
+  const saveDraft = db.transaction((items) => {
+    db.prepare('DELETE FROM skills_catalog_staging').run();
+    for (const item of items) {
+      const existed = Boolean(selectSkillByUrlStmt.get(item.url));
+      if (existed) continue;
+      upsertSkillCatalogStagingStmt.run(
+        String(item.name || '').trim(),
+        String(item.nameEn || '').trim(),
+        item.url,
+        String(item.description || '').trim(),
+        String(item.descriptionEn || '').trim(),
+        String(item.category || '').trim(),
+        String(item.categoryEn || '').trim(),
+        String(item.icon || '').trim()
+      );
+      newCount += 1;
+      stagingTotal += 1;
+    }
+  });
+  saveDraft(mergedItems);
+  const now = Date.now();
+  upsertSettingStmt.run('skills_catalog_last_fetch_ms', String(now));
+  upsertSettingStmt.run('skills_catalog_last_fetch_count', String(stagingTotal));
+  upsertSettingStmt.run('skills_catalog_last_fetch_new_count', String(newCount));
+  return { at: now, total: stagingTotal, newCount, stagingTotal };
+}
+
+function uploadFetchedSkillsToCatalog() {
+  const items = db
+    .prepare(`
+      SELECT name, name_en, url, description, description_en, category, category_en, icon
+      FROM skills_catalog_staging
+      ORDER BY updated_at DESC, fetched_at DESC, id DESC
+    `)
+    .all()
+    .map((item) => ({
+      name: String(item.name || '').trim(),
+      nameEn: String(item.name_en || '').trim(),
+      url: String(item.url || '').trim(),
+      description: String(item.description || '').trim(),
+      descriptionEn: String(item.description_en || '').trim(),
+      category: String(item.category || '').trim(),
+      categoryEn: String(item.category_en || '').trim(),
+      icon: String(item.icon || '').trim()
+    }));
+  if (!items.length) {
+    return { at: Date.now(), total: 0, newCount: 0 };
+  }
+  return saveSkillsToCatalog(items);
+}
+
+async function skillsCatalogTick({ forceIfEmpty = false } = {}) {
+  if (skillsCatalogSyncRunning) return null;
+  const total = Number(skillsCatalogStagingCountStmt.get()?.c || 0);
+  const lastRunMs = parseEpochMs(getSetting('skills_catalog_last_fetch_ms', '0'));
+  const config = getSkillsSyncConfig();
+  const dueBySchedule = config.enabled && shouldRunDailyAt(lastRunMs, config.hour, config.minute);
+  const due = forceIfEmpty ? total === 0 || dueBySchedule : dueBySchedule;
+  if (!due) return null;
+
+  skillsCatalogSyncRunning = true;
+  try {
+    return await fetchSkillsCatalogDraftOnce();
+  } finally {
+    skillsCatalogSyncRunning = false;
+  }
+}
 
 function parseEpochMs(raw) {
   const n = Number(raw);
@@ -2108,6 +2817,14 @@ async function autoCrawlTick() {
 setInterval(() => {
   autoCrawlTick();
 }, 60 * 1000).unref?.();
+
+setInterval(() => {
+  skillsCatalogTick().catch(() => {});
+}, SKILLS_CATALOG_SYNC_CHECK_MS).unref?.();
+
+setTimeout(() => {
+  skillsCatalogTick({ forceIfEmpty: true }).catch(() => {});
+}, 3000).unref?.();
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'claw800' });

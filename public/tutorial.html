@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>教程 - claw800.com</title>
     <link rel="icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/styles.css?v=20260310-01" />
+    <link rel="stylesheet" href="/styles.css?v=20260312-02" />
   </head>
   <body>
     <header class="hero">
@@ -428,7 +428,7 @@
 
       async function loadSiteConfig() {
         try {
-          const res = await fetch('/api/site-config', { cache: 'no-store' });
+          const res = await fetch(`/api/site-config?_=${Date.now()}`, { cache: 'no-store' });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data && data.ok) {
             siteConfig = {

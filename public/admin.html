@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>claw800 后台</title>
     <link id="siteFavicon" rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="/styles.css?v=20260312-01" />
+    <link rel="stylesheet" href="/styles.css?v=20260312-02" />
   </head>
   <body>
     <main class="container admin">
@@ -36,6 +36,8 @@
             <button id="navCategoryAdd">新增分类</button>
             <button id="navTutorialList">教程列表</button>
             <button id="navTutorialAdd">新增教程</button>
+            <button id="navSkillsFetch">技能抓取</button>
+            <button id="navSkills">技能列表</button>
             <button id="navPassword">修改密码</button>
             <button id="navPending">等待审核</button>
             <button id="navApproved">已上线</button>
@@ -111,6 +113,16 @@
                   <input id="siteLogoInput" name="logo" placeholder="https://... 或 data:image/...base64" />
                   <img id="siteLogoPreview" class="logo-preview hidden" alt="logo preview" />
                 </label>
+                <label id="skillsPageTitleZhLabel">技能页标题（中文）<input name="skillsPageTitleZh" /></label>
+                <label id="skillsPageTitleEnLabel">技能页标题（英文）<input name="skillsPageTitleEn" /></label>
+                <label id="skillsPageSubtitleZhLabel">技能页简介（中文）<textarea name="skillsPageSubtitleZh" rows="3"></textarea></label>
+                <label id="skillsPageSubtitleEnLabel">技能页简介（英文）<textarea name="skillsPageSubtitleEn" rows="3"></textarea></label>
+                <label id="skillsPageBotLabelZhLabel">技能页 Bot 标题（中文）<input name="skillsPageBotLabelZh" /></label>
+                <label id="skillsPageBotLabelEnLabel">技能页 Bot 标题（英文）<input name="skillsPageBotLabelEn" /></label>
+                <label id="skillsPageBotPromptZhLabel">技能页 Bot 提示词（中文）<textarea name="skillsPageBotPromptZh" rows="6"></textarea></label>
+                <label id="skillsPageBotPromptEnLabel">技能页 Bot 提示词（英文）<textarea name="skillsPageBotPromptEn" rows="6"></textarea></label>
+                <label id="skillsPageInstallPromptZhLabel">技能页安装提示词模板（中文，支持 {{name}} {{description}} {{url}}）<textarea name="skillsPageInstallPromptZh" rows="8"></textarea></label>
+                <label id="skillsPageInstallPromptEnLabel">技能页安装提示词模板（英文，支持 {{name}} {{description}} {{url}}）<textarea name="skillsPageInstallPromptEn" rows="8"></textarea></label>
                 <label id="siteFooterCopyrightZhLabel">版权说明（中文）<textarea name="footerCopyrightZh" rows="2"></textarea></label>
                 <label id="siteFooterCopyrightEnLabel">版权说明（英文）<textarea name="footerCopyrightEn" rows="2"></textarea></label>
                 <label id="siteFooterLinksLabel"
@@ -209,6 +221,48 @@
               <div id="tutorialList" class="admin-list"></div>
             </div>
 
+            <div id="adminSkillsFetchSection" class="hidden">
+              <h2 id="skillsFetchTitle">技能抓取</h2>
+              <div class="review-card">
+                <h3 id="skillsSyncConfigTitle">技能抓取设置</h3>
+                <form id="skillsSyncConfigForm" class="admin-add-form">
+                  <label id="skillsSyncEnabledLabel">自动抓取
+                    <select id="skillsSyncEnabledSelect" name="enabled">
+                      <option value="1">开启</option>
+                      <option value="0">关闭</option>
+                    </select>
+                  </label>
+                  <label id="skillsSyncTimeLabel">抓取时间
+                    <div class="toolbar">
+                      <input id="skillsSyncHourInput" name="hour" type="number" min="0" max="23" value="10" />
+                      <span>:</span>
+                      <input id="skillsSyncMinuteInput" name="minute" type="number" min="0" max="59" value="0" />
+                    </div>
+                  </label>
+                  <button id="skillsSyncConfigSaveBtn" type="submit">保存设置</button>
+                </form>
+                <p id="skillsSyncConfigMessage" class="message"></p>
+                <p id="skillsSyncConfigStatus" class="small"></p>
+              </div>
+              <div class="toolbar">
+                <button id="skillsFetchBtn" type="button">立即抓取</button>
+                <button id="skillsUploadBtn" type="button">一键上传</button>
+              </div>
+              <p id="skillsFetchMessage" class="message"></p>
+              <div id="skillsStagingList" class="admin-list"></div>
+            </div>
+
+            <div id="adminSkillsSection" class="hidden">
+              <h2 id="skillsListTitle">技能列表</h2>
+              <div class="toolbar">
+                <input id="skillsSearchInput" type="text" placeholder="搜索技能名称 / URL / 简介 / 分类" />
+                <button id="skillsSearchBtn" type="button">搜索</button>
+                <button id="skillsClearSearchBtn" type="button">清空</button>
+              </div>
+              <p id="skillsMessage" class="message"></p>
+              <div id="skillsList" class="admin-list"></div>
+            </div>
+
             <div id="adminPasswordSection" class="hidden">
               <h2 id="passwordTitle">修改后台密码</h2>
               <form id="adminPasswordForm" class="admin-add-form">
@@ -229,6 +283,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260312-01"></script>
+    <script src="/admin.js?v=20260313-03"></script>
   </body>
 </html>

@@ -34,7 +34,10 @@ body {
 }
 
 .hero-top {
-  display: block;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
 }
 
 .hero h1 { margin: 0; font-size: 34px; line-height: 1.1; }
@@ -85,6 +88,32 @@ body {
 }
 
 .lang-switch button.active {
+  background: #fff;
+  color: var(--brand-2);
+}
+
+.hero-center-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hero-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: #fff;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.hero-nav-btn.active {
   background: #fff;
   color: var(--brand-2);
 }
@@ -377,6 +406,64 @@ button.danger { background: var(--danger); }
 .site-card:hover {
   background: #bfe5c7;
   border-color: #79b589;
+}
+
+.skills-toolbar-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin: -4px 0 14px;
+}
+
+.skills-toolbar-note a {
+  color: var(--brand-2);
+  text-decoration: none;
+}
+
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skill-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.skill-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.skill-card-icon--placeholder {
+  background: linear-gradient(135deg, #eef3ed, #dfe8e1);
+}
+
+.skill-card-head-text {
+  min-width: 0;
+}
+
+.skill-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.skill-card-category {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .site-badge-stack {
@@ -678,6 +765,12 @@ button.danger { background: var(--danger); }
 
 @media (max-width: 900px) {
   .layout { display: block; }
+  .hero-top {
+    grid-template-columns: 1fr;
+  }
+  .hero-center-nav {
+    justify-content: flex-start;
+  }
   .hero-subrow {
     align-items: flex-start;
     flex-direction: column;
@@ -712,6 +805,10 @@ button.danger { background: var(--danger); }
   height: 56px;
   padding: 0;
 }
+  .skills-toolbar-note {
+    flex-direction: column;
+    align-items: flex-start;
+  }
   .admin-panel-grid { grid-template-columns: 1fr; }
   .admin-add-form { grid-template-columns: 1fr; }
 }
