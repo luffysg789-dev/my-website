@@ -11,7 +11,6 @@ const adminImportForm = document.getElementById('adminImportForm');
 const importMessage = document.getElementById('importMessage');
 const adminCategorySelect = document.getElementById('adminCategorySelect');
 const adminLangZhBtn = document.getElementById('adminLangZhBtn');
-const adminLangEnBtn = document.getElementById('adminLangEnBtn');
 const navSiteConfig = document.getElementById('navSiteConfig');
 const navAutoCrawl = document.getElementById('navAutoCrawl');
 const adminSearchInput = document.getElementById('adminSearchInput');
@@ -455,7 +454,7 @@ const texts = {
 };
 
 let currentStatus = 'pending';
-let currentLang = localStorage.getItem('claw800_lang') === 'en' ? 'en' : 'zh';
+let currentLang = 'zh';
 let currentItems = [];
 let currentQuery = '';
 let currentView = 'pending';
@@ -585,7 +584,6 @@ function getApiCandidates(path) {
 
 function categoryLabel(category) {
   if (!category) return t('unknown');
-  if (currentLang === 'en') return CATEGORY_EN[category] || category;
   return category;
 }
 
@@ -668,7 +666,7 @@ function renderCategoryList() {
           </label>
           ${
             item.id < 0
-              ? `<span class="small">${escapeHtml(currentLang === 'en' ? 'Readonly (restart backend to edit)' : '只读（重启后端后可编辑）')}</span>`
+              ? `<span class="small">${escapeHtml('只读（重启后端后可编辑）')}</span>`
               : `<button type="button" onclick="saveCategoryConfig(${item.id})">${escapeHtml(t('categorySaveBtn'))}</button>
                  <button type="button" class="danger" onclick="deleteCategoryConfig(${item.id})">${escapeHtml(
                    t('categoryDeleteBtn')
@@ -819,8 +817,7 @@ function applyLanguage() {
     enabledSelect.options[1].textContent = dict.enabledNo;
   }
 
-  adminLangZhBtn.classList.toggle('active', currentLang === 'zh');
-  adminLangEnBtn.classList.toggle('active', currentLang === 'en');
+  adminLangZhBtn.classList.add('active');
 
   renderAdminCategoryOptions();
   renderCategoryList();
@@ -2070,7 +2067,7 @@ if (siteIconFile && siteIconInput) {
     if (!file) return;
     // Keep icon small: favicon shouldn't be huge.
     if (file.size > 200 * 1024) {
-      alert(currentLang === 'en' ? 'Icon is too large (max 200KB).' : 'icon 太大（最大 200KB）');
+      alert('icon 太大（最大 200KB）');
       siteIconFile.value = '';
       return;
     }
@@ -2187,13 +2184,6 @@ autoCrawlClearBtn.addEventListener('click', async () => {
 
 adminLangZhBtn.addEventListener('click', () => {
   currentLang = 'zh';
-  localStorage.setItem('claw800_lang', currentLang);
-  applyLanguage();
-});
-
-adminLangEnBtn.addEventListener('click', () => {
-  currentLang = 'en';
-  localStorage.setItem('claw800_lang', currentLang);
   applyLanguage();
 });
 
