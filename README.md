@@ -16,13 +16,7 @@ npm install
 
 ## 2. 启动
 
-```bash
-ADMIN_PASSWORD='你的后台密码' npm start
-```
 
-默认访问：
-- 前台：`http://localhost:3000`
-- 后台：`http://localhost:3000/admin.html`
 
 ## 3. 数据
 
