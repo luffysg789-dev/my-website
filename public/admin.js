@@ -25,6 +25,7 @@ const visitStatsRefreshBtn = document.getElementById('visitStatsRefreshBtn');
 const adminSiteConfigSection = document.getElementById('adminSiteConfigSection');
 const siteConfigForm = document.getElementById('siteConfigForm');
 const siteConfigMessage = document.getElementById('siteConfigMessage');
+const faviconEl = document.getElementById('siteFavicon') || document.querySelector('link[rel~="icon"]');
 const siteIconInput = document.getElementById('siteIconInput');
 const siteIconFile = document.getElementById('siteIconFile');
 const siteIconClearBtn = document.getElementById('siteIconClearBtn');
@@ -1151,6 +1152,12 @@ function refreshSiteLogoPreview() {
   siteLogoPreview.classList.remove('hidden');
 }
 
+function renderAdminFavicon() {
+  if (!faviconEl) return;
+  const icon = String(siteConfigCache?.icon || '').trim();
+  faviconEl.href = icon || '/favicon.ico';
+}
+
 async function loadSiteConfig() {
   siteConfigMessage.textContent = '';
   siteConfigMessage.className = 'message';
@@ -1173,6 +1180,7 @@ async function loadSiteConfig() {
       return;
     }
     siteConfigCache = result.data || {};
+    renderAdminFavicon();
     if (siteConfigForm) {
       const titleEl = getSiteConfigControl('title');
       const zhEl = getSiteConfigControl('subtitleZh');
@@ -2032,6 +2040,7 @@ if (siteConfigForm) {
         return;
       }
       siteConfigCache = body;
+      renderAdminFavicon();
       siteConfigMessage.textContent = t('siteConfigSaved');
       siteConfigMessage.className = 'message success';
     } catch {
