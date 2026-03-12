@@ -424,6 +424,11 @@ async function autoTranslateToEn(text) {
 
 app.get('/api/sites', (req, res) => {
   const { category, q } = req.query;
+  const limitRaw = Number(req.query.limit || 0);
+  const offsetRaw = Number(req.query.offset || 0);
+  const hasLimit = Number.isFinite(limitRaw) && limitRaw > 0;
+  const limit = hasLimit ? Math.max(1, Math.min(500, Math.floor(limitRaw))) : 0;
+  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.max(0, Math.floor(offsetRaw)) : 0;
   let sql = `SELECT id, name, name_en, url, description, description_en, category, source, sort_order, is_pinned, is_hot, created_at FROM sites WHERE status = 'approved'`;
   const params = [];
 
@@ -439,6 +444,10 @@ app.get('/api/sites', (req, res) => {
   }
 
   sql += ' ORDER BY is_pinned DESC, sort_order DESC, created_at DESC';
+  if (hasLimit) {
+    sql += ' LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+  }
   const rows = db.prepare(sql).all(...params);
 
   res.json({ items: rows });
@@ -1247,7 +1256,7 @@ app.get('/api/skills-catalog', async (req, res) => {
   const q = String(req.query.q || '').trim();
   const keyword = q ? `%${q}%` : '';
   const limitRaw = Number(req.query.limit || 600);
-  const limit = Math.max(1, Math.min(2000, Number.isFinite(limitRaw) ? limitRaw : 600));
+  const limit = Math.max(1, Math.min(10000, Number.isFinite(limitRaw) ? limitRaw : 600));
   const items = listSkillsCatalogStmt.all(
     category,
     category,
@@ -1279,6 +1288,7 @@ app.get('/api/skills-catalog', async (req, res) => {
 });
 
 app.get('/api/skills.json', async (_req, res) => {
+  const lastSyncMs = parseEpochMs(getSetting('skills_catalog_last_sync_ms', '0'));
   const rows = db
     .prepare(`
       SELECT name, name_en, url, description, description_en, category, category_en
@@ -1304,10 +1314,11 @@ app.get('/api/skills.json', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.json({ skills, categories });
+  res.json({ skills, categories, lastSyncMs });
 });
 
 app.get('/api/skills.zh.json', async (_req, res) => {
+  const lastSyncMs = parseEpochMs(getSetting('skills_catalog_last_sync_ms', '0'));
   const rows = db
     .prepare(`
       SELECT name, name_en, url, description, description_en, category, category_en
@@ -1336,7 +1347,7 @@ app.get('/api/skills.zh.json', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.json({ skills, categories, categories_zh: categoriesZh });
+  res.json({ skills, categories, categories_zh: categoriesZh, lastSyncMs });
 });
 
 app.get('/api/admin/skills', requireAdmin, (req, res) => {

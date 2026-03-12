@@ -182,6 +182,9 @@ function normalizeLang(input) {
 let currentCategory = '';
 let currentLang = normalizeLang(localStorage.getItem('claw800_lang'));
 let categoriesCache = [];
+let allSitesCache = [];
+let sitesRequestSeq = 0;
+const HOME_INITIAL_SITE_LIMIT = 12;
 const translationCache = new Map(); // key: `${to}|${source}` -> translated
 const translationInflight = new Map(); // key: `${to}|${source}` -> Promise<string>
 const translatedTextNodes = new WeakMap(); // Node -> { to, source }
@@ -684,21 +687,16 @@ async function loadCategories() {
   renderCategoryOptions();
 }
 
-async function loadSites() {
-  const q = searchInput.value.trim();
-  const params = new URLSearchParams();
-  if (currentCategory) params.set('category', currentCategory);
-  if (q) params.set('q', q);
+function renderSites(items) {
+  const siteItems = Array.isArray(items) ? items : [];
+  allSitesCache = siteItems;
 
-  const res = await fetch(`/api/sites?${params.toString()}`);
-  const data = await res.json();
-
-  if (!data.items.length) {
+  if (!siteItems.length) {
     siteListEl.innerHTML = `<p class="empty">${escapeHtml(t('empty'))}</p>`;
     return;
   }
 
-  siteListEl.innerHTML = data.items
+  siteListEl.innerHTML = siteItems
     .map((site) => {
       const zhName = String(site.name || '').trim();
       const zhDesc = String(site.description || '').trim();
@@ -741,11 +739,33 @@ async function loadSites() {
           </div>
         </article>
       </a>
-    `
+    `;
     })
     .join('');
 
   translateVisibleTextNodes();
+}
+
+async function loadSites({ limit = 0, background = false } = {}) {
+  const reqId = ++sitesRequestSeq;
+  const q = searchInput.value.trim();
+  const params = new URLSearchParams();
+  if (currentCategory) params.set('category', currentCategory);
+  if (q) params.set('q', q);
+  if (limit) params.set('limit', String(limit));
+
+  const res = await fetch(`/api/sites?${params.toString()}`);
+  const data = await res.json();
+  if (reqId !== sitesRequestSeq) return;
+
+  renderSites(data.items);
+
+  if (!background && !q && !currentCategory && limit > 0 && Array.isArray(data.items) && data.items.length >= limit) {
+    setTimeout(() => {
+      if (sitesRequestSeq !== reqId) return;
+      loadSites({ background: true }).catch(() => {});
+    }, 0);
+  }
 }
 
 // Left-side dock (导航/教程) is disabled on homepage for now.
@@ -755,7 +775,8 @@ function setLanguage(lang) {
   currentLang = normalizeLang(lang);
   localStorage.setItem('claw800_lang', currentLang);
   applyLanguage();
-  loadSites();
+  if (allSitesCache.length && !currentCategory && !searchInput.value.trim()) renderSites(allSitesCache);
+  else loadSites();
 }
 
 function openSubmitModal() {
@@ -843,7 +864,7 @@ document.addEventListener('click', (e) => {
   closeLangMenu();
 });
 
-searchBtn.addEventListener('click', loadSites);
+searchBtn.addEventListener('click', () => loadSites());
 searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -852,8 +873,6 @@ searchInput.addEventListener('keydown', (e) => {
 });
 
 (async () => {
-  await loadSiteConfig();
+  await Promise.all([loadSiteConfig(), loadCategories(), loadSites({ limit: HOME_INITIAL_SITE_LIMIT })]);
   applyLanguage();
-  await loadCategories();
-  await loadSites();
 })();

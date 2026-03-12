@@ -7,6 +7,11 @@ let lastSyncText = '';
 let pageConfig = null;
 let currentPage = 1;
 const PAGE_SIZE = 30;
+const INITIAL_SKILLS_LIMIT = 30;
+const langState = {
+  zh: { categories: {}, lastSyncMs: 0, fullLoaded: false, fullPromise: null },
+  en: { categories: {}, lastSyncMs: 0, fullLoaded: false, fullPromise: null }
+};
 
 const i18n = {
   zh: {
@@ -85,6 +90,116 @@ function formatDateTime(ms) {
   }).format(date);
 }
 
+function normalizeSkillsPayload(data) {
+  const payload = data && typeof data === 'object' ? data : {};
+  const skills = Array.isArray(payload.skills) ? payload.skills : [];
+  const categories = payload.categories && typeof payload.categories === 'object' ? payload.categories : {};
+  const lastSyncMs = Number(payload.lastSyncMs || 0) || 0;
+  return { skills, categories, lastSyncMs };
+}
+
+function buildSkillsPayloadFromCatalog(data, lang = 'en') {
+  const payload = data && typeof data === 'object' ? data : {};
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const categories = {};
+  const lastSyncMs = Number(payload.lastSyncMs || 0) || 0;
+  const skills = items.map((item) => {
+    const category = String(item.category_en || item.category || 'Other').trim() || 'Other';
+    const categoryZh = String(item.category || item.category_en || '').trim() || category;
+    categories[category] = (categories[category] || 0) + 1;
+    return {
+      name: String(item.name_en || item.name || '').trim(),
+      description: String(item.description_en || item.description || '').trim(),
+      description_zh: String(item.description || item.description_en || '').trim(),
+      category,
+      category_zh: categoryZh,
+      url: String(item.url || '').trim()
+    };
+  });
+  return { skills, categories, lang, lastSyncMs };
+}
+
+async function fetchSkillsPayload(lang = 'en') {
+  const suffix = lang === 'zh' ? 'skills.zh.json' : 'skills.json';
+  const primaryRes = await fetch(`/api/${suffix}?_=${Date.now()}`, { cache: 'no-store' });
+  const primaryData = await primaryRes.json().catch(() => ({}));
+  const normalized = normalizeSkillsPayload(primaryData);
+  if (primaryRes.ok && normalized.skills.length) {
+    return normalized;
+  }
+
+  const fallbackRes = await fetch(`/api/skills-catalog?limit=10000&_=${Date.now()}`, { cache: 'no-store' });
+  const fallbackData = await fallbackRes.json().catch(() => ({}));
+  if (!fallbackRes.ok) {
+    throw new Error(`skills catalog http ${fallbackRes.status}`);
+  }
+  return buildSkillsPayloadFromCatalog(fallbackData, lang);
+}
+
+async function fetchInitialSkillsPayload(lang = 'en') {
+  const res = await fetch(`/api/skills-catalog?limit=${INITIAL_SKILLS_LIMIT}&_=${Date.now()}`, { cache: 'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`skills catalog http ${res.status}`);
+  }
+  return buildSkillsPayloadFromCatalog(data, lang);
+}
+
+function getLangState(lang = currentLang) {
+  return lang === 'zh' ? langState.zh : langState.en;
+}
+
+function setLangPayload(lang, data, { fullLoaded = false } = {}) {
+  const state = getLangState(lang);
+  const skills = Array.isArray(data.skills) ? data.skills : [];
+  state.categories = data.categories && typeof data.categories === 'object' ? data.categories : {};
+  state.lastSyncMs = Number(data.lastSyncMs || 0) || 0;
+  state.fullLoaded = fullLoaded;
+
+  if (lang === 'zh') {
+    zhSkills = skills;
+    zhLoaded = skills.length > 0;
+  } else {
+    allSkills = skills;
+  }
+}
+
+function refreshCurrentLanguageView() {
+  const state = getLangState(currentLang);
+  const visibleSkills = getSkills();
+  document.getElementById('total-count').textContent = String(Array.isArray(visibleSkills) ? visibleSkills.length : 0);
+  document.getElementById('cat-count').textContent = String(Object.keys(state.categories || {}).length);
+  lastSyncText = formatDateTime(state.lastSyncMs || 0);
+  document.getElementById('sync-note').textContent = i18n[currentLang].syncNote(lastSyncText);
+  renderCategories();
+  filterSkills();
+}
+
+function ensureFullPayload(lang = currentLang, { silent = true } = {}) {
+  const state = getLangState(lang);
+  if (state.fullLoaded) return Promise.resolve();
+  if (state.fullPromise) return state.fullPromise;
+
+  if (!silent) document.getElementById('lang-loading').style.display = 'block';
+  state.fullPromise = fetchSkillsPayload(lang)
+    .then((data) => {
+      setLangPayload(lang, data, { fullLoaded: true });
+      if (lang === currentLang) {
+        refreshCurrentLanguageView();
+      }
+    })
+    .catch(() => {
+      // ignore
+    })
+    .finally(() => {
+      state.fullPromise = null;
+      if (!silent && lang === currentLang) {
+        document.getElementById('lang-loading').style.display = 'none';
+      }
+    });
+  return state.fullPromise;
+}
+
 async function init() {
   currentLang = String(localStorage.getItem('claw800_lang') || '').trim() === 'en' ? 'en' : 'zh';
   document.getElementById('btn-zh').addEventListener('click', () => setLang('zh'));
@@ -153,34 +268,20 @@ function applyLanguage() {
 }
 
 async function loadData() {
-  const cacheBust = `?_=${Date.now()}`;
-  const res = await fetch(`/api/skills.json${cacheBust}`, { cache: 'no-store' });
-  const data = await res.json();
-  allSkills = Array.isArray(data.skills) ? data.skills : [];
-  document.getElementById('total-count').textContent = String(allSkills.length);
-  document.getElementById('cat-count').textContent = String(Object.keys(data.categories || {}).length);
-
-  const meta = await fetch(`/api/skills-catalog?limit=1&_=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => ({}));
-  lastSyncText = formatDateTime(meta.lastSyncMs || 0);
-  document.getElementById('sync-note').textContent = i18n[currentLang].syncNote(lastSyncText);
-
-  if (currentLang === 'zh' && !zhLoaded) {
-    document.getElementById('lang-loading').style.display = 'block';
-    try {
-      const r = await fetch(`/api/skills.zh.json?_=${Date.now()}`, { cache: 'no-store' });
-      if (r.ok) {
-        const d = await r.json();
-        zhSkills = Array.isArray(d.skills) ? d.skills : [];
-        zhLoaded = true;
-      }
-    } catch {
-      // ignore
-    }
-    document.getElementById('lang-loading').style.display = 'none';
+  const lang = currentLang === 'zh' ? 'zh' : 'en';
+  try {
+    const initialData = await fetchInitialSkillsPayload(lang);
+    setLangPayload(lang, initialData, { fullLoaded: false });
+    refreshCurrentLanguageView();
+    ensureFullPayload(lang);
+    return;
+  } catch {
+    // ignore
   }
 
-  renderCategories();
-  filterSkills();
+  const fullData = await fetchSkillsPayload(lang);
+  setLangPayload(lang, fullData, { fullLoaded: true });
+  refreshCurrentLanguageView();
 }
 
 async function setLang(lang) {
@@ -188,23 +289,26 @@ async function setLang(lang) {
   localStorage.setItem('claw800_lang', currentLang);
   document.getElementById('btn-zh').classList.toggle('active', currentLang === 'zh');
   document.getElementById('btn-en').classList.toggle('active', currentLang === 'en');
-
-  if (currentLang === 'zh' && !zhLoaded) {
+  applyLanguage();
+  const state = getLangState(currentLang);
+  const hasAnySkills = currentLang === 'zh' ? Array.isArray(zhSkills) && zhSkills.length : Array.isArray(allSkills) && allSkills.length;
+  if (!hasAnySkills) {
     document.getElementById('lang-loading').style.display = 'block';
     try {
-      const r = await fetch(`/api/skills.zh.json?_=${Date.now()}`, { cache: 'no-store' });
-      if (r.ok) {
-        const d = await r.json();
-        zhSkills = Array.isArray(d.skills) ? d.skills : [];
-        zhLoaded = true;
-      }
+      const initialData = await fetchInitialSkillsPayload(currentLang);
+      setLangPayload(currentLang, initialData, { fullLoaded: false });
     } catch {
-      // ignore
+      try {
+        const fullData = await fetchSkillsPayload(currentLang);
+        setLangPayload(currentLang, fullData, { fullLoaded: true });
+      } catch {
+        // ignore
+      }
     }
     document.getElementById('lang-loading').style.display = 'none';
   }
-
-  applyLanguage();
+  refreshCurrentLanguageView();
+  if (!state.fullLoaded) ensureFullPayload(currentLang);
 }
 
 function getSkills() {
@@ -212,12 +316,15 @@ function getSkills() {
 }
 
 function buildCategoryMaps() {
+  const state = getLangState(currentLang);
   const skills = getSkills();
-  const counts = {};
+  const counts = state.fullLoaded ? {} : { ...(state.categories || {}) };
   const zhMap = {};
   skills.forEach((skill) => {
     const key = String(skill.category || '').trim() || 'Other';
-    counts[key] = (counts[key] || 0) + 1;
+    if (state.fullLoaded) {
+      counts[key] = (counts[key] || 0) + 1;
+    }
     if (skill.category_zh) zhMap[key] = String(skill.category_zh || '').trim();
   });
   return { counts, zhMap };
@@ -265,6 +372,9 @@ function filterSkills() {
   currentPage = 1;
   document.getElementById('search-count').textContent = (q || activeCategory !== 'all') ? t.foundCount(skills.length) : '';
   renderSkills(skills);
+  if ((q || activeCategory !== 'all') && !getLangState(currentLang).fullLoaded) {
+    ensureFullPayload(currentLang, { silent: false });
+  }
 }
 
 function renderSkills(skills) {
