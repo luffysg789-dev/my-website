@@ -13,6 +13,8 @@ const langMenuPopup = document.getElementById('langMenuPopup');
 const categorySelect = document.getElementById('categorySelect');
 const navView = document.getElementById('navView');
 const heroLogoEl = document.getElementById('heroLogo');
+const heroLogoImageEl = document.getElementById('heroLogoImage');
+const heroLogoTextEl = document.getElementById('heroLogoText');
 const heroSubtitleEl = document.getElementById('heroSubtitle');
 const faviconEl = document.getElementById('siteFavicon') || document.querySelector('link[rel~="icon"]');
 const footerCopyrightEl = document.getElementById('footerCopyright');
@@ -274,6 +276,27 @@ function renderFavicon() {
   if (!faviconEl) return;
   const icon = String(siteConfig?.icon || '').trim();
   faviconEl.href = icon || '/favicon.ico';
+}
+
+function renderHeroLogo() {
+  const titleFromConfig = String(siteConfig?.title || '').trim();
+  const safeTitle = titleFromConfig || 'claw800.com';
+  const logo = String(siteConfig?.logo || '').trim();
+
+  if (heroLogoTextEl) {
+    heroLogoTextEl.textContent = safeTitle;
+  } else if (heroLogoEl) {
+    heroLogoEl.textContent = safeTitle;
+  }
+
+  if (!heroLogoImageEl) return;
+  if (!logo) {
+    heroLogoImageEl.classList.add('hidden');
+    heroLogoImageEl.removeAttribute('src');
+    return;
+  }
+  heroLogoImageEl.src = logo;
+  heroLogoImageEl.classList.remove('hidden');
 }
 
 function t(key) {
@@ -587,7 +610,7 @@ function applyLanguage() {
   const titleSuffix = currentLang === 'en' ? 'OpenClaw AI Directory' : 'OpenClaw AI 导航';
   document.title = htmlTitle || `${safeTitle} - ${titleSuffix}`;
 
-  if (heroLogoEl) heroLogoEl.textContent = safeTitle;
+  renderHeroLogo();
 
   const subtitle =
     currentLang === 'en'
@@ -627,6 +650,7 @@ async function loadSiteConfig() {
         htmlTitleZh: String(data.htmlTitleZh || '').trim(),
         htmlTitleEn: String(data.htmlTitleEn || '').trim(),
         icon: String(data.icon || '').trim(),
+        logo: String(data.logo || '').trim(),
         footerCopyrightZh: String(data.footerCopyrightZh || '').trim(),
         footerCopyrightEn: String(data.footerCopyrightEn || '').trim(),
         footerContactZh: String(data.footerContactZh || '').trim(),

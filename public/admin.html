@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>claw800 后台</title>
-    <link rel="stylesheet" href="/styles.css?v=20260311-01" />
+    <link rel="stylesheet" href="/styles.css?v=20260312-01" />
   </head>
   <body>
     <main class="container admin">
@@ -100,6 +100,15 @@
                   </div>
                   <input id="siteIconInput" name="icon" placeholder="https://... 或 data:image/...base64" />
                   <img id="siteIconPreview" class="icon-preview hidden" alt="icon preview" />
+                </label>
+                <label id="siteLogoLabel"
+                  >首页 Logo（正方形）
+                  <div class="toolbar">
+                    <input id="siteLogoFile" type="file" accept="image/*" />
+                    <button id="siteLogoClearBtn" type="button" class="danger">清除</button>
+                  </div>
+                  <input id="siteLogoInput" name="logo" placeholder="https://... 或 data:image/...base64" />
+                  <img id="siteLogoPreview" class="logo-preview hidden" alt="logo preview" />
                 </label>
                 <label id="siteFooterCopyrightZhLabel">版权说明（中文）<textarea name="footerCopyrightZh" rows="2"></textarea></label>
                 <label id="siteFooterCopyrightEnLabel">版权说明（英文）<textarea name="footerCopyrightEn" rows="2"></textarea></label>
@@ -219,6 +228,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260311-03"></script>
+    <script src="/admin.js?v=20260312-01"></script>
   </body>
 </html>

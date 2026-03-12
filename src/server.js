@@ -400,6 +400,7 @@ app.get('/api/site-config', (_req, res) => {
   const htmlTitleZh = getSetting('site_html_title_zh', '');
   const htmlTitleEn = getSetting('site_html_title_en', '');
   const icon = getSetting('site_icon', '');
+  const logo = getSetting('site_logo', '');
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
   const footerContactZh = getSetting('site_footer_contact_zh', '');
@@ -413,6 +414,7 @@ app.get('/api/site-config', (_req, res) => {
     htmlTitleZh,
     htmlTitleEn,
     icon,
+    logo,
     footerCopyrightZh,
     footerCopyrightEn,
     footerContactZh,
@@ -428,6 +430,7 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
   const htmlTitleZh = getSetting('site_html_title_zh', '');
   const htmlTitleEn = getSetting('site_html_title_en', '');
   const icon = getSetting('site_icon', '');
+  const logo = getSetting('site_logo', '');
   const footerCopyrightZh = getSetting('site_footer_copyright_zh', '');
   const footerCopyrightEn = getSetting('site_footer_copyright_en', '');
   const footerContactZh = getSetting('site_footer_contact_zh', '');
@@ -442,6 +445,7 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
     htmlTitleZh,
     htmlTitleEn,
     icon,
+    logo,
     footerCopyrightZh,
     footerCopyrightEn,
     footerContactZh,
@@ -458,6 +462,7 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   const htmlTitleZh = String(req.body.htmlTitleZh || '').trim();
   const htmlTitleEn = String(req.body.htmlTitleEn || '').trim();
   const icon = String(req.body.icon || '').trim();
+  const logo = String(req.body.logo || '').trim();
   const footerCopyrightZh = String(req.body.footerCopyrightZh || '').trim();
   const footerCopyrightEn = String(req.body.footerCopyrightEn || '').trim();
   const footerContactZh = String(req.body.footerContactZh || '').trim();
@@ -471,6 +476,7 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   if (Buffer.byteLength(htmlTitleZh, 'utf8') > 200) return res.status(413).json({ error: '网站title(中文)太长' });
   if (Buffer.byteLength(htmlTitleEn, 'utf8') > 200) return res.status(413).json({ error: '网站title(英文)太长' });
   if (Buffer.byteLength(icon, 'utf8') > 600000) return res.status(413).json({ error: 'icon 太大（请使用小图标）' });
+  if (Buffer.byteLength(logo, 'utf8') > 3000000) return res.status(413).json({ error: 'logo 太大（请压缩后再上传）' });
   if (Buffer.byteLength(footerCopyrightZh, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(中文)太长' });
   if (Buffer.byteLength(footerCopyrightEn, 'utf8') > 2000) return res.status(413).json({ error: '版权说明(英文)太长' });
   if (Buffer.byteLength(footerContactZh, 'utf8') > 2000) return res.status(413).json({ error: '联系客服(中文)太长' });
@@ -479,6 +485,9 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
 
   if (icon && !isProbablyDataUrl(icon) && !isProbablyAbsoluteUrl(icon)) {
     return res.status(400).json({ error: 'icon 必须是图片 dataURL 或 http(s) 链接' });
+  }
+  if (logo && !isProbablyDataUrl(logo) && !isProbablyAbsoluteUrl(logo)) {
+    return res.status(400).json({ error: 'logo 必须是图片 dataURL 或 http(s) 链接' });
   }
 
   try {
@@ -489,6 +498,7 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
     upsertSettingStmt.run('site_html_title_zh', htmlTitleZh);
     upsertSettingStmt.run('site_html_title_en', htmlTitleEn);
     upsertSettingStmt.run('site_icon', icon);
+    upsertSettingStmt.run('site_logo', logo);
     upsertSettingStmt.run('site_footer_copyright_zh', footerCopyrightZh);
     upsertSettingStmt.run('site_footer_copyright_en', footerCopyrightEn);
     upsertSettingStmt.run('site_footer_contact_zh', footerContactZh);

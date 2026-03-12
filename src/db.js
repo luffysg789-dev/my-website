@@ -225,6 +225,9 @@ db.prepare(
 db.prepare(
   "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_icon', '', datetime('now'))"
 ).run();
+db.prepare(
+  "INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('site_logo', '', datetime('now'))"
+).run();
 
 // Auto-crawl settings (admin toggles). Stored as strings in settings.
 db.prepare(

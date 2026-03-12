@@ -29,6 +29,10 @@ const siteIconInput = document.getElementById('siteIconInput');
 const siteIconFile = document.getElementById('siteIconFile');
 const siteIconClearBtn = document.getElementById('siteIconClearBtn');
 const siteIconPreview = document.getElementById('siteIconPreview');
+const siteLogoInput = document.getElementById('siteLogoInput');
+const siteLogoFile = document.getElementById('siteLogoFile');
+const siteLogoClearBtn = document.getElementById('siteLogoClearBtn');
+const siteLogoPreview = document.getElementById('siteLogoPreview');
 const adminAutoCrawlSection = document.getElementById('adminAutoCrawlSection');
 const autoCrawlStatus = document.getElementById('autoCrawlStatus');
 const autoCrawlMessage = document.getElementById('autoCrawlMessage');
@@ -129,6 +133,7 @@ const texts = {
     siteHtmlTitleZhLabel: '网站 title（中文）',
     siteHtmlTitleEnLabel: '网站 title（英文）',
     siteIconLabel: '网站 Icon（favicon）',
+    siteLogoLabel: '首页 Logo（正方形）',
     siteFooterCopyrightZhLabel: '版权说明（中文）',
     siteFooterCopyrightEnLabel: '版权说明（英文）',
     siteFooterLinksLabel: '友情链接',
@@ -304,6 +309,7 @@ const texts = {
     siteHtmlTitleZhLabel: 'HTML Title (ZH)',
     siteHtmlTitleEnLabel: 'HTML Title (EN)',
     siteIconLabel: 'Site Icon (favicon)',
+    siteLogoLabel: 'Homepage Logo (Square)',
     siteFooterCopyrightZhLabel: 'Copyright (ZH)',
     siteFooterCopyrightEnLabel: 'Copyright (EN)',
     siteFooterLinksLabel: 'Links',
@@ -774,6 +780,7 @@ function applyLanguage() {
   document.getElementById('siteHtmlTitleZhLabel').childNodes[0].textContent = dict.siteHtmlTitleZhLabel;
   document.getElementById('siteHtmlTitleEnLabel').childNodes[0].textContent = dict.siteHtmlTitleEnLabel;
   document.getElementById('siteIconLabel').childNodes[0].textContent = dict.siteIconLabel;
+  document.getElementById('siteLogoLabel').childNodes[0].textContent = dict.siteLogoLabel;
   document.getElementById('siteFooterCopyrightZhLabel').childNodes[0].textContent = dict.siteFooterCopyrightZhLabel;
   document.getElementById('siteFooterCopyrightEnLabel').childNodes[0].textContent = dict.siteFooterCopyrightEnLabel;
   document.getElementById('siteFooterLinksLabel').childNodes[0].textContent = dict.siteFooterLinksLabel;
@@ -1132,6 +1139,18 @@ function refreshSiteIconPreview() {
   siteIconPreview.classList.remove('hidden');
 }
 
+function refreshSiteLogoPreview() {
+  if (!siteLogoPreview || !siteLogoInput) return;
+  const logo = String(siteLogoInput.value || '').trim();
+  if (!logo) {
+    siteLogoPreview.classList.add('hidden');
+    siteLogoPreview.removeAttribute('src');
+    return;
+  }
+  siteLogoPreview.src = logo;
+  siteLogoPreview.classList.remove('hidden');
+}
+
 async function loadSiteConfig() {
   siteConfigMessage.textContent = '';
   siteConfigMessage.className = 'message';
@@ -1166,18 +1185,21 @@ async function loadSiteConfig() {
       const contactZhEl = getSiteConfigControl('footerContactZh');
       const contactEnEl = getSiteConfigControl('footerContactEn');
       const iconEl = getSiteConfigControl('icon');
+      const logoEl = getSiteConfigControl('logo');
       if (titleEl) titleEl.value = String(siteConfigCache.title || '');
       if (zhEl) zhEl.value = String(siteConfigCache.subtitleZh || '');
       if (enEl) enEl.value = String(siteConfigCache.subtitleEn || '');
       if (htmlTitleZhEl) htmlTitleZhEl.value = String(siteConfigCache.htmlTitleZh || '');
       if (htmlTitleEnEl) htmlTitleEnEl.value = String(siteConfigCache.htmlTitleEn || '');
       if (iconEl) iconEl.value = String(siteConfigCache.icon || '');
+      if (logoEl) logoEl.value = String(siteConfigCache.logo || '');
       if (crZhEl) crZhEl.value = String(siteConfigCache.footerCopyrightZh || '');
       if (crEnEl) crEnEl.value = String(siteConfigCache.footerCopyrightEn || '');
       if (linksEl) linksEl.value = String(siteConfigCache.footerLinksRaw || '');
       if (contactZhEl) contactZhEl.value = String(siteConfigCache.footerContactZh || '');
       if (contactEnEl) contactEnEl.value = String(siteConfigCache.footerContactEn || '');
       refreshSiteIconPreview();
+      refreshSiteLogoPreview();
       setTimeout(() => titleEl?.focus?.(), 0);
     }
   } catch {
@@ -1986,6 +2008,7 @@ if (siteConfigForm) {
       htmlTitleZh: String(payload.htmlTitleZh || '').trim(),
       htmlTitleEn: String(payload.htmlTitleEn || '').trim(),
       icon: String(payload.icon || '').trim(),
+      logo: String(payload.logo || '').trim(),
       footerCopyrightZh: String(payload.footerCopyrightZh || '').trim(),
       footerCopyrightEn: String(payload.footerCopyrightEn || '').trim(),
       footerLinksRaw: String(payload.footerLinksRaw || '').trim(),
@@ -2053,6 +2076,10 @@ if (siteIconInput) {
   siteIconInput.addEventListener('input', () => refreshSiteIconPreview());
 }
 
+if (siteLogoInput) {
+  siteLogoInput.addEventListener('input', () => refreshSiteLogoPreview());
+}
+
 if (siteIconClearBtn && siteIconInput && siteIconFile) {
   siteIconClearBtn.addEventListener('click', () => {
     siteIconInput.value = '';
@@ -2076,6 +2103,36 @@ if (siteIconFile && siteIconInput) {
       const src = String(reader.result || '').trim();
       siteIconInput.value = src;
       refreshSiteIconPreview();
+    };
+    reader.onerror = () => {
+      alert(t('tutorialNetworkError'));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (siteLogoClearBtn && siteLogoInput && siteLogoFile) {
+  siteLogoClearBtn.addEventListener('click', () => {
+    siteLogoInput.value = '';
+    siteLogoFile.value = '';
+    refreshSiteLogoPreview();
+  });
+}
+
+if (siteLogoFile && siteLogoInput) {
+  siteLogoFile.addEventListener('change', () => {
+    const file = siteLogoFile.files?.[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      alert('logo 太大（最大 1MB）');
+      siteLogoFile.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result || '').trim();
+      siteLogoInput.value = src;
+      refreshSiteLogoPreview();
     };
     reader.onerror = () => {
       alert(t('tutorialNetworkError'));
