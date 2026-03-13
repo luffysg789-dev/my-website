@@ -17,6 +17,7 @@ const langState = {
 let summaryLoaded = false;
 let skillRenderTaskId = 0;
 let skillsCategoryRenderTaskId = 0;
+let summaryTotalCount = 0;
 
 function markPageReady() {
   document.documentElement.dataset.i18nReady = '1';
@@ -142,6 +143,7 @@ function writeLocalCache(key, value) {
 
 function hydrateSummaryCache(summary) {
   if (!summary || typeof summary !== 'object') return;
+  summaryTotalCount = Number(summary.total || 0) || 0;
   langState.zh.categories = {};
   langState.en.categories = {};
   langState.zh.categoryZhMap = {};
@@ -576,6 +578,9 @@ function renderSkillsChunked(skills) {
   const t = i18n[currentLang];
   const grid = document.getElementById('skills-grid');
   const noResults = document.getElementById('no-results');
+  const state = getLangState(currentLang);
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const useSummaryPagination = !state.fullLoaded && !q && activeCategory === 'all' && summaryTotalCount > skills.length;
   noResults.textContent = t.noResults;
   skillRenderTaskId += 1;
   const taskId = skillRenderTaskId;
@@ -588,11 +593,12 @@ function renderSkillsChunked(skills) {
   }
 
   noResults.style.display = 'none';
-  const totalPages = Math.max(1, Math.ceil(skills.length / PAGE_SIZE));
+  const totalItems = useSummaryPagination ? summaryTotalCount : skills.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   if (currentPage > totalPages) currentPage = totalPages;
   const start = (currentPage - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE;
-  const display = skills.slice(start, end);
+  const display = useSummaryPagination && currentPage === 1 ? skills.slice(0, PAGE_SIZE) : skills.slice(start, end);
   renderPagination(totalPages);
   grid.innerHTML = '';
 
@@ -659,7 +665,13 @@ function renderPagination(totalPages) {
     .join('');
 }
 
-function goToPage(page) {
+async function goToPage(page) {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const state = getLangState(currentLang);
+  if (!state.fullLoaded && page > 1 && !q && activeCategory === 'all') {
+    renderSkillSkeletons();
+    await ensureFullPayload(currentLang, { silent: false });
+  }
   currentPage = page;
   filterSkillsKeepPage();
   window.scrollTo({ top: 0, behavior: 'smooth' });
