@@ -124,8 +124,10 @@ function getFavoriteCount() {
 function updateFavoriteStat() {
   const countEl = document.getElementById('favorite-count');
   const btnEl = document.getElementById('favorites-stat-btn');
+  const allBtnEl = document.getElementById('all-skills-stat-btn');
   if (countEl) countEl.textContent = String(getFavoriteCount());
   if (btnEl) btnEl.classList.toggle('active', favoriteOnly);
+  if (allBtnEl) allBtnEl.classList.toggle('active', !favoriteOnly);
 }
 
 function escHtml(s) {
@@ -347,6 +349,7 @@ async function init() {
   currentLang = String(localStorage.getItem('claw800_lang') || '').trim() === 'en' ? 'en' : 'zh';
   document.getElementById('btn-zh').addEventListener('click', () => setLang('zh'));
   document.getElementById('btn-en').addEventListener('click', () => setLang('en'));
+  document.getElementById('all-skills-stat-btn').addEventListener('click', showAllSkillsFromStat);
   document.getElementById('favorites-stat-btn').addEventListener('click', toggleFavoriteFilter);
   if (langMenuBtn) {
     langMenuBtn.addEventListener('click', (e) => {
@@ -526,6 +529,15 @@ function getVisibleSkillsBase() {
 
 function toggleFavoriteFilter() {
   favoriteOnly = !favoriteOnly;
+  activeCategory = 'all';
+  currentPage = 1;
+  updateFavoriteStat();
+  renderCategories();
+  filterSkills();
+}
+
+function showAllSkillsFromStat() {
+  favoriteOnly = false;
   activeCategory = 'all';
   currentPage = 1;
   updateFavoriteStat();
