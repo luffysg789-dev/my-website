@@ -12,6 +12,7 @@ const langMenuBtn = document.getElementById('langMenuBtn');
 const langMenuPopup = document.getElementById('langMenuPopup');
 const homeNavBtn = document.getElementById('homeNavBtn');
 const skillsNavBtn = document.getElementById('skillsNavBtn');
+const githubStarBtn = document.getElementById('githubStarBtn');
 const tutorialNavBtn = document.getElementById('tutorialNavBtn');
 const categorySelect = document.getElementById('categorySelect');
 const navView = document.getElementById('navView');
@@ -99,6 +100,7 @@ const texts = {
     searchBtn: '搜索',
     navBtn: '导航',
     skillsBtn: '技能大全',
+    githubStarBtn: 'GitHub 加星',
     tutorialBtn: '教程',
     allCategory: '全部',
     submitTitle: '免费提交网站',
@@ -140,6 +142,7 @@ const texts = {
     searchBtn: 'Search',
     navBtn: 'Directory',
     skillsBtn: 'Skills',
+    githubStarBtn: 'Star on GitHub',
     tutorialBtn: 'Tutorials',
     allCategory: 'All',
     submitTitle: 'Submit a Website',
@@ -634,6 +637,7 @@ function applyLanguage() {
   searchBtn.textContent = dict.searchBtn;
   if (homeNavBtn) homeNavBtn.textContent = dict.navBtn;
   if (skillsNavBtn) skillsNavBtn.textContent = dict.skillsBtn;
+  if (githubStarBtn) githubStarBtn.textContent = dict.githubStarBtn;
   if (tutorialNavBtn) tutorialNavBtn.textContent = dict.tutorialBtn;
   document.getElementById('submitTitle').textContent = dict.submitTitle;
   document.getElementById('submitDesc').textContent = dict.submitDesc;
