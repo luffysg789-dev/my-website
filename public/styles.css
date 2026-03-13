@@ -874,19 +874,21 @@ button.danger { background: var(--danger); }
 
   .hero .lang-switch {
     gap: 10px;
+    flex-wrap: nowrap;
   }
 
   .hero-nav-btn,
   #openSubmitFormBtn {
-    min-width: calc(50% - 5px);
-    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+    flex: 0 1 auto;
     text-align: center;
     white-space: nowrap;
-    min-height: 46px;
-    padding: 10px 14px;
+    min-height: 42px;
+    padding: 9px 12px;
     font-weight: 700;
     border-radius: 14px;
     -webkit-tap-highlight-color: transparent;
+    font-size: 0.875rem;
   }
 
   .lang-menu {
