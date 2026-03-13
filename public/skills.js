@@ -1,5 +1,6 @@
 let currentLang = 'zh';
 let activeCategory = 'all';
+let favoriteOnly = false;
 let allSkills = [];
 let zhSkills = null;
 let zhLoaded = false;
@@ -20,6 +21,8 @@ let summaryLoaded = false;
 let skillRenderTaskId = 0;
 let skillsCategoryRenderTaskId = 0;
 let summaryTotalCount = 0;
+const FAVORITES_KEY = 'claw800_skill_favorites_v1';
+let favoriteSkillUrls = loadFavoriteSkillUrls();
 
 function markPageReady() {
   document.documentElement.dataset.i18nReady = '1';
@@ -37,6 +40,7 @@ const i18n = {
     headerSub: '同步 claw800.com 的 OpenClaw 精选技能目录，分类浏览，一键查看和复制安装提示词。',
     labelSkills: '技能总数',
     labelCats: '分类数',
+    labelFavorites: '我的收藏',
     searchPlaceholder: '🔍 搜索技能名称 / 简介 / 分类...',
     botLabel: 'Bot 安装提示词 — 复制给你的 Bot，它就学会了：',
     botPrompt: 'claw800.com 是 OpenClaw 精选技能导航站，收录 5000+ 可信技能。请学会搜索这个网站里的技能目录，当主人需要某个技能时，优先先来这里查找。搜索：fetch https://claw800.com/api/skills.zh.json 获取完整技能列表，字段包括 name（技能名）、description_zh（中文描述）、category_zh（分类）、url（源地址）。当主人需要某个功能时，先搜索并筛选合适技能推荐给主人，经主人确认后再安装。不要一次性安装所有技能，按需查找、按需安装。',
@@ -52,7 +56,12 @@ const i18n = {
     syncNote: (text) => `最近同步：${text} / 每天早上 10:00 自动同步`,
     loadingZh: '⏳ 正在加载中文数据...',
     allCat: '全部',
-    footerNote: '技能最终数据来源于 ClawHub'
+    footerNote: '技能最终数据来源于 ClawHub',
+    favoritesOnly: '我的收藏',
+    favoritesEmpty: '还没有收藏技能，点卡片右上角桃心先收藏几个吧。',
+    favoriteAdded: (name) => `已收藏「${name}」`,
+    favoriteRemoved: (name) => `已取消收藏「${name}」`,
+    favoriteToastSub: '收藏会保存在当前浏览器里。'
   },
   en: {
     pageTitle: 'Claw800 Skills Directory — OpenClaw Curated Skills',
@@ -61,6 +70,7 @@ const i18n = {
     headerSub: 'Synced from claw800.com. Browse curated OpenClaw skills by category and copy install prompts in one click.',
     labelSkills: 'Skills',
     labelCats: 'Categories',
+    labelFavorites: 'My Favorites',
     searchPlaceholder: '🔍 Search skills by name / description / category...',
     botLabel: 'Bot Install Prompt — copy this to your Bot and it will learn it:',
     botPrompt: 'claw800.com is a curated OpenClaw skills directory with 5000+ trusted skills. Learn how to search this site’s skill catalog so that when your user needs a skill, you check here first. Search by fetching https://claw800.com/api/skills.json to get the full skills list. The fields include name (skill name), description (English description), category (category), and url (source link). When your user needs a capability, first search and filter suitable skills, recommend the best options to the user, and install only after the user confirms. Do not install all skills at once — search on demand and install on demand.',
@@ -76,9 +86,47 @@ const i18n = {
     syncNote: (text) => `Last sync: ${text} / Auto-sync daily at 10:00`,
     loadingZh: '⏳ Loading Chinese data...',
     allCat: 'All',
-    footerNote: 'Final skill data source: ClawHub'
+    footerNote: 'Final skill data source: ClawHub',
+    favoritesOnly: 'My Favorites',
+    favoritesEmpty: 'No favorites yet. Tap the heart on a skill card to save it.',
+    favoriteAdded: (name) => `Added "${name}" to favorites`,
+    favoriteRemoved: (name) => `Removed "${name}" from favorites`,
+    favoriteToastSub: 'Favorites are stored in this browser.'
   }
 };
+
+function loadFavoriteSkillUrls() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+    if (!Array.isArray(raw)) return new Set();
+    return new Set(raw.map((item) => String(item || '').trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistFavoriteSkillUrls() {
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(favoriteSkillUrls)));
+  } catch {
+    // ignore
+  }
+}
+
+function isFavoriteSkill(skill) {
+  return Boolean(skill && favoriteSkillUrls.has(String(skill.url || '').trim()));
+}
+
+function getFavoriteCount() {
+  return favoriteSkillUrls.size;
+}
+
+function updateFavoriteStat() {
+  const countEl = document.getElementById('favorite-count');
+  const btnEl = document.getElementById('favorites-stat-btn');
+  if (countEl) countEl.textContent = String(getFavoriteCount());
+  if (btnEl) btnEl.classList.toggle('active', favoriteOnly);
+}
 
 function escHtml(s) {
   return String(s || '')
@@ -166,6 +214,7 @@ function hydrateSummaryCache(summary) {
   summaryLoaded = true;
   document.getElementById('total-count').textContent = String(Number(summary.total || 0) || 0);
   document.getElementById('cat-count').textContent = String(Number(summary.categoryCount || 0) || 0);
+  updateFavoriteStat();
   lastSyncText = formatDateTime(summary.lastSyncMs || 0);
   document.getElementById('sync-note').textContent = i18n[currentLang].syncNote(lastSyncText);
 }
@@ -298,6 +347,7 @@ async function init() {
   currentLang = String(localStorage.getItem('claw800_lang') || '').trim() === 'en' ? 'en' : 'zh';
   document.getElementById('btn-zh').addEventListener('click', () => setLang('zh'));
   document.getElementById('btn-en').addEventListener('click', () => setLang('en'));
+  document.getElementById('favorites-stat-btn').addEventListener('click', toggleFavoriteFilter);
   if (langMenuBtn) {
     langMenuBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -385,6 +435,7 @@ function applyLanguage(markReady = true) {
   document.getElementById('header-sub').textContent = headerSub;
   document.getElementById('label-skills').textContent = t.labelSkills;
   document.getElementById('label-cats').textContent = t.labelCats;
+  document.getElementById('label-favorites').textContent = t.labelFavorites;
   document.getElementById('search').placeholder = t.searchPlaceholder;
   document.getElementById('bot-label').textContent = botLabel;
   document.getElementById('bot-prompt').textContent = botPrompt;
@@ -393,6 +444,7 @@ function applyLanguage(markReady = true) {
   document.getElementById('sync-note').textContent = t.syncNote(lastSyncText);
   document.getElementById('no-results').textContent = t.noResults;
   document.getElementById('footer-note').textContent = t.footerNote;
+  updateFavoriteStat();
   if (faviconEl) {
     const icon = String(pageConfig?.icon || '').trim();
     faviconEl.href = icon || '/favicon.ico';
@@ -464,10 +516,49 @@ function getSkills() {
   return currentLang === 'zh' && zhLoaded && Array.isArray(zhSkills) ? zhSkills : allSkills;
 }
 
+function getVisibleSkillsBase() {
+  let skills = getSkills();
+  if (favoriteOnly) {
+    skills = skills.filter((skill) => isFavoriteSkill(skill));
+  }
+  return skills;
+}
+
+function toggleFavoriteFilter() {
+  favoriteOnly = !favoriteOnly;
+  activeCategory = 'all';
+  currentPage = 1;
+  updateFavoriteStat();
+  renderCategories();
+  filterSkills();
+}
+
+function toggleFavoriteSkill(url, btn) {
+  const normalizedUrl = String(url || '').trim();
+  if (!normalizedUrl) return;
+  const skill = getSkills().find((item) => String(item.url || '').trim() === normalizedUrl);
+  const name = String(skill?.name || '').trim() || normalizedUrl;
+  const exists = favoriteSkillUrls.has(normalizedUrl);
+  if (exists) {
+    favoriteSkillUrls.delete(normalizedUrl);
+  } else {
+    favoriteSkillUrls.add(normalizedUrl);
+  }
+  persistFavoriteSkillUrls();
+  updateFavoriteStat();
+  if (btn) btn.classList.toggle('active', !exists);
+  showToast(
+    exists ? i18n[currentLang].favoriteRemoved(name) : i18n[currentLang].favoriteAdded(name),
+    i18n[currentLang].favoriteToastSub
+  );
+  renderCategories();
+  filterSkillsKeepPage();
+}
+
 function buildCategoryMaps() {
   const state = getLangState(currentLang);
-  const skills = getSkills();
-  const counts = state.fullLoaded ? {} : { ...(state.categories || {}) };
+  const skills = getVisibleSkillsBase();
+  const counts = state.fullLoaded || favoriteOnly ? {} : { ...(state.categories || {}) };
   const zhMap = { ...(state.categoryZhMap || {}) };
   skills.forEach((skill) => {
     const key = String(skill.category || '').trim() || 'Other';
@@ -485,7 +576,9 @@ function renderCategories() {
   const state = getLangState(currentLang);
   const wrap = document.getElementById('categories');
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const allCount = summaryLoaded && !state.fullLoaded
+  const allCount = favoriteOnly
+    ? getVisibleSkillsBase().length
+    : summaryLoaded && !state.fullLoaded
     ? Object.values(state.categories || {}).reduce((sum, count) => sum + (Number(count) || 0), 0)
     : getSkills().length;
   skillsCategoryRenderTaskId += 1;
@@ -518,7 +611,7 @@ function setCategory(cat, el) {
 function filterSkills() {
   const t = i18n[currentLang];
   const q = document.getElementById('search').value.toLowerCase().trim();
-  let skills = getSkills();
+  let skills = getVisibleSkillsBase();
   if (activeCategory !== 'all') {
     skills = skills.filter((skill) => skill.category === activeCategory || skill.category_zh === activeCategory);
   }
@@ -533,9 +626,13 @@ function filterSkills() {
   }
 
   currentPage = 1;
-  document.getElementById('search-count').textContent = (q || activeCategory !== 'all') ? t.foundCount(skills.length) : '';
+  if (favoriteOnly && !skills.length && !q && activeCategory === 'all') {
+    document.getElementById('search-count').textContent = t.favoritesOnly;
+  } else {
+    document.getElementById('search-count').textContent = (q || activeCategory !== 'all' || favoriteOnly) ? t.foundCount(skills.length) : '';
+  }
   renderSkillsChunked(skills);
-  if ((q || activeCategory !== 'all') && !getLangState(currentLang).fullLoaded) {
+  if ((q || activeCategory !== 'all') && !getLangState(currentLang).fullLoaded && !favoriteOnly) {
     ensureFullPayload(currentLang, { silent: false });
   }
 }
@@ -544,7 +641,7 @@ function renderSkills(skills) {
   const t = i18n[currentLang];
   const grid = document.getElementById('skills-grid');
   const noResults = document.getElementById('no-results');
-  noResults.textContent = t.noResults;
+  noResults.textContent = favoriteOnly ? t.favoritesEmpty : t.noResults;
   if (!skills.length) {
     grid.innerHTML = '';
     noResults.style.display = 'block';
@@ -561,12 +658,12 @@ function renderSkills(skills) {
   grid.innerHTML = display.map((skill) => {
     const desc = currentLang === 'zh' && skill.description_zh ? skill.description_zh : skill.description;
     const cat = currentLang === 'zh' && skill.category_zh ? skill.category_zh : skill.category;
-    const srcBadge = String(skill.url || '').includes('github.com')
-      ? `<span style="font-size:0.68rem;color:#9CA3AF;font-weight:400">GitHub</span>`
-      : `<span style="font-size:0.68rem;color:var(--accent);font-weight:400">ClawHub</span>`;
 
     return `<div class="skill-card">
-      <div class="skill-name"><span>${escHtml(skill.name)}</span>${srcBadge}</div>
+      <button class="skill-favorite-btn ${isFavoriteSkill(skill) ? 'active' : ''}" type="button" onclick="toggleFavoriteSkill('${escAttr(skill.url)}', this)" aria-label="${escHtml(t.labelFavorites)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      </button>
+      <div class="skill-name"><span>${escHtml(skill.name)}</span></div>
       <div class="skill-desc" title="${escHtml(desc)}">${escHtml(desc)}</div>
       <div class="skill-footer">
         <span class="skill-cat" title="${escHtml(cat)}">${escHtml(cat)}</span>
@@ -608,8 +705,8 @@ function renderSkillsChunked(skills) {
   const noResults = document.getElementById('no-results');
   const state = getLangState(currentLang);
   const q = document.getElementById('search').value.toLowerCase().trim();
-  const useSummaryPagination = !state.fullLoaded && !q && activeCategory === 'all' && summaryTotalCount > skills.length;
-  noResults.textContent = t.noResults;
+  const useSummaryPagination = !favoriteOnly && !state.fullLoaded && !q && activeCategory === 'all' && summaryTotalCount > skills.length;
+  noResults.textContent = favoriteOnly ? t.favoritesEmpty : t.noResults;
   skillRenderTaskId += 1;
   const taskId = skillRenderTaskId;
 
@@ -637,12 +734,12 @@ function renderSkillsChunked(skills) {
     const html = display.slice(index, index + chunkSize).map((skill) => {
       const desc = currentLang === 'zh' && skill.description_zh ? skill.description_zh : skill.description;
       const cat = currentLang === 'zh' && skill.category_zh ? skill.category_zh : skill.category;
-      const srcBadge = String(skill.url || '').includes('github.com')
-        ? `<span style="font-size:0.68rem;color:#9CA3AF;font-weight:400">GitHub</span>`
-        : `<span style="font-size:0.68rem;color:var(--accent);font-weight:400">ClawHub</span>`;
 
       return `<div class="skill-card">
-        <div class="skill-name"><span>${escHtml(skill.name)}</span>${srcBadge}</div>
+        <button class="skill-favorite-btn ${isFavoriteSkill(skill) ? 'active' : ''}" type="button" onclick="toggleFavoriteSkill('${escAttr(skill.url)}', this)" aria-label="${escHtml(t.labelFavorites)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
+        <div class="skill-name"><span>${escHtml(skill.name)}</span></div>
         <div class="skill-desc" title="${escHtml(desc)}">${escHtml(desc)}</div>
         <div class="skill-footer">
           <span class="skill-cat" title="${escHtml(cat)}">${escHtml(cat)}</span>
@@ -696,7 +793,7 @@ function renderPagination(totalPages) {
 async function goToPage(page) {
   const q = document.getElementById('search').value.toLowerCase().trim();
   const state = getLangState(currentLang);
-  if (!state.fullLoaded && page > 1 && !q && activeCategory === 'all') {
+  if (!favoriteOnly && !state.fullLoaded && page > 1 && !q && activeCategory === 'all') {
     renderSkillSkeletons();
     await ensureFullPayload(currentLang, { silent: false });
   }
@@ -707,7 +804,7 @@ async function goToPage(page) {
 
 function filterSkillsKeepPage() {
   const q = document.getElementById('search').value.toLowerCase().trim();
-  let skills = getSkills();
+  let skills = getVisibleSkillsBase();
   if (activeCategory !== 'all') {
     skills = skills.filter((skill) => skill.category === activeCategory || skill.category_zh === activeCategory);
   }
@@ -720,7 +817,11 @@ function filterSkillsKeepPage() {
       String(skill.category_zh || '').includes(q)
     );
   }
-  document.getElementById('search-count').textContent = (q || activeCategory !== 'all') ? i18n[currentLang].foundCount(skills.length) : '';
+  if (favoriteOnly && !skills.length && !q && activeCategory === 'all') {
+    document.getElementById('search-count').textContent = i18n[currentLang].favoritesOnly;
+  } else {
+    document.getElementById('search-count').textContent = (q || activeCategory !== 'all' || favoriteOnly) ? i18n[currentLang].foundCount(skills.length) : '';
+  }
   renderSkillsChunked(skills);
 }
 

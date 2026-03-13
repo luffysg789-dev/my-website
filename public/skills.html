@@ -198,6 +198,27 @@
     .stat-num { font-size: 1.375rem; font-weight: 700; color: #fff; }
     .stat-label { font-size: 0.8125rem; color: rgba(255,255,255,0.82); margin-top: 3px; }
 
+    .stat-btn {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      transition: transform 0.2s ease;
+    }
+
+    .stat-btn.active {
+      transform: translateY(-1px);
+    }
+
+    .stat-btn.active .stat-num,
+    .stat-btn.active .stat-label {
+      color: #fff;
+      text-shadow: 0 0 18px rgba(255,255,255,0.18);
+    }
+
     .bot-banner {
       background: #f6fbf6;
       border: 1px solid #d9e9dd;
@@ -347,6 +368,44 @@
       flex-direction: column;
       gap: 14px;
       min-height: 210px;
+      position: relative;
+    }
+
+    .skill-favorite-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid #d7dfd6;
+      background: #fff;
+      color: #7a867b;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(31, 27, 24, 0.08);
+      transition: all 0.2s ease;
+      z-index: 2;
+    }
+
+    .skill-favorite-btn:hover {
+      background: #f8fbf7;
+      border-color: #bfcbbf;
+      transform: translateY(-1px);
+    }
+
+    .skill-favorite-btn.active {
+      background: rgba(220,38,38,0.95);
+      border-color: rgba(220,38,38,1);
+      color: #fff;
+    }
+
+    .skill-favorite-btn svg {
+      width: 15px;
+      height: 15px;
+      display: block;
     }
 
     .skill-card.skill-card--skeleton {
@@ -651,6 +710,10 @@
     <div class="stats">
       <div class="stat"><div class="stat-num" id="total-count">0</div><div class="stat-label" id="label-skills">技能总数</div></div>
       <div class="stat"><div class="stat-num" id="cat-count">0</div><div class="stat-label" id="label-cats">分类数</div></div>
+      <button class="stat stat-btn" id="favorites-stat-btn" type="button">
+        <div class="stat-num" id="favorite-count">0</div>
+        <div class="stat-label" id="label-favorites">我的收藏</div>
+      </button>
     </div>
     <div class="lang-loading" id="lang-loading">⏳ 正在加载中文数据...</div>
   </header>
@@ -696,6 +759,6 @@
     <span id="toast-sub"></span>
   </div>
 
-  <script src="/skills.js?v=20260313-22"></script>
+  <script src="/skills.js?v=20260314-03"></script>
 </body>
 </html>
