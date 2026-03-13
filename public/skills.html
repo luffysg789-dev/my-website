@@ -10,13 +10,20 @@
     (() => {
       const lang = String(localStorage.getItem('claw800_lang') || '').trim() === 'en' ? 'en' : 'zh-CN';
       document.documentElement.lang = lang;
-      document.documentElement.dataset.i18nReady = '0';
+      document.documentElement.dataset.i18nReady = '1';
       if (lang === 'en') document.title = 'Claw800 Skills Directory — OpenClaw Curated Skills';
+      const parse = (key) => {
+        try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+      };
+      window.__CLAW800_BOOT__ = {
+        lang,
+        siteConfig: parse('claw800_site_config_cache'),
+        skillsSummary: parse('claw800_skills_summary_cache'),
+        skillsInitialZh: parse('claw800_skills_initial_zh_cache'),
+        skillsInitialEn: parse('claw800_skills_initial_en_cache')
+      };
     })();
   </script>
-  <style>
-    html[data-i18n-ready="0"] body { visibility: hidden; }
-  </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -583,6 +590,6 @@
     <span id="toast-sub"></span>
   </div>
 
-  <script src="/skills.js?v=20260313-14"></script>
+  <script src="/skills.js?v=20260313-15"></script>
 </body>
 </html>

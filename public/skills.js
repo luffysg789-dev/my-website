@@ -9,6 +9,7 @@ let currentPage = 1;
 const PAGE_SIZE = 30;
 const INITIAL_SKILLS_LIMIT = 30;
 const faviconEl = document.getElementById('siteFavicon') || document.querySelector('link[rel~="icon"]');
+const BOOT_CACHE = window.__CLAW800_BOOT__ || {};
 const langState = {
   zh: { categories: {}, categoryZhMap: {}, lastSyncMs: 0, fullLoaded: false, fullPromise: null },
   en: { categories: {}, categoryZhMap: {}, lastSyncMs: 0, fullLoaded: false, fullPromise: null }
@@ -17,6 +18,10 @@ let summaryLoaded = false;
 
 function markPageReady() {
   document.documentElement.dataset.i18nReady = '1';
+}
+
+if (BOOT_CACHE.siteConfig && typeof BOOT_CACHE.siteConfig === 'object') {
+  pageConfig = BOOT_CACHE.siteConfig;
 }
 
 const i18n = {
@@ -125,6 +130,45 @@ function buildSkillsPayloadFromCatalog(data, lang = 'en') {
   return { skills, categories, lang, lastSyncMs };
 }
 
+function writeLocalCache(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+}
+
+function hydrateSummaryCache(summary) {
+  if (!summary || typeof summary !== 'object') return;
+  langState.zh.categories = {};
+  langState.en.categories = {};
+  langState.zh.categoryZhMap = {};
+  langState.en.categoryZhMap = {};
+  langState.zh.lastSyncMs = Number(summary.lastSyncMs || 0) || 0;
+  langState.en.lastSyncMs = Number(summary.lastSyncMs || 0) || 0;
+
+  const rows = Array.isArray(summary.categories) ? summary.categories : [];
+  rows.forEach((row) => {
+    const categoryEn = String(row.category_en || row.category || '').trim() || 'Other';
+    const categoryZh = String(row.category || row.category_en || '').trim() || categoryEn;
+    const count = Number(row.count || 0) || 0;
+    langState.zh.categories[categoryEn] = count;
+    langState.en.categories[categoryEn] = count;
+    langState.zh.categoryZhMap[categoryEn] = categoryZh;
+    langState.en.categoryZhMap[categoryEn] = categoryZh;
+  });
+  summaryLoaded = true;
+  document.getElementById('total-count').textContent = String(Number(summary.total || 0) || 0);
+  document.getElementById('cat-count').textContent = String(Number(summary.categoryCount || 0) || 0);
+  lastSyncText = formatDateTime(summary.lastSyncMs || 0);
+  document.getElementById('sync-note').textContent = i18n[currentLang].syncNote(lastSyncText);
+}
+
+function hydrateInitialSkillsCache(lang, payload) {
+  if (!payload || typeof payload !== 'object') return;
+  setLangPayload(lang, payload, { fullLoaded: false });
+}
+
 async function fetchSkillsPayload(lang = 'en') {
   const suffix = lang === 'zh' ? 'skills.zh.json' : 'skills.json';
   const primaryRes = await fetch(`/api/${suffix}?_=${Date.now()}`, { cache: 'no-store' });
@@ -211,28 +255,8 @@ function refreshCurrentLanguageView() {
 async function loadSummaryFast() {
   try {
     const summary = await fetchSkillsSummary();
-    langState.zh.categories = {};
-    langState.en.categories = {};
-    langState.zh.categoryZhMap = {};
-    langState.en.categoryZhMap = {};
-    langState.zh.lastSyncMs = summary.lastSyncMs;
-    langState.en.lastSyncMs = summary.lastSyncMs;
-
-    summary.categories.forEach((row) => {
-      const categoryEn = String(row.category_en || row.category || '').trim() || 'Other';
-      const categoryZh = String(row.category || row.category_en || '').trim() || categoryEn;
-      const count = Number(row.count || 0) || 0;
-      langState.zh.categories[categoryEn] = count;
-      langState.en.categories[categoryEn] = count;
-      langState.zh.categoryZhMap[categoryEn] = categoryZh;
-      langState.en.categoryZhMap[categoryEn] = categoryZh;
-    });
-
-    summaryLoaded = true;
-    document.getElementById('total-count').textContent = String(summary.total);
-    document.getElementById('cat-count').textContent = String(summary.categoryCount);
-    lastSyncText = formatDateTime(summary.lastSyncMs || 0);
-    document.getElementById('sync-note').textContent = i18n[currentLang].syncNote(lastSyncText);
+    hydrateSummaryCache(summary);
+    writeLocalCache('claw800_skills_summary_cache', summary);
     renderCategories();
   } catch {
     // ignore
@@ -271,7 +295,15 @@ async function init() {
   document.getElementById('search').addEventListener('input', filterSkills);
   document.getElementById('bot-prompt').addEventListener('click', copyBotPrompt);
   document.getElementById('bot-copy-btn').addEventListener('click', copyBotPrompt);
+  if (BOOT_CACHE.skillsSummary) hydrateSummaryCache(BOOT_CACHE.skillsSummary);
+  if (currentLang === 'zh' && BOOT_CACHE.skillsInitialZh) hydrateInitialSkillsCache('zh', BOOT_CACHE.skillsInitialZh);
+  if (currentLang === 'en' && BOOT_CACHE.skillsInitialEn) hydrateInitialSkillsCache('en', BOOT_CACHE.skillsInitialEn);
   applyLanguage(false);
+  if (summaryLoaded || getSkills().length) {
+    renderCategories();
+    filterSkills();
+    markPageReady();
+  }
   await Promise.all([loadSummaryFast(), loadPageConfig()]);
   applyLanguage();
   await loadData();
@@ -284,12 +316,12 @@ async function loadPageConfig() {
     const payload = data && typeof data === 'object' ? (data.data && typeof data.data === 'object' ? data.data : data) : null;
     if (res.ok && payload) {
       pageConfig = payload;
+      writeLocalCache('claw800_site_config_cache', pageConfig);
       return;
     }
   } catch {
-    // ignore
+    // keep boot cache
   }
-  pageConfig = null;
 }
 
 function applyLanguage(markReady = true) {
@@ -342,6 +374,7 @@ async function loadData() {
   try {
     const initialData = await fetchInitialSkillsPayload(lang);
     setLangPayload(lang, initialData, { fullLoaded: false });
+    writeLocalCache(`claw800_skills_initial_${lang}_cache`, initialData);
     refreshCurrentLanguageView();
     ensureFullPayload(lang);
     return;
@@ -351,6 +384,11 @@ async function loadData() {
 
   const fullData = await fetchSkillsPayload(lang);
   setLangPayload(lang, fullData, { fullLoaded: true });
+  writeLocalCache(`claw800_skills_initial_${lang}_cache`, {
+    skills: Array.isArray(fullData.skills) ? fullData.skills.slice(0, INITIAL_SKILLS_LIMIT) : [],
+    categories: fullData.categories || {},
+    lastSyncMs: fullData.lastSyncMs || 0
+  });
   refreshCurrentLanguageView();
 }
 
@@ -367,10 +405,16 @@ async function setLang(lang) {
     try {
       const initialData = await fetchInitialSkillsPayload(currentLang);
       setLangPayload(currentLang, initialData, { fullLoaded: false });
+      writeLocalCache(`claw800_skills_initial_${currentLang}_cache`, initialData);
     } catch {
       try {
         const fullData = await fetchSkillsPayload(currentLang);
         setLangPayload(currentLang, fullData, { fullLoaded: true });
+        writeLocalCache(`claw800_skills_initial_${currentLang}_cache`, {
+          skills: Array.isArray(fullData.skills) ? fullData.skills.slice(0, INITIAL_SKILLS_LIMIT) : [],
+          categories: fullData.categories || {},
+          lastSyncMs: fullData.lastSyncMs || 0
+        });
       } catch {
         // ignore
       }

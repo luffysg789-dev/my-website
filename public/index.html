@@ -9,13 +9,19 @@
       (() => {
         const lang = String(localStorage.getItem('claw800_lang') || '').trim() === 'en' ? 'en' : 'zh-CN';
         document.documentElement.lang = lang;
-        document.documentElement.dataset.i18nReady = '0';
+        document.documentElement.dataset.i18nReady = '1';
         if (lang === 'en') document.title = 'claw800.com - OpenClaw AI Directory';
+        const parse = (key) => {
+          try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+        };
+        window.__CLAW800_BOOT__ = {
+          lang,
+          siteConfig: parse('claw800_site_config_cache'),
+          homeCategories: parse('claw800_home_categories_cache'),
+          homeSites: parse('claw800_home_sites_cache')
+        };
       })();
     </script>
-    <style>
-      html[data-i18n-ready="0"] body { visibility: hidden; }
-    </style>
     <link rel="stylesheet" href="/styles.css?v=20260312-02" />
   </head>
   <body>
@@ -104,6 +110,6 @@
       </div>
     </footer>
 
-    <script src="/main.js?v=20260313-04"></script>
+    <script src="/main.js?v=20260313-05"></script>
   </body>
 </html>

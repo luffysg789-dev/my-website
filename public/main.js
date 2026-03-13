@@ -192,6 +192,17 @@ const translationCache = new Map(); // key: `${to}|${source}` -> translated
 const translationInflight = new Map(); // key: `${to}|${source}` -> Promise<string>
 const translatedTextNodes = new WeakMap(); // Node -> { to, source }
 let siteConfig = null; // { title, subtitleZh, subtitleEn }
+const BOOT_CACHE = window.__CLAW800_BOOT__ || {};
+
+if (BOOT_CACHE.siteConfig && typeof BOOT_CACHE.siteConfig === 'object') {
+  siteConfig = BOOT_CACHE.siteConfig;
+}
+if (Array.isArray(BOOT_CACHE.homeCategories)) {
+  categoriesCache = BOOT_CACHE.homeCategories;
+}
+if (Array.isArray(BOOT_CACHE.homeSites)) {
+  allSitesCache = BOOT_CACHE.homeSites;
+}
 
 function markPageReady() {
   document.documentElement.dataset.i18nReady = '1';
@@ -677,11 +688,14 @@ async function loadSiteConfig() {
         footerContactEn: String(data.footerContactEn || '').trim(),
         footerLinks: Array.isArray(data.footerLinks) ? data.footerLinks : []
       };
-    } else {
-      siteConfig = null;
+      try {
+        localStorage.setItem('claw800_site_config_cache', JSON.stringify(siteConfig));
+      } catch {
+        // ignore
+      }
     }
   } catch {
-    siteConfig = null;
+    // keep boot cache
   }
 }
 
@@ -689,6 +703,11 @@ async function loadCategories() {
   const res = await fetch('/api/categories');
   const data = await res.json();
   categoriesCache = data.items;
+  try {
+    localStorage.setItem('claw800_home_categories_cache', JSON.stringify(categoriesCache));
+  } catch {
+    // ignore
+  }
   if (currentCategory && !categoriesCache.some((item) => item.category === currentCategory)) {
     currentCategory = '';
   }
@@ -768,6 +787,13 @@ async function loadSites({ limit = 0, background = false } = {}) {
   if (reqId !== sitesRequestSeq) return;
 
   renderSites(data.items);
+  if (!q && !currentCategory) {
+    try {
+      localStorage.setItem('claw800_home_sites_cache', JSON.stringify(data.items || []));
+    } catch {
+      // ignore
+    }
+  }
 
   if (!background && !q && !currentCategory && limit > 0 && Array.isArray(data.items) && data.items.length >= limit) {
     setTimeout(() => {
@@ -883,6 +909,14 @@ searchInput.addEventListener('keydown', (e) => {
 
 (async () => {
   applyLanguage(false);
+  if (categoriesCache.length) {
+    renderCategories(categoriesCache);
+    renderCategoryOptions();
+  }
+  if (allSitesCache.length) {
+    renderSites(allSitesCache);
+  }
+  markPageReady();
   await Promise.all([loadSiteConfig(), loadCategories(), loadSites({ limit: HOME_INITIAL_SITE_LIMIT })]);
   applyLanguage();
 })();
