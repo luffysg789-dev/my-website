@@ -557,8 +557,8 @@ function toggleFavoriteSkill(url, btn) {
 
 function buildCategoryMaps() {
   const state = getLangState(currentLang);
-  const skills = getVisibleSkillsBase();
-  const counts = state.fullLoaded || favoriteOnly ? {} : { ...(state.categories || {}) };
+  const skills = getSkills();
+  const counts = state.fullLoaded ? {} : { ...(state.categories || {}) };
   const zhMap = { ...(state.categoryZhMap || {}) };
   skills.forEach((skill) => {
     const key = String(skill.category || '').trim() || 'Other';
@@ -576,9 +576,7 @@ function renderCategories() {
   const state = getLangState(currentLang);
   const wrap = document.getElementById('categories');
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const allCount = favoriteOnly
-    ? getVisibleSkillsBase().length
-    : summaryLoaded && !state.fullLoaded
+  const allCount = summaryLoaded && !state.fullLoaded
     ? Object.values(state.categories || {}).reduce((sum, count) => sum + (Number(count) || 0), 0)
     : getSkills().length;
   skillsCategoryRenderTaskId += 1;
@@ -626,13 +624,9 @@ function filterSkills() {
   }
 
   currentPage = 1;
-  if (favoriteOnly && !skills.length && !q && activeCategory === 'all') {
-    document.getElementById('search-count').textContent = t.favoritesOnly;
-  } else {
-    document.getElementById('search-count').textContent = (q || activeCategory !== 'all' || favoriteOnly) ? t.foundCount(skills.length) : '';
-  }
+  document.getElementById('search-count').textContent = (q || activeCategory !== 'all') ? t.foundCount(skills.length) : '';
   renderSkillsChunked(skills);
-  if ((q || activeCategory !== 'all') && !getLangState(currentLang).fullLoaded && !favoriteOnly) {
+  if ((q || activeCategory !== 'all') && !getLangState(currentLang).fullLoaded) {
     ensureFullPayload(currentLang, { silent: false });
   }
 }
@@ -793,7 +787,7 @@ function renderPagination(totalPages) {
 async function goToPage(page) {
   const q = document.getElementById('search').value.toLowerCase().trim();
   const state = getLangState(currentLang);
-  if (!favoriteOnly && !state.fullLoaded && page > 1 && !q && activeCategory === 'all') {
+  if (!state.fullLoaded && page > 1 && !q && activeCategory === 'all') {
     renderSkillSkeletons();
     await ensureFullPayload(currentLang, { silent: false });
   }
@@ -817,11 +811,7 @@ function filterSkillsKeepPage() {
       String(skill.category_zh || '').includes(q)
     );
   }
-  if (favoriteOnly && !skills.length && !q && activeCategory === 'all') {
-    document.getElementById('search-count').textContent = i18n[currentLang].favoritesOnly;
-  } else {
-    document.getElementById('search-count').textContent = (q || activeCategory !== 'all' || favoriteOnly) ? i18n[currentLang].foundCount(skills.length) : '';
-  }
+  document.getElementById('search-count').textContent = (q || activeCategory !== 'all') ? i18n[currentLang].foundCount(skills.length) : '';
   renderSkillsChunked(skills);
 }
 
