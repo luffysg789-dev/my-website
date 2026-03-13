@@ -29,7 +29,7 @@ if (BOOT_CACHE.siteConfig && typeof BOOT_CACHE.siteConfig === 'object') {
 const i18n = {
   zh: {
     pageTitle: 'Claw800 龙虾技能大全 — OpenClaw 精选技能导航',
-    homeLink: '← 返回导航',
+    homeLink: '← 返回首页',
     headerTitle: 'Claw800 龙虾技能大全',
     headerSub: '同步 claw800.com 的 OpenClaw 精选技能目录，分类浏览，一键查看和复制安装提示词。',
     labelSkills: '技能总数',
@@ -53,7 +53,7 @@ const i18n = {
   },
   en: {
     pageTitle: 'Claw800 Skills Directory — OpenClaw Curated Skills',
-    homeLink: '← Back to Directory',
+    homeLink: '← Back to Home',
     headerTitle: 'Claw800 Skills Directory',
     headerSub: 'Synced from claw800.com. Browse curated OpenClaw skills by category and copy install prompts in one click.',
     labelSkills: 'Skills',
