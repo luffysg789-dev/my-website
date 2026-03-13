@@ -9,6 +9,8 @@ let currentPage = 1;
 const PAGE_SIZE = 30;
 const INITIAL_SKILLS_LIMIT = 30;
 const faviconEl = document.getElementById('siteFavicon') || document.querySelector('link[rel~="icon"]');
+const langMenuBtn = document.getElementById('langMenuBtn');
+const langMenuPopup = document.getElementById('langMenuPopup');
 const BOOT_CACHE = window.__CLAW800_BOOT__ || {};
 const langState = {
   zh: { categories: {}, categoryZhMap: {}, lastSyncMs: 0, fullLoaded: false, fullPromise: null },
@@ -296,6 +298,30 @@ async function init() {
   currentLang = String(localStorage.getItem('claw800_lang') || '').trim() === 'en' ? 'en' : 'zh';
   document.getElementById('btn-zh').addEventListener('click', () => setLang('zh'));
   document.getElementById('btn-en').addEventListener('click', () => setLang('en'));
+  if (langMenuBtn) {
+    langMenuBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!langMenuPopup) return;
+      const hidden = langMenuPopup.classList.toggle('hidden');
+      langMenuBtn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    });
+  }
+  if (langMenuPopup) {
+    langMenuPopup.addEventListener('click', (e) => {
+      const btn = e.target?.closest?.('button[data-lang], button.lang-option');
+      if (!btn) return;
+      langMenuPopup.classList.add('hidden');
+      if (langMenuBtn) langMenuBtn.setAttribute('aria-expanded', 'false');
+    });
+  }
+  document.addEventListener('click', (e) => {
+    if (!langMenuPopup || !langMenuBtn) return;
+    const target = e.target;
+    if (langMenuBtn.contains(target) || langMenuPopup.contains(target)) return;
+    langMenuPopup.classList.add('hidden');
+    langMenuBtn.setAttribute('aria-expanded', 'false');
+  });
   document.getElementById('search').addEventListener('input', filterSkills);
   document.getElementById('bot-prompt').addEventListener('click', copyBotPrompt);
   document.getElementById('bot-copy-btn').addEventListener('click', copyBotPrompt);
@@ -404,6 +430,8 @@ async function setLang(lang) {
   localStorage.setItem('claw800_lang', currentLang);
   document.getElementById('btn-zh').classList.toggle('active', currentLang === 'zh');
   document.getElementById('btn-en').classList.toggle('active', currentLang === 'en');
+  if (langMenuPopup) langMenuPopup.classList.add('hidden');
+  if (langMenuBtn) langMenuBtn.setAttribute('aria-expanded', 'false');
   applyLanguage();
   const state = getLangState(currentLang);
   const hasAnySkills = currentLang === 'zh' ? Array.isArray(zhSkills) && zhSkills.length : Array.isArray(allSkills) && allSkills.length;
