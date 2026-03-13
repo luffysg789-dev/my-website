@@ -167,10 +167,20 @@ function getLangState(lang = currentLang) {
 function setLangPayload(lang, data, { fullLoaded = false } = {}) {
   const state = getLangState(lang);
   const skills = Array.isArray(data.skills) ? data.skills : [];
-  state.categories = data.categories && typeof data.categories === 'object' ? data.categories : {};
+  const nextCategories = data.categories && typeof data.categories === 'object' ? data.categories : {};
   state.lastSyncMs = Number(data.lastSyncMs || 0) || 0;
   state.fullLoaded = fullLoaded;
-  state.categoryZhMap = {};
+  if (fullLoaded || !summaryLoaded || !Object.keys(state.categories || {}).length) {
+    state.categories = nextCategories;
+  }
+
+  const nextZhMap = {};
+  skills.forEach((skill) => {
+    const key = String(skill.category || '').trim() || 'Other';
+    const labelZh = String(skill.category_zh || '').trim();
+    if (labelZh) nextZhMap[key] = labelZh;
+  });
+  state.categoryZhMap = { ...(state.categoryZhMap || {}), ...nextZhMap };
 
   if (lang === 'zh') {
     zhSkills = skills;
@@ -256,8 +266,7 @@ async function init() {
   document.getElementById('search').addEventListener('input', filterSkills);
   document.getElementById('bot-prompt').addEventListener('click', copyBotPrompt);
   document.getElementById('bot-copy-btn').addEventListener('click', copyBotPrompt);
-  loadSummaryFast();
-  await loadPageConfig();
+  await Promise.all([loadSummaryFast(), loadPageConfig()]);
   applyLanguage();
   await loadData();
 }
