@@ -8,6 +8,7 @@ let pageConfig = null;
 let currentPage = 1;
 const PAGE_SIZE = 30;
 const INITIAL_SKILLS_LIMIT = 30;
+const faviconEl = document.getElementById('siteFavicon') || document.querySelector('link[rel~="icon"]');
 const langState = {
   zh: { categories: {}, categoryZhMap: {}, lastSyncMs: 0, fullLoaded: false, fullPromise: null },
   en: { categories: {}, categoryZhMap: {}, lastSyncMs: 0, fullLoaded: false, fullPromise: null }
@@ -322,6 +323,10 @@ function applyLanguage() {
   document.getElementById('sync-note').textContent = t.syncNote(lastSyncText);
   document.getElementById('no-results').textContent = t.noResults;
   document.getElementById('footer-note').textContent = t.footerNote;
+  if (faviconEl) {
+    const icon = String(pageConfig?.icon || '').trim();
+    faviconEl.href = icon || '/favicon.ico';
+  }
   renderCategories();
   filterSkills();
 }
