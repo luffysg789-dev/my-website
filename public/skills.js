@@ -123,10 +123,8 @@ function getFavoriteCount() {
 
 function updateFavoriteStat() {
   const countEl = document.getElementById('favorite-count');
-  const btnEl = document.getElementById('favorites-stat-btn');
   const allBtnEl = document.getElementById('all-skills-stat-btn');
   if (countEl) countEl.textContent = String(getFavoriteCount());
-  if (btnEl) btnEl.classList.toggle('active', favoriteOnly);
   if (allBtnEl) allBtnEl.classList.toggle('active', !favoriteOnly);
 }
 
@@ -350,7 +348,6 @@ async function init() {
   document.getElementById('btn-zh').addEventListener('click', () => setLang('zh'));
   document.getElementById('btn-en').addEventListener('click', () => setLang('en'));
   document.getElementById('all-skills-stat-btn').addEventListener('click', showAllSkillsFromStat);
-  document.getElementById('favorites-stat-btn').addEventListener('click', toggleFavoriteFilter);
   if (langMenuBtn) {
     langMenuBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -438,7 +435,6 @@ function applyLanguage(markReady = true) {
   document.getElementById('header-sub').textContent = headerSub;
   document.getElementById('label-skills').textContent = t.labelSkills;
   document.getElementById('label-cats').textContent = t.labelCats;
-  document.getElementById('label-favorites').textContent = t.labelFavorites;
   document.getElementById('search').placeholder = t.searchPlaceholder;
   document.getElementById('bot-label').textContent = botLabel;
   document.getElementById('bot-prompt').textContent = botPrompt;
@@ -593,7 +589,10 @@ function renderCategories() {
     : getSkills().length;
   skillsCategoryRenderTaskId += 1;
   const taskId = skillsCategoryRenderTaskId;
-  wrap.innerHTML = `<button class="cat-btn ${activeCategory === 'all' ? 'active' : ''}" onclick="setCategory('all', this)">${t.allCat} <span class="count">${allCount}</span></button>`;
+  wrap.innerHTML = `
+    <button class="cat-btn ${activeCategory === 'all' && !favoriteOnly ? 'active' : ''}" onclick="setCategory('all', this)">${t.allCat} <span class="count">${allCount}</span></button>
+    <button class="cat-btn ${favoriteOnly ? 'active' : ''}" onclick="toggleFavoriteFilter()">${t.favoritesOnly} <span class="count">${getFavoriteCount()}</span></button>
+  `;
   const chunkSize = 10;
   let index = 0;
   const appendChunk = () => {
@@ -611,10 +610,12 @@ function renderCategories() {
 }
 
 function setCategory(cat, el) {
+  favoriteOnly = false;
   activeCategory = cat;
   currentPage = 1;
   document.querySelectorAll('.cat-btn').forEach((button) => button.classList.remove('active'));
   el.classList.add('active');
+  updateFavoriteStat();
   filterSkills();
 }
 
