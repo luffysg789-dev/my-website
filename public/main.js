@@ -98,6 +98,7 @@ const texts = {
     heroSubtitle: 'OpenClaw 生态导航，收录 AI 领域优质网站',
     searchPlaceholder: '搜索网站名称 / URL / 简介',
     searchBtn: '搜索',
+    favoriteSitesBtn: '我的收藏',
     navBtn: '导航',
     skillsBtn: '技能大全',
     githubStarBtn: 'GitHub 加星',
@@ -120,6 +121,7 @@ const texts = {
     noDesc: '暂无简介',
     noDescEnYet: '暂无英文简介',
     empty: '暂无数据，先提交你的 OpenClaw 站点吧。',
+    favoritesEmpty: '你还没有收藏网站。',
     tutorialEmpty: '暂无教程内容。',
     defaultCategory: '未分类',
     submitSuccess: '提交成功，等待管理员审核',
@@ -140,6 +142,7 @@ const texts = {
     heroSubtitle: 'OpenClaw ecosystem directory for AI websites',
     searchPlaceholder: 'Search by name / URL / description',
     searchBtn: 'Search',
+    favoriteSitesBtn: 'My Favorites',
     navBtn: 'Directory',
     skillsBtn: 'Skills',
     githubStarBtn: 'Star on GitHub',
@@ -162,6 +165,7 @@ const texts = {
     noDesc: 'No description.',
     noDescEnYet: 'No English description yet.',
     empty: 'No websites yet. Submit your OpenClaw site first.',
+    favoritesEmpty: 'No favorite websites yet.',
     tutorialEmpty: 'No tutorials yet.',
     defaultCategory: 'Uncategorized',
     submitSuccess: 'Submitted successfully. Waiting for admin review.',
@@ -186,15 +190,20 @@ let currentCategory = '';
 let currentLang = normalizeLang(localStorage.getItem('claw800_lang'));
 let categoriesCache = [];
 let allSitesCache = [];
+let homeAllSitesCache = [];
+let favoriteSitesOnly = false;
 let sitesRequestSeq = 0;
 let categoryRenderTaskId = 0;
 const HOME_INITIAL_SITE_LIMIT = 12;
+const HOME_FAVORITES_KEY = 'claw800_home_favorite_sites_v2';
+const HOME_FAVORITES_LEGACY_KEY = 'claw800_home_favorite_sites_v1';
 const translationCache = new Map(); // key: `${to}|${source}` -> translated
 const translationInflight = new Map(); // key: `${to}|${source}` -> Promise<string>
 const translatedTextNodes = new WeakMap(); // Node -> { to, source }
 let siteConfig = null; // { title, subtitleZh, subtitleEn }
 const BOOT_CACHE = window.__CLAW800_BOOT__ || {};
 let siteRenderTaskId = 0;
+let favoriteSiteUrls = loadFavoriteSiteUrls();
 
 if (BOOT_CACHE.siteConfig && typeof BOOT_CACHE.siteConfig === 'object') {
   siteConfig = BOOT_CACHE.siteConfig;
@@ -204,10 +213,124 @@ if (Array.isArray(BOOT_CACHE.homeCategories)) {
 }
 if (Array.isArray(BOOT_CACHE.homeSites)) {
   allSitesCache = BOOT_CACHE.homeSites;
+  homeAllSitesCache = BOOT_CACHE.homeSites;
 }
 
 function markPageReady() {
   document.documentElement.dataset.i18nReady = '1';
+}
+
+function loadFavoriteSiteUrls() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HOME_FAVORITES_KEY) || '[]');
+    if (Array.isArray(parsed)) {
+      return new Set(parsed.map((item) => String(item || '').trim()).filter(Boolean));
+    }
+  } catch {
+    // ignore and try legacy key
+  }
+  try {
+    const legacyParsed = JSON.parse(localStorage.getItem(HOME_FAVORITES_LEGACY_KEY) || '[]');
+    if (!Array.isArray(legacyParsed)) return new Set();
+    return new Set(legacyParsed.map((item) => String(item || '').trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistFavoriteSiteUrls() {
+  try {
+    localStorage.setItem(HOME_FAVORITES_KEY, JSON.stringify(Array.from(favoriteSiteUrls)));
+  } catch {
+    // ignore
+  }
+}
+
+function favoriteSiteKey(site) {
+  const id = String(site?.id ?? '').trim();
+  if (id) return `id:${id}`;
+  const url = String(site?.url || '').trim();
+  const name = String(site?.name || site?.name_en || '').trim();
+  return `fallback:${url}::${name}`;
+}
+
+function isFavoriteSite(site) {
+  const key = favoriteSiteKey(site);
+  const url = String(site?.url || '').trim();
+  return favoriteSiteUrls.has(key) || (url && favoriteSiteUrls.has(url));
+}
+
+function getVisibleSiteItems(items = allSitesCache) {
+  const sourceItems = favoriteSitesOnly && homeAllSitesCache.length ? homeAllSitesCache : items;
+  const siteItems = Array.isArray(sourceItems) ? sourceItems : [];
+  return favoriteSitesOnly ? siteItems.filter((site) => isFavoriteSite(site)) : siteItems;
+}
+
+function favoriteButtonLabel() {
+  return t('favoriteSitesBtn');
+}
+
+function favoriteSitesCount() {
+  const sourceItems = homeAllSitesCache.length ? homeAllSitesCache : allSitesCache;
+  if (!Array.isArray(sourceItems) || !sourceItems.length) return favoriteSiteUrls.size;
+  return sourceItems.filter((site) => isFavoriteSite(site)).length;
+}
+
+function renderSiteCard(site) {
+  const zhName = String(site.name || '').trim();
+  const zhDesc = String(site.description || '').trim();
+  const enName = String(site.name_en || '').trim();
+  const enDesc = String(site.description_en || '').trim();
+
+  const enNameUsable = Boolean(enName) && !hasCjk(enName);
+  const enDescUsable = Boolean(enDesc) && !hasCjk(enDesc);
+
+  const displayName = currentLang === 'en' ? (enNameUsable ? enName : zhName) : zhName;
+  const displayDescRaw = currentLang === 'en' ? (enDescUsable ? enDesc : zhDesc) : zhDesc;
+
+  const to = getTranslateTarget();
+  const needsNameTranslate = Boolean(to) && currentLang !== 'zh' && hasCjk(zhName) && (currentLang !== 'en' || !enNameUsable);
+  const needsDescTranslate = Boolean(to) && currentLang !== 'zh' && hasCjk(zhDesc) && (currentLang !== 'en' || !enDescUsable);
+
+  const nameAttr = needsNameTranslate ? ` data-src="${escapeHtml(zhName)}"` : '';
+  const descAttr = needsDescTranslate ? ` data-src="${escapeHtml(zhDesc)}"` : '';
+  const descDisplay = descriptionLabel(displayDescRaw);
+  const isPinned = Number(site.is_pinned || 0) === 1;
+  const isHot = Number(site.is_hot || 0) === 1;
+  const isNew = isNewSite(site.created_at);
+  const badges = [];
+  if (isPinned) badges.push(`<div class="site-badge site-badge--pinned">${escapeHtml(t('pinnedBadge'))}</div>`);
+  if (isNew) badges.push(`<div class="site-badge site-badge--new">${escapeHtml(t('newBadge'))}</div>`);
+  if (isHot) badges.push(`<div class="site-badge site-badge--hot">${escapeHtml(t('hotBadge'))}</div>`);
+  const badgeHtml = badges.length ? `<div class="site-badge-stack">${badges.join('')}</div>` : '';
+  const favoriteActive = isFavoriteSite(site) ? ' active' : '';
+  const favoriteAria = escapeHtml(favoriteButtonLabel());
+  const safeUrl = escapeHtml(site.url);
+  const safeFavoriteKey = escapeHtml(favoriteSiteKey(site));
+
+  return `
+    <article class="site-card">
+      ${badgeHtml}
+      <a class="site-card-link" href="${safeUrl}" target="_blank" rel="noopener">
+        <div class="site-row">
+          <span class="site-value"${nameAttr}>${escapeHtml(displayName)}</span>
+        </div>
+        <div class="site-row">
+          <span class="site-value site-link">${safeUrl}</span>
+        </div>
+        <div class="site-row">
+          <span class="site-value"${descAttr}>${escapeHtml(descDisplay)}</span>
+        </div>
+      </a>
+      <div class="site-card-footer">
+        <button class="site-favorite-btn${favoriteActive}" type="button" data-key="${safeFavoriteKey}" data-url="${safeUrl}" aria-label="${favoriteAria}">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 21.35 10.55 20C5.4 15.24 2 12.09 2 8.25A5.25 5.25 0 0 1 7.25 3c1.74 0 3.41.81 4.5 2.09A5.97 5.97 0 0 1 16.25 3 5.25 5.25 0 0 1 21.5 8.25c0 3.84-3.4 6.99-8.55 11.76L12 21.35Z"/>
+          </svg>
+        </button>
+      </div>
+    </article>
+  `;
 }
 
 function getUiLang() {
@@ -598,13 +721,31 @@ function renderCategories(items) {
   } else {
     allBtn.textContent = t('allCategory');
   }
-  allBtn.className = currentCategory === '' ? 'active' : '';
+  allBtn.className = currentCategory === '' && !favoriteSitesOnly ? 'active' : '';
   allBtn.onclick = () => {
+    favoriteSitesOnly = false;
     currentCategory = '';
     renderCategories(items);
     loadSites();
   };
   categoriesEl.appendChild(allBtn);
+
+  const favoriteBtn = document.createElement('button');
+  favoriteBtn.textContent = `${t('favoriteSitesBtn')} (${favoriteSitesCount()})`;
+  favoriteBtn.className = favoriteSitesOnly ? 'active' : '';
+  favoriteBtn.onclick = () => {
+    favoriteSitesOnly = true;
+    currentCategory = '';
+    renderCategories(items);
+    if (homeAllSitesCache.length) {
+      renderSitesChunked(getVisibleSiteItems(homeAllSitesCache));
+      return;
+    }
+    loadAllSitesForFavorites().catch(() => {
+      renderSitesChunked(getVisibleSiteItems(allSitesCache));
+    });
+  };
+  categoriesEl.appendChild(favoriteBtn);
 
   const chunkSize = 12;
   let index = 0;
@@ -624,6 +765,7 @@ function renderCategories(items) {
       }
       btn.className = currentCategory === category ? 'active' : '';
       btn.onclick = () => {
+        favoriteSitesOnly = false;
         currentCategory = category;
         renderCategories(items);
         loadSites();
@@ -732,59 +874,13 @@ async function loadCategories() {
 
 function renderSites(items) {
   const siteItems = Array.isArray(items) ? items : [];
-  allSitesCache = siteItems;
 
   if (!siteItems.length) {
-    siteListEl.innerHTML = `<p class="empty">${escapeHtml(t('empty'))}</p>`;
+    siteListEl.innerHTML = `<p class="empty">${escapeHtml(favoriteSitesOnly ? t('favoritesEmpty') : t('empty'))}</p>`;
     return;
   }
 
-  siteListEl.innerHTML = siteItems
-    .map((site) => {
-      const zhName = String(site.name || '').trim();
-      const zhDesc = String(site.description || '').trim();
-      const enName = String(site.name_en || '').trim();
-      const enDesc = String(site.description_en || '').trim();
-
-      const enNameUsable = Boolean(enName) && !hasCjk(enName);
-      const enDescUsable = Boolean(enDesc) && !hasCjk(enDesc);
-
-      const displayName = currentLang === 'en' ? (enNameUsable ? enName : zhName) : zhName;
-      const displayDescRaw = currentLang === 'en' ? (enDescUsable ? enDesc : zhDesc) : zhDesc;
-
-      const to = getTranslateTarget();
-      const needsNameTranslate = Boolean(to) && currentLang !== 'zh' && hasCjk(zhName) && (currentLang !== 'en' || !enNameUsable);
-      const needsDescTranslate = Boolean(to) && currentLang !== 'zh' && hasCjk(zhDesc) && (currentLang !== 'en' || !enDescUsable);
-
-      const nameAttr = needsNameTranslate ? ` data-src="${escapeHtml(zhName)}"` : '';
-      const descAttr = needsDescTranslate ? ` data-src="${escapeHtml(zhDesc)}"` : '';
-      const descDisplay = descriptionLabel(displayDescRaw);
-      const isPinned = Number(site.is_pinned || 0) === 1;
-      const isHot = Number(site.is_hot || 0) === 1;
-      const isNew = isNewSite(site.created_at);
-      const badges = [];
-      if (isPinned) badges.push(`<div class="site-badge site-badge--pinned">${escapeHtml(t('pinnedBadge'))}</div>`);
-      if (isNew) badges.push(`<div class="site-badge site-badge--new">${escapeHtml(t('newBadge'))}</div>`);
-      if (isHot) badges.push(`<div class="site-badge site-badge--hot">${escapeHtml(t('hotBadge'))}</div>`);
-      const badgeHtml = badges.length ? `<div class="site-badge-stack">${badges.join('')}</div>` : '';
-      return `
-      <a class="site-card-link" href="${escapeHtml(site.url)}" target="_blank" rel="noopener">
-        <article class="site-card">
-          ${badgeHtml}
-          <div class="site-row">
-            <span class="site-value"${nameAttr}>${escapeHtml(displayName)}</span>
-          </div>
-          <div class="site-row">
-            <span class="site-value site-link">${escapeHtml(site.url)}</span>
-          </div>
-          <div class="site-row">
-            <span class="site-value"${descAttr}>${escapeHtml(descDisplay)}</span>
-          </div>
-        </article>
-      </a>
-    `;
-    })
-    .join('');
+  siteListEl.innerHTML = siteItems.map((site) => renderSiteCard(site)).join('');
 
   translateVisibleTextNodes();
 }
@@ -803,12 +899,11 @@ function renderSiteSkeletons(count = HOME_INITIAL_SITE_LIMIT) {
 
 function renderSitesChunked(items) {
   const siteItems = Array.isArray(items) ? items : [];
-  allSitesCache = siteItems;
   siteRenderTaskId += 1;
   const taskId = siteRenderTaskId;
 
   if (!siteItems.length) {
-    siteListEl.innerHTML = `<p class="empty">${escapeHtml(t('empty'))}</p>`;
+    siteListEl.innerHTML = `<p class="empty">${escapeHtml(favoriteSitesOnly ? t('favoritesEmpty') : t('empty'))}</p>`;
     return;
   }
 
@@ -819,53 +914,7 @@ function renderSitesChunked(items) {
   const appendChunk = () => {
     if (taskId !== siteRenderTaskId) return;
     const end = Math.min(index + chunkSize, siteItems.length);
-    const html = siteItems
-      .slice(index, end)
-      .map((site) => {
-        const zhName = String(site.name || '').trim();
-        const zhDesc = String(site.description || '').trim();
-        const enName = String(site.name_en || '').trim();
-        const enDesc = String(site.description_en || '').trim();
-
-        const enNameUsable = Boolean(enName) && !hasCjk(enName);
-        const enDescUsable = Boolean(enDesc) && !hasCjk(enDesc);
-
-        const displayName = currentLang === 'en' ? (enNameUsable ? enName : zhName) : zhName;
-        const displayDescRaw = currentLang === 'en' ? (enDescUsable ? enDesc : zhDesc) : zhDesc;
-
-        const to = getTranslateTarget();
-        const needsNameTranslate = Boolean(to) && currentLang !== 'zh' && hasCjk(zhName) && (currentLang !== 'en' || !enNameUsable);
-        const needsDescTranslate = Boolean(to) && currentLang !== 'zh' && hasCjk(zhDesc) && (currentLang !== 'en' || !enDescUsable);
-
-        const nameAttr = needsNameTranslate ? ` data-src="${escapeHtml(zhName)}"` : '';
-        const descAttr = needsDescTranslate ? ` data-src="${escapeHtml(zhDesc)}"` : '';
-        const descDisplay = descriptionLabel(displayDescRaw);
-        const isPinned = Number(site.is_pinned || 0) === 1;
-        const isHot = Number(site.is_hot || 0) === 1;
-        const isNew = isNewSite(site.created_at);
-        const badges = [];
-        if (isPinned) badges.push(`<div class="site-badge site-badge--pinned">${escapeHtml(t('pinnedBadge'))}</div>`);
-        if (isNew) badges.push(`<div class="site-badge site-badge--new">${escapeHtml(t('newBadge'))}</div>`);
-        if (isHot) badges.push(`<div class="site-badge site-badge--hot">${escapeHtml(t('hotBadge'))}</div>`);
-        const badgeHtml = badges.length ? `<div class="site-badge-stack">${badges.join('')}</div>` : '';
-        return `
-        <a class="site-card-link" href="${escapeHtml(site.url)}" target="_blank" rel="noopener">
-          <article class="site-card">
-            ${badgeHtml}
-            <div class="site-row">
-              <span class="site-value"${nameAttr}>${escapeHtml(displayName)}</span>
-            </div>
-            <div class="site-row">
-              <span class="site-value site-link">${escapeHtml(site.url)}</span>
-            </div>
-            <div class="site-row">
-              <span class="site-value"${descAttr}>${escapeHtml(descDisplay)}</span>
-            </div>
-          </article>
-        </a>
-      `;
-      })
-      .join('');
+    const html = siteItems.slice(index, end).map((site) => renderSiteCard(site)).join('');
 
     siteListEl.insertAdjacentHTML('beforeend', html);
     translateVisibleTextNodes();
@@ -890,21 +939,38 @@ async function loadSites({ limit = 0, background = false } = {}) {
   const data = await res.json();
   if (reqId !== sitesRequestSeq) return;
 
-  renderSitesChunked(data.items);
+  allSitesCache = Array.isArray(data.items) ? data.items : [];
+  renderSitesChunked(getVisibleSiteItems(allSitesCache));
   if (!q && !currentCategory) {
+    homeAllSitesCache = allSitesCache.slice();
     try {
-      localStorage.setItem('claw800_home_sites_cache', JSON.stringify(data.items || []));
+      localStorage.setItem('claw800_home_sites_cache', JSON.stringify(homeAllSitesCache));
     } catch {
       // ignore
     }
   }
 
-  if (!background && !q && !currentCategory && limit > 0 && Array.isArray(data.items) && data.items.length >= limit) {
+  if (!background && !q && !currentCategory && limit > 0 && allSitesCache.length >= limit) {
     setTimeout(() => {
       if (sitesRequestSeq !== reqId) return;
       loadSites({ background: true }).catch(() => {});
     }, 0);
   }
+}
+
+async function loadAllSitesForFavorites() {
+  const res = await fetch('/api/sites');
+  const data = await res.json();
+  homeAllSitesCache = Array.isArray(data.items) ? data.items : [];
+  if (!currentCategory && !searchInput.value.trim()) {
+    allSitesCache = homeAllSitesCache.slice();
+  }
+  try {
+    localStorage.setItem('claw800_home_sites_cache', JSON.stringify(homeAllSitesCache));
+  } catch {
+    // ignore
+  }
+  renderSitesChunked(getVisibleSiteItems(homeAllSitesCache));
 }
 
 // Left-side dock (导航/教程) is disabled on homepage for now.
@@ -914,9 +980,42 @@ function setLanguage(lang) {
   currentLang = normalizeLang(lang);
   localStorage.setItem('claw800_lang', currentLang);
   applyLanguage();
-  if (allSitesCache.length && !currentCategory && !searchInput.value.trim()) renderSitesChunked(allSitesCache);
+  if (allSitesCache.length && !currentCategory && !searchInput.value.trim()) renderSitesChunked(getVisibleSiteItems(allSitesCache));
   else loadSites();
 }
+
+function toggleFavoriteSitesView() {
+  favoriteSitesOnly = !favoriteSitesOnly;
+  if (!favoriteSitesOnly) currentCategory = '';
+  renderCategories(categoriesCache);
+  if (!favoriteSitesOnly) {
+    renderSitesChunked(getVisibleSiteItems(allSitesCache));
+    return;
+  }
+  if (homeAllSitesCache.length) {
+    renderSitesChunked(getVisibleSiteItems(homeAllSitesCache));
+    return;
+  }
+  loadAllSitesForFavorites().catch(() => {
+    renderSitesChunked(getVisibleSiteItems(allSitesCache));
+  });
+}
+
+window.toggleSiteFavorite = function toggleSiteFavorite(key, url, buttonEl) {
+  const normalizedKey = String(key || '').trim();
+  const normalizedUrl = String(url || '').trim();
+  const targetKey = normalizedKey || normalizedUrl;
+  if (!targetKey) return;
+  if (favoriteSiteUrls.has(targetKey)) favoriteSiteUrls.delete(targetKey);
+  else favoriteSiteUrls.add(targetKey);
+  if (normalizedUrl) favoriteSiteUrls.delete(normalizedUrl);
+  persistFavoriteSiteUrls();
+  if (buttonEl) buttonEl.classList.toggle('active', favoriteSiteUrls.has(targetKey));
+  renderCategories(categoriesCache);
+  if (favoriteSitesOnly) {
+    renderSitesChunked(getVisibleSiteItems(homeAllSitesCache.length ? homeAllSitesCache : allSitesCache));
+  }
+};
 
 function openSubmitModal() {
   submitModal.classList.remove('hidden');
@@ -1001,6 +1100,16 @@ document.addEventListener('click', (e) => {
   if (target === langMenuBtn || langMenuBtn.contains(target)) return;
   if (langMenuPopup.contains(target)) return;
   closeLangMenu();
+});
+
+siteListEl.addEventListener('click', (e) => {
+  const favoriteBtn = e.target?.closest?.('.site-favorite-btn');
+  if (!favoriteBtn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const key = favoriteBtn.getAttribute('data-key');
+  const url = favoriteBtn.getAttribute('data-url');
+  window.toggleSiteFavorite(key, url, favoriteBtn);
 });
 
 searchBtn.addEventListener('click', () => loadSites());

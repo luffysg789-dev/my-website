@@ -224,6 +224,11 @@ body {
   margin-bottom: 14px;
 }
 
+.toolbar input {
+  flex: 1;
+  min-width: 0;
+}
+
 .admin .toolbar input {
   flex: 1;
   min-width: 220px;
@@ -448,6 +453,10 @@ button.danger { background: var(--danger); }
 
 .site-card {
   position: relative;
+  min-height: 166px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -577,6 +586,43 @@ button.danger { background: var(--danger); }
 
 .site-row:last-child {
   margin-bottom: 0;
+}
+
+.site-card-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.site-favorite-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #d7dfd8;
+  background: #fff;
+  color: #7c8c7f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(21, 49, 28, 0.08);
+}
+
+.site-favorite-btn:hover {
+  background: #f6faf6;
+  color: #4b5f4d;
+}
+
+.site-favorite-btn.active {
+  background: #fff1f1;
+  border-color: #f2bbbb;
+  color: #d93a52;
+}
+
+.site-favorite-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .site-value {
@@ -866,6 +912,18 @@ button.danger { background: var(--danger); }
 }
 
 @media (max-width: 640px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar input {
+    flex-basis: 100%;
+  }
+
+  #searchBtn {
+    width: 100%;
+  }
+
   .hero-subrow {
     position: relative;
     padding-top: 6px;
