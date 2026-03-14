@@ -194,6 +194,7 @@ let homeAllSitesCache = [];
 let favoriteSitesOnly = false;
 let sitesRequestSeq = 0;
 let categoryRenderTaskId = 0;
+let searchInputTimer = 0;
 const HOME_INITIAL_SITE_LIMIT = 12;
 const HOME_FAVORITES_KEY = 'claw800_home_favorite_sites_v2';
 const HOME_FAVORITES_LEGACY_KEY = 'claw800_home_favorite_sites_v1';
@@ -1111,9 +1112,21 @@ siteListEl.addEventListener('click', (e) => {
 });
 
 searchBtn.addEventListener('click', () => loadSites());
+searchInput.addEventListener('input', () => {
+  window.clearTimeout(searchInputTimer);
+  const keyword = searchInput.value.trim();
+  if (!keyword) {
+    loadSites();
+    return;
+  }
+  searchInputTimer = window.setTimeout(() => {
+    loadSites();
+  }, 180);
+});
 searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
+    window.clearTimeout(searchInputTimer);
     loadSites();
   }
 });
