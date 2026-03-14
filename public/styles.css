@@ -929,6 +929,19 @@ button.danger { background: var(--danger); }
     min-width: 92px;
   }
 
+  .categories {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .categories button {
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    line-height: 1.15;
+    min-height: 40px;
+  }
+
   .hero-subrow {
     position: relative;
     padding-top: 6px;
