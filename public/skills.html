@@ -508,29 +508,35 @@
       .cat-btn {
         width: 100%;
         min-width: 0;
-        min-height: 32px;
-        padding: 4px 5px;
-        font-size: 0.66rem;
-        line-height: 1.1;
+        min-height: 42px;
+        padding: 5px 4px;
+        font-size: 0.62rem;
+        line-height: 1.05;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 1px;
+        gap: 2px;
         text-align: center;
+        flex-direction: column;
         border-radius: 10px;
       }
 
-      .cat-btn .label {
+      .cat-btn .label,
+      .cat-btn > :not(.count) {
         min-width: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: normal;
+        word-break: break-word;
       }
 
       .cat-btn .count {
         margin-left: 0;
         flex: 0 0 auto;
-        font-size: 0.6rem;
+        font-size: 0.54rem;
+        line-height: 1;
       }
 
       .bot-banner,
@@ -558,19 +564,19 @@
 
     @media (max-width: 420px) {
       .categories {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 4px;
       }
 
       .cat-btn {
-        min-height: 30px;
-        padding: 4px 5px;
-        font-size: 0.62rem;
+        min-height: 40px;
+        padding: 4px 3px;
+        font-size: 0.58rem;
         border-radius: 9px;
       }
 
       .cat-btn .count {
-        font-size: 0.56rem;
+        font-size: 0.5rem;
       }
     }
   </style>
