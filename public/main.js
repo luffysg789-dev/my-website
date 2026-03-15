@@ -822,7 +822,10 @@ function applyLanguage(markReady = true) {
   searchBtn.textContent = dict.searchBtn;
   if (homeNavBtn) homeNavBtn.textContent = dict.homeBtn;
   if (skillsNavBtn) skillsNavBtn.textContent = dict.skillsBtn;
-  if (githubStarBtn) githubStarBtn.textContent = dict.githubStarBtn;
+  if (githubStarBtn) {
+    githubStarBtn.setAttribute('aria-label', dict.githubStarBtn);
+    githubStarBtn.setAttribute('title', dict.githubStarBtn);
+  }
   if (tutorialNavBtn) tutorialNavBtn.textContent = dict.tutorialBtn;
   openSubmitFormBtn.textContent = dict.openSubmit;
   submitModalController?.setTexts();

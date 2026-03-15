@@ -129,6 +129,18 @@ button.hero-nav-btn {
   color: var(--brand-2);
 }
 
+.hero-nav-btn--icon {
+  min-width: 42px;
+  width: 42px;
+  padding: 8px 0;
+}
+
+.hero-nav-btn--icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .lang-menu {
   position: relative;
   display: inline-flex;

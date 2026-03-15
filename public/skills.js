@@ -598,7 +598,10 @@ function applyLanguage(markReady = true) {
   if (heroSubtitleEl) heroSubtitleEl.textContent = headerSub;
   if (homeNavBtn) homeNavBtn.textContent = t.homeBtn;
   if (skillsNavBtn) skillsNavBtn.textContent = t.skillsBtn;
-  if (githubStarBtn) githubStarBtn.textContent = t.githubStarBtn;
+  if (githubStarBtn) {
+    githubStarBtn.setAttribute('aria-label', t.githubStarBtn);
+    githubStarBtn.setAttribute('title', t.githubStarBtn);
+  }
   if (openSubmitFormBtn) openSubmitFormBtn.textContent = t.openSubmit;
   submitModalController?.setTexts();
   document.getElementById('label-skills').textContent = t.labelSkills;
