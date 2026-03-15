@@ -161,7 +161,7 @@
 
     .categories {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
@@ -170,16 +170,16 @@
       background: white;
       color: var(--text-main);
       border-radius: 999px;
-      padding: 9px 14px;
+      padding: 7px 11px;
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
       transition: all 0.2s ease;
       box-shadow: var(--shadow-sm);
     }
 
     .cat-btn .count {
       color: var(--text-muted);
-      margin-left: 6px;
+      margin-left: 4px;
     }
 
     .cat-btn:hover,
@@ -219,34 +219,36 @@
       position: absolute;
       top: 12px;
       right: 12px;
-      width: 24px;
-      height: 24px;
+      width: 34px;
+      height: 34px;
+      padding: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 0;
-      background: transparent;
-      color: rgba(255,255,255,0.96);
+      border-radius: 999px;
+      border: 1px solid #d7dfd8;
+      background: #fff;
+      color: #7c8c7f;
       cursor: pointer;
+      box-shadow: 0 6px 18px rgba(21, 49, 28, 0.08);
       transition: all 0.2s ease;
       z-index: 2;
-      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.28);
     }
 
     .skill-favorite-btn:hover {
-      transform: translateY(-1px);
-      color: #ff6b7a;
+      background: #f6faf6;
+      color: #4b5f4d;
     }
 
     .skill-favorite-btn.active {
-      background: transparent;
-      color: #e63946;
-      text-shadow: 0 1px 6px rgba(230, 57, 70, 0.18);
+      background: #fff1f1;
+      border-color: #f2bbbb;
+      color: #d93a52;
     }
 
     .skill-favorite-btn svg {
-      width: 20px;
-      height: 20px;
+      width: 16px;
+      height: 16px;
       display: block;
     }
 
@@ -493,29 +495,29 @@
 
     @media (max-width: 640px) {
       .categories-wrap {
-        padding: 0 16px;
-        margin-bottom: 12px;
+        padding: 0 14px;
+        margin-bottom: 8px;
       }
 
       .categories {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
       }
 
       .cat-btn {
         width: 100%;
         min-width: 0;
-        min-height: 36px;
-        padding: 6px 8px;
-        font-size: 0.75rem;
+        min-height: 32px;
+        padding: 4px 5px;
+        font-size: 0.66rem;
         line-height: 1.1;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 3px;
+        gap: 1px;
         text-align: center;
-        border-radius: 14px;
+        border-radius: 10px;
       }
 
       .cat-btn .label {
@@ -528,7 +530,7 @@
       .cat-btn .count {
         margin-left: 0;
         flex: 0 0 auto;
-        font-size: 0.72rem;
+        font-size: 0.6rem;
       }
 
       .bot-banner,
@@ -556,19 +558,19 @@
 
     @media (max-width: 420px) {
       .categories {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 5px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
       }
 
       .cat-btn {
-        min-height: 34px;
-        padding: 6px 7px;
-        font-size: 0.72rem;
-        border-radius: 12px;
+        min-height: 30px;
+        padding: 4px 5px;
+        font-size: 0.62rem;
+        border-radius: 9px;
       }
 
       .cat-btn .count {
-        font-size: 0.68rem;
+        font-size: 0.56rem;
       }
     }
   </style>
