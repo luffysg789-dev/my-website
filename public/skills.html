@@ -219,36 +219,34 @@
       position: absolute;
       top: 12px;
       right: 12px;
-      width: 30px;
-      height: 30px;
+      width: 24px;
+      height: 24px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 999px;
-      border: 1px solid #d7dfd6;
-      background: #fff;
-      color: #7a867b;
+      border: 0;
+      background: transparent;
+      color: rgba(255,255,255,0.96);
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(31, 27, 24, 0.08);
       transition: all 0.2s ease;
       z-index: 2;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.28);
     }
 
     .skill-favorite-btn:hover {
-      background: #f8fbf7;
-      border-color: #bfcbbf;
       transform: translateY(-1px);
+      color: #ff6b7a;
     }
 
     .skill-favorite-btn.active {
-      background: rgba(220,38,38,0.95);
-      border-color: rgba(220,38,38,1);
-      color: #fff;
+      background: transparent;
+      color: #e63946;
+      text-shadow: 0 1px 6px rgba(230, 57, 70, 0.18);
     }
 
     .skill-favorite-btn svg {
-      width: 15px;
-      height: 15px;
+      width: 20px;
+      height: 20px;
       display: block;
     }
 
@@ -494,6 +492,45 @@
     }
 
     @media (max-width: 640px) {
+      .categories-wrap {
+        padding: 0 16px;
+        margin-bottom: 12px;
+      }
+
+      .categories {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .cat-btn {
+        width: 100%;
+        min-width: 0;
+        min-height: 36px;
+        padding: 6px 8px;
+        font-size: 0.75rem;
+        line-height: 1.1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        text-align: center;
+        border-radius: 14px;
+      }
+
+      .cat-btn .label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .cat-btn .count {
+        margin-left: 0;
+        flex: 0 0 auto;
+        font-size: 0.72rem;
+      }
+
       .bot-banner,
       .meta-row,
       .skill-footer {
@@ -514,6 +551,24 @@
         left: 14px;
         right: 14px;
         min-width: 0;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .categories {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+      }
+
+      .cat-btn {
+        min-height: 34px;
+        padding: 6px 7px;
+        font-size: 0.72rem;
+        border-radius: 12px;
+      }
+
+      .cat-btn .count {
+        font-size: 0.68rem;
       }
     }
   </style>
