@@ -1001,3 +1001,320 @@ button.danger { background: var(--danger); }
   .admin-panel-grid { grid-template-columns: 1fr; }
   .admin-add-form { grid-template-columns: 1fr; }
 }
+
+.games-page,
+.minesweeper-page {
+  padding: 14px 0 28px;
+}
+
+.games-hero-card,
+.minesweeper-shell {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(217, 225, 216, 0.92);
+  border-radius: 24px;
+  box-shadow: 0 16px 40px rgba(31, 42, 32, 0.08);
+}
+
+.games-hero-card {
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.games-eyebrow {
+  margin: 0 0 8px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.games-hero-card h2,
+.minesweeper-header h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.games-hero-card p:last-child,
+.minesweeper-subtitle {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.game-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(217, 225, 216, 0.92);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 16px 40px rgba(31, 42, 32, 0.08);
+}
+
+.game-card__icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  background: linear-gradient(135deg, rgba(46, 111, 64, 0.16), rgba(24, 61, 37, 0.08));
+}
+
+.game-card h3 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.game-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.game-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+
+.game-card__meta li {
+  background: #f1f6ef;
+  color: var(--brand-2);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.game-card__play,
+.minesweeper-back,
+.minesweeper-difficulties button,
+.minesweeper-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(46, 111, 64, 0.16);
+  background: #fff;
+  color: var(--brand-2);
+  text-decoration: none;
+  padding: 0 16px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.minesweeper-back svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.game-card__play {
+  background: var(--brand);
+  color: #fff;
+  min-width: 108px;
+}
+
+.minesweeper-shell {
+  padding: 24px;
+}
+
+.minesweeper-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.minesweeper-toolbar,
+.minesweeper-actions,
+.minesweeper-difficulties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.minesweeper-toolbar {
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.minesweeper-difficulties button.active,
+.minesweeper-actions button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.minesweeper-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.minesweeper-stat {
+  padding: 14px;
+  border-radius: 18px;
+  background: #f6faf5;
+  border: 1px solid rgba(46, 111, 64, 0.08);
+}
+
+.minesweeper-stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.minesweeper-stat strong {
+  font-size: 24px;
+}
+
+.minesweeper-board-wrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+}
+
+.minesweeper-board {
+  --cell-size: 32px;
+  display: grid;
+  gap: 4px;
+  justify-content: start;
+  min-width: max-content;
+}
+
+.mine-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 1px solid rgba(46, 111, 64, 0.18);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fefefe, #eef5ed);
+  color: var(--brand-2);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mine-cell.is-revealed {
+  background: #ffffff;
+  border-color: rgba(46, 111, 64, 0.12);
+}
+
+.mine-cell.is-flagged {
+  color: #d9485f;
+}
+
+.mine-cell.is-mine {
+  background: #ffe7e9;
+  border-color: rgba(217, 72, 95, 0.24);
+}
+
+.minesweeper-help {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .games-page,
+  .minesweeper-page {
+    padding: 10px 0 22px;
+  }
+
+  .games-hero-card,
+  .game-card,
+  .minesweeper-shell {
+    border-radius: 18px;
+  }
+
+  .games-hero-card,
+  .minesweeper-shell,
+  .game-card {
+    padding: 16px;
+  }
+
+  .game-card {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .game-card__actions {
+    width: 100%;
+  }
+
+  .game-card__play {
+    width: 100%;
+  }
+
+  .minesweeper-header,
+  .minesweeper-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .minesweeper-header {
+    position: relative;
+    padding-right: 52px;
+  }
+
+  .minesweeper-back {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0;
+    border-radius: 12px;
+  }
+
+  .minesweeper-back span {
+    display: none;
+  }
+
+  .minesweeper-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .minesweeper-stat:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .minesweeper-difficulties,
+  .minesweeper-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .minesweeper-difficulties button:first-child {
+    grid-column: span 2;
+  }
+
+  .minesweeper-difficulties button,
+  .minesweeper-actions button,
+  .minesweeper-back {
+    width: 100%;
+  }
+}

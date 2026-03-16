@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 扫雷</title>
+    <meta name="description" content="Claw800 扫雷小游戏，适配手机网页，支持触控、插旗模式和难度切换。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/styles.css?v=20260316-01" />
+  </head>
+  <body>
+    <main class="minesweeper-page">
+      <section class="container">
+        <div class="minesweeper-shell">
+          <div class="minesweeper-header">
+            <div>
+              <h2>扫雷</h2>
+              <p class="minesweeper-subtitle">点开安全格子，标记地雷。手机版支持插旗模式，右手也能轻松玩。</p>
+            </div>
+            <a class="minesweeper-back" href="/games.html" aria-label="返回游戏大全" title="返回游戏大全">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  fill="currentColor"
+                  d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z"
+                />
+              </svg>
+              <span>返回游戏大全</span>
+            </a>
+          </div>
+
+          <div class="minesweeper-board-wrap">
+            <div class="minesweeper-board" id="minesweeperBoard" aria-label="扫雷棋盘"></div>
+          </div>
+
+          <div class="minesweeper-toolbar">
+            <div class="minesweeper-difficulties" id="difficultyButtons">
+              <button type="button" class="active" data-level="beginner">初级</button>
+              <button type="button" data-level="intermediate">中级</button>
+              <button type="button" data-level="expert">高级</button>
+            </div>
+            <div class="minesweeper-actions">
+              <button type="button" id="flagModeBtn">插旗模式：关</button>
+              <button type="button" id="resetGameBtn">重新开始</button>
+            </div>
+          </div>
+
+          <div class="minesweeper-stats">
+            <div class="minesweeper-stat">
+              <span>剩余地雷</span>
+              <strong id="mineCount">0</strong>
+            </div>
+            <div class="minesweeper-stat">
+              <span>用时</span>
+              <strong id="timerCount">0s</strong>
+            </div>
+            <div class="minesweeper-stat">
+              <span>状态</span>
+              <strong id="gameStatus">准备开始</strong>
+            </div>
+          </div>
+
+          <p class="minesweeper-help">提示：桌面端可右键插旗；手机端可先打开“插旗模式”，再点格子插旗。</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/minesweeper.js?v=20260316-01"></script>
+  </body>
+</html>
