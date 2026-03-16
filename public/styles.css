@@ -1085,6 +1085,57 @@ button.danger { background: var(--danger); }
   background: linear-gradient(135deg, rgba(46, 111, 64, 0.16), rgba(24, 61, 37, 0.08));
 }
 
+.game-card__icon--image {
+  overflow: hidden;
+  padding: 0;
+}
+
+.game-card__icon--image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.game-card__icon--muyu {
+  position: relative;
+  overflow: visible;
+  background: linear-gradient(135deg, rgba(143, 96, 44, 0.18), rgba(78, 46, 20, 0.06));
+}
+
+.game-card__muyu-body {
+  position: absolute;
+  inset: 14px 10px 12px;
+  border-radius: 44% 44% 50% 50% / 36% 36% 58% 58%;
+  background: linear-gradient(180deg, #d5a15f 0%, #b77833 48%, #855228 100%);
+  box-shadow:
+    inset 0 -8px 12px rgba(66, 37, 12, 0.18),
+    inset 0 6px 10px rgba(255, 236, 186, 0.42);
+}
+
+.game-card__muyu-groove {
+  position: absolute;
+  left: 19px;
+  right: 13px;
+  top: 24px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(72, 36, 13, 0.82);
+  transform: rotate(-14deg);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.game-card__muyu-base {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 8px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(31, 22, 14, 0.18);
+  filter: blur(1px);
+}
+
 .game-card__cover {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -1534,11 +1585,12 @@ button.danger { background: var(--danger); }
   text-align: center;
 }
 
-.muyu-stats {
+.muyu-controls-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 18px;
+  align-items: stretch;
 }
 
 .muyu-stat-card {
@@ -1547,6 +1599,11 @@ button.danger { background: var(--danger); }
   border-radius: 22px;
   padding: 18px;
   backdrop-filter: blur(10px);
+}
+
+.muyu-control-item,
+.muyu-control-btn {
+  min-width: 0;
 }
 
 .muyu-stat-card span {
@@ -1563,15 +1620,8 @@ button.danger { background: var(--danger); }
   color: #fff;
 }
 
-.muyu-actions {
+.muyu-control-btn {
   display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.muyu-actions button {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 42px;
@@ -1586,7 +1636,7 @@ button.danger { background: var(--danger); }
   backdrop-filter: blur(10px);
 }
 
-.muyu-actions button.active {
+.muyu-control-btn.active {
   background: rgba(217, 162, 95, 0.2);
   border-color: rgba(255, 221, 167, 0.38);
   color: #fff5e8;
@@ -1944,10 +1994,6 @@ button.danger { background: var(--danger); }
     grid-template-columns: 1fr;
   }
 
-  .muyu-stats {
-    grid-template-columns: 1fr;
-  }
-
   .minesweeper-header h2 {
     display: none;
   }
@@ -2060,6 +2106,36 @@ button.danger { background: var(--danger); }
 
   .muyu-stat-card strong {
     font-size: 34px;
+  }
+
+  .muyu-controls-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .muyu-stat-card,
+  .muyu-control-btn {
+    border-radius: 16px;
+    min-height: 72px;
+    padding: 10px 8px;
+  }
+
+  .muyu-stat-card span {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+
+  .muyu-stat-card strong {
+    font-size: 24px;
+  }
+
+  .muyu-control-btn {
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 700;
+    text-align: center;
+    padding: 10px 6px;
   }
 
   .minesweeper-difficulties {

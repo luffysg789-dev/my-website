@@ -6,6 +6,7 @@ const { promisify } = require('util');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
+const { saveUploadedGameAsset } = require('./game-asset-storage');
 const execFileAsync = promisify(execFile);
 
 const app = express();
@@ -1502,6 +1503,38 @@ app.get('/api/admin/games', requireAdmin, (_req, res) => {
   const items = listGamesCatalogStmt.all().map(formatGameRow);
   res.json({ ok: true, items });
 });
+
+app.put(
+  '/api/admin/game-assets',
+  requireAdmin,
+  express.raw({ type: () => true, limit: '20mb' }),
+  (req, res) => {
+    const slug = String(req.query.slug || '').trim();
+    const field = String(req.query.field || '').trim();
+    const mimeType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    const originalName = decodeURIComponent(String(req.headers['x-file-name'] || '').trim() || 'asset');
+
+    if (!slug) return res.status(400).json({ error: 'slug 必填' });
+    if (!field) return res.status(400).json({ error: 'field 必填' });
+    if (!req.body || !Buffer.isBuffer(req.body) || !req.body.length) {
+      return res.status(400).json({ error: '上传文件为空' });
+    }
+
+    try {
+      const item = saveUploadedGameAsset({
+        slug,
+        field,
+        mimeType,
+        originalName,
+        buffer: req.body,
+        publicRootDir: path.join(__dirname, '..', 'public')
+      });
+      res.json({ ok: true, item });
+    } catch (error) {
+      res.status(400).json({ error: error?.message || '上传失败' });
+    }
+  }
+);
 
 app.put('/api/admin/games/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);

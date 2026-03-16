@@ -1,11 +1,14 @@
 const strikeBtn = document.getElementById('muyuStrikeBtn');
 const resetBtn = document.getElementById('muyuResetBtn');
 const musicToggleBtn = document.getElementById('muyuMusicToggleBtn');
-const totalCountEl = document.getElementById('muyuTotalCount');
 const todayCountEl = document.getElementById('muyuTodayCount');
 const heroCountEl = document.getElementById('muyuHeroCount');
 const hintEl = document.getElementById('muyuHint');
 const blessingTextEl = document.getElementById('muyuBlessingText');
+function shouldRestartHtmlAudio(audio) {
+  if (!audio) return true;
+  return Boolean(audio.paused || audio.ended);
+}
 
 const STORAGE_KEY = 'claw800_muyu_state_v1';
 const DEFAULT_STRIKE_AUDIO_SRC = '/audio/muyu-strike.mp3';
@@ -21,6 +24,8 @@ let strikeAudioSrc = DEFAULT_STRIKE_AUDIO_SRC;
 let strikeAudioProbe = null;
 let backgroundMusicSrc = '';
 let backgroundMusicAudio = null;
+let strikeAudioPrepared = false;
+let backgroundMusicPrepared = false;
 
 function syncGameConfig() {
   const config = window.ClawGamesConfig?.getCurrentGameConfig?.() || window.__GAME_CONFIG__ || null;
@@ -40,44 +45,12 @@ function syncGameConfig() {
     const fallbackMallet = String(malletImageEl.dataset.defaultSrc || DEFAULT_MALLET_IMAGE_SRC).trim() || DEFAULT_MALLET_IMAGE_SRC;
     malletImageEl.src = malletImage || fallbackMallet;
   }
-  externalStrikeAudioAvailable = true;
-  if (typeof Audio === 'undefined') return;
-  strikeAudioProbe = new Audio(strikeAudioSrc);
-  strikeAudioProbe.preload = 'auto';
-  strikeAudioProbe.addEventListener('error', () => {
-    externalStrikeAudioAvailable = false;
-  });
-  try {
-    strikeAudioProbe.load();
-  } catch {}
-
   externalBackgroundMusicAvailable = false;
   backgroundMusicAudio = null;
-  if (backgroundMusicSrc && typeof Audio !== 'undefined') {
-    backgroundMusicAudio = new Audio(backgroundMusicSrc);
-    backgroundMusicAudio.preload = 'auto';
-    backgroundMusicAudio.loop = true;
-    backgroundMusicAudio.volume = 0.42;
-    backgroundMusicAudio.addEventListener('canplaythrough', () => {
-      externalBackgroundMusicAvailable = true;
-      if (state.musicEnabled) {
-        stopAmbientMusic();
-        try {
-          backgroundMusicAudio.currentTime = 0;
-          backgroundMusicAudio.play().catch(() => {});
-        } catch {}
-      }
-    }, { once: true });
-    backgroundMusicAudio.addEventListener('error', () => {
-      externalBackgroundMusicAvailable = false;
-    });
-    try {
-      backgroundMusicAudio.load();
-    } catch {}
-  }
+  strikeAudioPrepared = false;
+  backgroundMusicPrepared = false;
   if (state.musicEnabled) {
-    stopAmbientMusic();
-    startAmbientMusic();
+    startAmbientMusic({ forceRestart: false });
   }
 }
 
@@ -126,7 +99,6 @@ function saveState() {
 }
 
 function renderState() {
-  totalCountEl.textContent = `${state.total}`;
   todayCountEl.textContent = `${state.today}`;
   if (heroCountEl) heroCountEl.textContent = `${state.total}`;
   if (musicToggleBtn) {
@@ -192,6 +164,7 @@ function playGeneratedWoodSound() {
 }
 
 function playWoodSound() {
+  prepareStrikeAudio();
   if (!externalStrikeAudioAvailable || typeof Audio === 'undefined') {
     playGeneratedWoodSound();
     return;
@@ -231,10 +204,54 @@ function stopAmbientMusic() {
   ambientNodes = null;
 }
 
-function startAmbientMusic() {
+function prepareStrikeAudio() {
+  if (strikeAudioPrepared || typeof Audio === 'undefined') return;
+  strikeAudioPrepared = true;
+  externalStrikeAudioAvailable = true;
+  strikeAudioProbe = new Audio(strikeAudioSrc);
+  strikeAudioProbe.preload = 'auto';
+  strikeAudioProbe.addEventListener('error', () => {
+    externalStrikeAudioAvailable = false;
+  }, { once: true });
+  try {
+    strikeAudioProbe.load();
+  } catch {}
+}
+
+function prepareBackgroundMusic() {
+  if (backgroundMusicPrepared || !backgroundMusicSrc || typeof Audio === 'undefined') return;
+  backgroundMusicPrepared = true;
+  externalBackgroundMusicAvailable = false;
+  backgroundMusicAudio = new Audio(backgroundMusicSrc);
+  backgroundMusicAudio.preload = 'metadata';
+  backgroundMusicAudio.loop = true;
+  backgroundMusicAudio.volume = 0.42;
+  backgroundMusicAudio.addEventListener('canplaythrough', () => {
+    externalBackgroundMusicAvailable = true;
+    if (state.musicEnabled) {
+      try {
+        backgroundMusicAudio.play().catch(() => {});
+      } catch {}
+    }
+  });
+  backgroundMusicAudio.addEventListener('error', () => {
+    externalBackgroundMusicAvailable = false;
+  }, { once: true });
+  try {
+    backgroundMusicAudio.load();
+  } catch {}
+}
+
+function startAmbientMusic(options = {}) {
+  const { forceRestart = false } = options;
+  prepareBackgroundMusic();
   if (backgroundMusicAudio) {
     try {
-      backgroundMusicAudio.currentTime = 0;
+      if (forceRestart || shouldRestartHtmlAudio(backgroundMusicAudio)) {
+        if (forceRestart) backgroundMusicAudio.currentTime = 0;
+      } else {
+        return;
+      }
       backgroundMusicAudio.play().catch(() => {
         externalBackgroundMusicAvailable = false;
         startAmbientMusic();
@@ -291,14 +308,13 @@ function startAmbientMusic() {
 }
 
 function syncAmbientMusic() {
-  if (state.musicEnabled) startAmbientMusic();
+  if (state.musicEnabled) startAmbientMusic({ forceRestart: false });
   else stopAmbientMusic();
 }
 
 function strikeWood() {
   if (isStriking) return;
   isStriking = true;
-  if (state.musicEnabled) startAmbientMusic();
   playWoodSound();
 
   const todayKey = getTodayKey();
@@ -346,6 +362,16 @@ function toggleMusic() {
 renderState();
 syncAmbientMusic();
 syncGameConfig();
+
+if (typeof window !== 'undefined') {
+  const schedule = typeof window.requestIdleCallback === 'function'
+    ? window.requestIdleCallback.bind(window)
+    : (cb) => window.setTimeout(cb, 120);
+  schedule(() => {
+    prepareStrikeAudio();
+    if (state.musicEnabled) prepareBackgroundMusic();
+  });
+}
 
 strikeBtn?.addEventListener('click', strikeWood);
 resetBtn?.addEventListener('click', resetState);

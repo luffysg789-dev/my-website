@@ -6,7 +6,7 @@
     <title>Claw800 敲木鱼</title>
     <meta name="description" content="Claw800 敲木鱼小游戏，轻点木鱼一下，功德 +1，支持手机网页与木鱼音效。" />
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="/styles.css?v=20260317-16" />
+    <link rel="stylesheet" href="/styles.css?v=20260317-19" />
   </head>
   <body>
     <main class="muyu-page">
@@ -30,7 +30,7 @@
           <div class="muyu-stage">
             <div class="muyu-meritboard" aria-live="polite">
               <strong id="muyuHeroCount">0</strong>
-              <span>功德</span>
+              <span>总功德</span>
             </div>
             <button id="muyuStrikeBtn" type="button" class="muyu-wood" aria-label="敲木鱼">
               <span class="muyu-impact-ripple" aria-hidden="true"></span>
@@ -48,20 +48,13 @@
             <p id="muyuHint" class="muyu-hint">轻触木鱼，开始积功德。</p>
           </div>
 
-          <div class="muyu-stats">
-            <div class="muyu-stat-card">
-              <span>总功德</span>
-              <strong id="muyuTotalCount">0</strong>
-            </div>
-            <div class="muyu-stat-card">
+          <div class="muyu-controls-grid">
+            <div class="muyu-stat-card muyu-control-item">
               <span>今日功德</span>
               <strong id="muyuTodayCount">0</strong>
             </div>
-          </div>
-
-          <div class="muyu-actions">
-            <button id="muyuMusicToggleBtn" type="button">背景音乐：关</button>
-            <button id="muyuResetBtn" type="button">清零重来</button>
+            <button id="muyuMusicToggleBtn" type="button" class="muyu-control-btn">背景音乐：关</button>
+            <button id="muyuResetBtn" type="button" class="muyu-control-btn">清零重来</button>
           </div>
         </div>
       </section>
@@ -71,6 +64,6 @@
     <script>
       window.ClawGamesConfig?.bootstrapGamePage?.('muyu');
     </script>
-    <script src="/muyu.js?v=20260317-11"></script>
+    <script src="/muyu.js?v=20260317-13"></script>
   </body>
 </html>

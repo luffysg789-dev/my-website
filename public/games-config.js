@@ -1,3 +1,7 @@
+const { getGameCardMediaMarkup } = typeof window === 'undefined'
+  ? require('../src/game-card-view')
+  : { getGameCardMediaMarkup: null };
+
 const DEFAULT_GAMES = [
   {
     slug: 'minesweeper',
@@ -62,6 +66,26 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
+function buildGameCardMediaMarkup(item) {
+  if (getGameCardMediaMarkup) {
+    return getGameCardMediaMarkup(item);
+  }
+  const slug = String(item?.slug || '').trim();
+  if (slug === 'muyu') {
+    return `
+      <div class="game-card__icon game-card__icon--muyu" aria-hidden="true">
+        <span class="game-card__muyu-body"></span>
+        <span class="game-card__muyu-groove"></span>
+        <span class="game-card__muyu-base"></span>
+      </div>
+    `.trim();
+  }
+  if (item.cover_image) {
+    return `<div class="game-card__cover"><img src="${escapeHtml(item.cover_image)}" alt="${escapeHtml(item.name)}" /></div>`;
+  }
+  return `<div class="game-card__icon" aria-hidden="true">${escapeHtml(item.icon)}</div>`;
+}
+
 function cloneDefaultGame(slug) {
   const fallback = DEFAULT_GAMES.find((item) => item.slug === slug);
   return fallback ? { ...fallback } : null;
@@ -124,9 +148,7 @@ async function fetchJson(path) {
 }
 
 function gameCardMarkup(item) {
-  const coverMarkup = item.cover_image
-    ? `<div class="game-card__cover"><img src="${escapeHtml(item.cover_image)}" alt="${escapeHtml(item.name)}" /></div>`
-    : `<div class="game-card__icon" aria-hidden="true">${escapeHtml(item.icon)}</div>`;
+  const coverMarkup = buildGameCardMediaMarkup(item);
 
   return `
     <article class="game-card">

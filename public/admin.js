@@ -1179,6 +1179,25 @@ async function readFileAsDataUrl(file) {
   });
 }
 
+async function uploadGameAssetFile(file, { slug, field }) {
+  const query = new URLSearchParams({
+    slug: String(slug || '').trim(),
+    field: String(field || '').trim()
+  });
+  const result = await requestTutorialJson([`/api/admin/game-assets?${query.toString()}`], {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+      'X-File-Name': encodeURIComponent(file.name || 'asset')
+    },
+    body: file
+  });
+  if (!result.res || !result.res.ok) {
+    throw new Error(localizeApiError(result.data?.error || t('gameSaveFailed')));
+  }
+  return String(result.data?.item?.publicPath || '').trim();
+}
+
 async function loadGamesList() {
   if (!gamesList || !gamesMessage) return;
   gamesMessage.textContent = '';
@@ -1253,25 +1272,25 @@ window.saveGameEdit = async function saveGameEdit(id) {
       if (coverFile.size > 1024 * 1024) {
         throw new Error(t('gameCoverTooLarge'));
       }
-      coverImage = await readFileAsDataUrl(coverFile);
+      coverImage = await uploadGameAssetFile(coverFile, { slug: game.slug, field: 'cover-image' });
     }
     if (secondaryImageFile) {
       if (secondaryImageFile.size > 1024 * 1024) {
         throw new Error(t('gameCoverTooLarge'));
       }
-      secondaryImage = await readFileAsDataUrl(secondaryImageFile);
+      secondaryImage = await uploadGameAssetFile(secondaryImageFile, { slug: game.slug, field: 'secondary-image' });
     }
     if (soundFile) {
       if (soundFile.size > 2 * 1024 * 1024) {
         throw new Error(t('gameSoundTooLarge'));
       }
-      soundAsset = await readFileAsDataUrl(soundFile);
+      soundAsset = await uploadGameAssetFile(soundFile, { slug: game.slug, field: 'sound-file' });
     }
     if (backgroundMusicFile) {
       if (backgroundMusicFile.size > 4 * 1024 * 1024) {
         throw new Error(t('gameSoundTooLarge'));
       }
-      backgroundMusicAsset = await readFileAsDataUrl(backgroundMusicFile);
+      backgroundMusicAsset = await uploadGameAssetFile(backgroundMusicFile, { slug: game.slug, field: 'background-music' });
     }
   } catch (error) {
     gamesMessage.textContent = error?.message || t('gameSaveFailed');
