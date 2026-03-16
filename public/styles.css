@@ -1309,20 +1309,26 @@ button.danger { background: var(--danger); }
 }
 
 @media (max-width: 480px) {
+  .minesweeper-difficulties {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .minesweeper-subtitle {
     font-size: 0.82rem;
     line-height: 1.25;
     white-space: nowrap;
   }
 
-  .minesweeper-difficulties,
   .minesweeper-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .minesweeper-difficulties button:first-child {
-    grid-column: span 2;
+  .minesweeper-difficulties button {
+    min-width: 0;
+    padding: 0 8px;
+    font-size: 0.9rem;
   }
 
   .minesweeper-difficulties button,
