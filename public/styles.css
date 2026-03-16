@@ -1275,7 +1275,7 @@ button.danger { background: var(--danger); }
 
   .minesweeper-header {
     position: relative;
-    padding-right: 52px;
+    padding-left: 52px;
   }
 
   .minesweeper-subtitle {
@@ -1287,7 +1287,7 @@ button.danger { background: var(--danger); }
   .minesweeper-back {
     position: absolute;
     top: 0;
-    right: 0;
+    left: 0;
     width: 40px;
     min-width: 40px;
     min-height: 40px;
