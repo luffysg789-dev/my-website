@@ -1196,8 +1196,9 @@ button.danger { background: var(--danger); }
   --cell-size: 32px;
   display: grid;
   gap: 4px;
-  justify-content: start;
+  justify-content: center;
   min-width: max-content;
+  width: 100%;
 }
 
 .mine-cell {
@@ -1277,6 +1278,12 @@ button.danger { background: var(--danger); }
     padding-right: 52px;
   }
 
+  .minesweeper-subtitle {
+    font-size: 0.9rem;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+
   .minesweeper-back {
     position: absolute;
     top: 0;
@@ -1302,6 +1309,12 @@ button.danger { background: var(--danger); }
 }
 
 @media (max-width: 480px) {
+  .minesweeper-subtitle {
+    font-size: 0.82rem;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
   .minesweeper-difficulties,
   .minesweeper-actions {
     display: grid;

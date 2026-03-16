@@ -208,8 +208,13 @@ function handleCellAction(cell, useFlagMode = flagMode) {
 
 function getCellSize() {
   const { cols } = getLevel();
-  const screenWidth = Math.min(window.innerWidth || 390, 460);
-  return Math.max(18, Math.min(38, Math.floor((screenWidth - 48) / cols)));
+  const wrapWidth = boardEl?.parentElement?.clientWidth || 0;
+  const viewportWidth = window.innerWidth || 390;
+  const availableWidth = Math.max(wrapWidth || viewportWidth - 32, viewportWidth - 32);
+  const gapTotal = (cols - 1) * 4;
+  const innerWidth = Math.max(availableWidth - gapTotal, 180);
+  const maxSize = viewportWidth <= 480 ? 44 : 40;
+  return Math.max(20, Math.min(maxSize, Math.floor(innerWidth / cols)));
 }
 
 function renderBoard() {
