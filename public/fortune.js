@@ -64,17 +64,16 @@ function getAudioContext() {
   return audioContext;
 }
 
-function playShakeSound() {
+function playShakeSound(pulses = 5, spacing = 0.09) {
   const context = getAudioContext();
   if (!context) return;
 
   const startAt = context.currentTime + 0.01;
-  const pulses = 5;
 
   for (let index = 0; index < pulses; index += 1) {
     const oscillator = context.createOscillator();
     const gainNode = context.createGain();
-    const time = startAt + index * 0.09;
+    const time = startAt + index * spacing;
 
     oscillator.type = 'triangle';
     oscillator.frequency.setValueAtTime(520 - index * 35, time);
@@ -89,6 +88,10 @@ function playShakeSound() {
     oscillator.start(time);
     oscillator.stop(time + 0.08);
   }
+}
+
+function playRevealSound() {
+  playShakeSound(3, 0.07);
 }
 
 function pickFortune() {
@@ -123,6 +126,7 @@ function startDraw() {
   window.setTimeout(() => {
     drawBtn.classList.remove('is-shaking');
     renderFortune(pickFortune());
+    playRevealSound();
     hintEl.textContent = '今日财运已揭晓';
     isDrawing = false;
   }, 1100);
