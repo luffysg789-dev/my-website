@@ -1287,6 +1287,10 @@ button.danger { background: var(--danger); }
     align-items: stretch;
   }
 
+  .minesweeper-header h2 {
+    display: none;
+  }
+
   .minesweeper-subtitle {
     font-size: 0.9rem;
     line-height: 1.35;
@@ -1294,12 +1298,12 @@ button.danger { background: var(--danger); }
   }
 
   .minesweeper-back {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    min-height: 40px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
     padding: 0;
-    border-radius: 12px;
+    border-radius: 10px;
   }
 
   .minesweeper-stats {
@@ -1309,7 +1313,7 @@ button.danger { background: var(--danger); }
 
 @media (max-width: 480px) {
   .minesweeper-intro-row {
-    gap: 10px;
+    gap: 8px;
   }
 
   .minesweeper-difficulties {
@@ -1325,6 +1329,19 @@ button.danger { background: var(--danger); }
     text-overflow: ellipsis;
   }
 
+  .minesweeper-back {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    border-radius: 9px;
+  }
+
+  .minesweeper-back svg {
+    width: 15px;
+    height: 15px;
+  }
+
   .minesweeper-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1337,8 +1354,7 @@ button.danger { background: var(--danger); }
   }
 
   .minesweeper-difficulties button,
-  .minesweeper-actions button,
-  .minesweeper-back {
+  .minesweeper-actions button {
     width: 100%;
   }
 }
