@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 今日运势</title>
+    <meta name="description" content="Claw800 今日运势小游戏，结合抽签氛围，给出今日财运签与建议。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/styles.css?v=20260316-01" />
+  </head>
+  <body>
+    <main class="fortune-page">
+      <section class="container">
+        <div class="fortune-shell">
+          <div class="fortune-header">
+            <h2>今日运势</h2>
+            <div class="fortune-intro-row">
+              <a class="fortune-back" href="/games.html" aria-label="返回游戏大全" title="返回游戏大全">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z"
+                  />
+                </svg>
+              </a>
+              <p class="fortune-subtitle">摇一摇签筒，抽出你今天的财运签。</p>
+            </div>
+          </div>
+
+          <div class="fortune-stage">
+            <button id="fortuneDrawBtn" type="button" class="fortune-bucket" aria-label="点击抽签">
+              <span class="fortune-bucket__sticks" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i>
+              </span>
+              <span class="fortune-bucket__body" aria-hidden="true"></span>
+              <span class="fortune-bucket__label">点击抽签</span>
+            </button>
+            <p id="fortuneHint" class="fortune-hint">轻触签筒，开始摇签。</p>
+          </div>
+
+          <div id="fortuneResult" class="fortune-result hidden" aria-live="polite">
+            <div class="fortune-result__top">
+              <span id="fortuneGrade" class="fortune-grade">上上签</span>
+              <span id="fortuneWealth" class="fortune-wealth">财运指数 98</span>
+            </div>
+            <h3 id="fortuneTitle">今日偏财顺遂</h3>
+            <p id="fortuneSummary" class="fortune-summary"></p>
+            <div class="fortune-grid">
+              <div class="fortune-card">
+                <span>宜</span>
+                <strong id="fortuneDo"></strong>
+              </div>
+              <div class="fortune-card">
+                <span>忌</span>
+                <strong id="fortuneAvoid"></strong>
+              </div>
+            </div>
+            <div class="fortune-advice">
+              <span>今日建议</span>
+              <p id="fortuneAdvice"></p>
+            </div>
+            <button id="fortuneRetryBtn" type="button" class="fortune-retry">再抽一次</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/fortune.js?v=20260316-01"></script>
+  </body>
+</html>
