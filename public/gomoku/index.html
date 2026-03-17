@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 五子棋</title>
+    <meta
+      name="description"
+      content="Claw800 五子棋网页游戏，支持真人对战、人机对战、三档 AI 难度、悔棋、重开与手机版操作。"
+    />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/gomoku/style.css?v=20260317-01" />
+  </head>
+  <body>
+    <main class="gomoku-page">
+      <section class="gomoku-container">
+        <div class="gomoku-shell">
+          <header class="gomoku-header">
+            <div class="gomoku-intro-row">
+              <a class="gomoku-back" href="/games.html" aria-label="返回游戏大全" title="返回游戏大全">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z"
+                  />
+                </svg>
+              </a>
+              <div class="gomoku-title-wrap">
+                <p id="gamePageSubtitle" class="gomoku-subtitle">
+                  15x15 棋盘，支持真人对战与人机对战，电脑和手机都能顺手下。
+                </p>
+              </div>
+            </div>
+            <a class="gomoku-home-link" href="/games.html">返回首页</a>
+          </header>
+
+          <section class="gomoku-game-layout">
+            <div class="gomoku-board-panel">
+              <div class="gomoku-board-head">
+                <div>
+                  <p class="gomoku-section-eyebrow">对局中</p>
+                  <h2 id="gomokuStatusTitle">等待开始</h2>
+                </div>
+                <div class="gomoku-status-pills">
+                  <span id="gomokuModeBadge" class="gomoku-status-pill">真人</span>
+                  <span id="gomokuDifficultyBadge" class="gomoku-status-pill is-hidden">中级 AI</span>
+                  <span id="gomokuTurnBadge" class="gomoku-status-pill is-accent">黑棋先行</span>
+                </div>
+              </div>
+
+              <div class="gomoku-canvas-wrap">
+                <div id="gomokuBoardOverlay" class="gomoku-board-overlay">
+                  <div class="gomoku-board-overlay__card">
+                    <span class="gomoku-board-overlay__eyebrow">准备开局</span>
+                    <strong id="gomokuBoardOverlayTitle">选择模式</strong>
+                    <div class="gomoku-board-overlay__modes">
+                      <button
+                        id="gomokuOverlayModeHuman"
+                        class="gomoku-choice"
+                        type="button"
+                        data-group="mode"
+                        data-value="human"
+                      >
+                        真人对战
+                      </button>
+                      <button
+                        id="gomokuOverlayModeAi"
+                        class="gomoku-choice is-active"
+                        type="button"
+                        data-group="mode"
+                        data-value="ai"
+                      >
+                        人机对战
+                      </button>
+                    </div>
+                    <div id="gomokuOverlaySettings" class="gomoku-overlay-settings">
+                      <div class="gomoku-setting-block">
+                        <span class="gomoku-setting-label">AI 难度</span>
+                        <div class="gomoku-choice-row" role="group" aria-label="AI 难度">
+                          <button id="gomokuDifficultyLow" class="gomoku-choice" type="button" data-group="difficulty" data-value="low">
+                            低
+                          </button>
+                          <button
+                            id="gomokuDifficultyMedium"
+                            class="gomoku-choice is-active"
+                            type="button"
+                            data-group="difficulty"
+                            data-value="medium"
+                          >
+                            中
+                          </button>
+                          <button id="gomokuDifficultyHigh" class="gomoku-choice" type="button" data-group="difficulty" data-value="high">
+                            高
+                          </button>
+                        </div>
+                      </div>
+                      <div class="gomoku-setting-block">
+                        <span class="gomoku-setting-label">执子顺序</span>
+                        <div class="gomoku-choice-row" role="group" aria-label="执子顺序">
+                          <button id="gomokuOrderFirst" class="gomoku-choice is-active" type="button" data-group="order" data-value="first">
+                            我先手
+                          </button>
+                          <button id="gomokuOrderSecond" class="gomoku-choice" type="button" data-group="order" data-value="second">
+                            我后手
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <p id="gomokuBoardOverlayText">当前默认人机对战，中级 AI，你执黑先手。</p>
+                    <button id="gomokuBoardStartBtn" class="gomoku-primary-btn" type="button">开始游戏</button>
+                  </div>
+                </div>
+                <canvas
+                  id="gomokuBoard"
+                  class="gomoku-board"
+                  width="720"
+                  height="720"
+                  aria-label="五子棋棋盘"
+                ></canvas>
+              </div>
+              <p id="gomokuHint" class="gomoku-board-hint">点击“开始游戏”后即可落子，形成五连即可获胜。</p>
+            </div>
+
+            <aside class="gomoku-side-panel">
+              <div class="gomoku-card">
+                <div class="gomoku-actions">
+                  <button id="gomokuUndoBtn" class="gomoku-secondary-btn" type="button">悔棋</button>
+                  <button id="gomokuRestartBtn" class="gomoku-secondary-btn" type="button">重开</button>
+                  <button id="gomokuSetupBtn" class="gomoku-secondary-btn" type="button">重新选模式</button>
+                </div>
+              </div>
+            </aside>
+          </section>
+
+        </div>
+      </section>
+    </main>
+
+    <div id="gomokuModal" class="gomoku-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="gomokuModalTitle">
+      <div class="gomoku-modal__card">
+        <p class="gomoku-section-eyebrow">对局结果</p>
+        <h2 id="gomokuModalTitle">黑棋获胜</h2>
+        <p id="gomokuModalMessage">本局已经结束，是否重新开始？</p>
+        <div class="gomoku-modal__actions">
+          <button id="gomokuModalRestartBtn" class="gomoku-primary-btn" type="button">再来一局</button>
+          <button id="gomokuModalCloseBtn" class="gomoku-secondary-btn" type="button">知道了</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/games-config.js?v=20260317-07"></script>
+    <script>
+      window.ClawGamesConfig?.bootstrapGamePage?.('gomoku');
+    </script>
+    <script src="/gomoku/script.js?v=20260317-01"></script>
+  </body>
+</html>

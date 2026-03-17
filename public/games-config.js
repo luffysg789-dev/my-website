@@ -4,6 +4,20 @@ const { getGameCardMediaMarkup } = typeof window === 'undefined'
 
 const DEFAULT_GAMES = [
   {
+    slug: 'gomoku',
+    name: '五子棋',
+    description: '15x15 棋盘，支持真人对战与人机对战。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 40,
+    route: '/gomoku/',
+    icon: '⚫',
+    actionText: '开始对弈'
+  },
+  {
     slug: 'minesweeper',
     name: '扫雷',
     description: '经典扫雷网页小游戏，支持手机版触控、插旗模式、难度切换和重新开始。',
@@ -48,6 +62,7 @@ const DEFAULT_GAMES = [
 ];
 
 const GAME_ACTION_TEXT = {
+  gomoku: '开始对弈',
   minesweeper: '开始游戏',
   fortune: '开始抽签',
   muyu: '开始敲木鱼'
@@ -185,9 +200,16 @@ async function bootstrapGamesPage() {
   const grid = document.getElementById('gamesGrid');
   if (!grid) return;
   const data = await fetchJson('/api/games');
-  const items = Array.isArray(data?.items) && data.items.length
-    ? data.items.map((item) => normalizeGame(item, cloneDefaultGame(item.slug) || {}))
-    : DEFAULT_GAMES.map((item) => ({ ...item }));
+  const mergedBySlug = new Map(DEFAULT_GAMES.map((item) => [item.slug, { ...item }]));
+
+  if (Array.isArray(data?.items) && data.items.length) {
+    data.items.forEach((item) => {
+      const normalized = normalizeGame(item, cloneDefaultGame(item.slug) || {});
+      mergedBySlug.set(normalized.slug, normalized);
+    });
+  }
+
+  const items = Array.from(mergedBySlug.values());
   grid.innerHTML = items.filter((item) => item.is_enabled).map(gameCardMarkup).join('');
 }
 

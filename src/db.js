@@ -202,6 +202,17 @@ db.exec(`
 
 const DEFAULT_GAMES_CATALOG = [
   {
+    slug: 'gomoku',
+    name: '五子棋',
+    description: '15x15 棋盘，支持真人对战与人机对战。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 0
+  },
+  {
     slug: 'minesweeper',
     name: '扫雷',
     description: '经典扫雷网页小游戏，支持手机版触控、插旗模式、难度切换和重新开始。',
