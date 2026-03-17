@@ -11,6 +11,21 @@ test('woodfish page uses dedicated lightweight stylesheet', () => {
   assert.doesNotMatch(html, /href="\/styles\.css\?v=/);
 });
 
+test('woodfish page no longer preloads legacy fallback images on first paint', () => {
+  assert.doesNotMatch(html, /rel="preload" as="image" href="\/assets\/muyu-fish\.svg"/);
+  assert.doesNotMatch(html, /rel="preload" as="image" href="\/assets\/muyu-mallet\.svg"/);
+});
+
+test('woodfish page uses fixed server mallet asset as fallback image', () => {
+  assert.match(html, /data-default-src="\/assets\/muyu-mallet-fixed\.png"/);
+  assert.match(js, /const DEFAULT_MALLET_IMAGE_SRC = '\/assets\/muyu-mallet-fixed\.png';/);
+});
+
+test('woodfish page uses fixed server fish asset as fallback image', () => {
+  assert.match(html, /data-default-src="\/assets\/muyu-fish-fixed\.webp"/);
+  assert.match(js, /const DEFAULT_FISH_IMAGE_SRC = '\/assets\/muyu-fish-fixed\.webp';/);
+});
+
 test('woodfish page no longer loads shared games bootstrap script', () => {
   assert.doesNotMatch(html, /src="\/games-config\.js\?v=/);
 });

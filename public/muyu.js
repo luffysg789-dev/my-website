@@ -26,8 +26,8 @@ function shouldRestartHtmlAudio(audio) {
 
 const STORAGE_KEY = 'claw800_muyu_state_v1';
 const DEFAULT_STRIKE_AUDIO_SRC = '/audio/muyu-strike.mp3';
-const DEFAULT_FISH_IMAGE_SRC = '/assets/muyu-fish.svg';
-const DEFAULT_MALLET_IMAGE_SRC = '/assets/muyu-mallet.svg';
+const DEFAULT_FISH_IMAGE_SRC = '/assets/muyu-fish-fixed.webp';
+const DEFAULT_MALLET_IMAGE_SRC = '/assets/muyu-mallet-fixed.png';
 
 let audioContext = null;
 let isStriking = false;
@@ -118,7 +118,8 @@ async function ensureFullConfigLoaded() {
   return window.__GAME_CONFIG__;
 }
 
-function syncGameConfig() {
+function syncGameConfig(options = {}) {
+  const { allowFallbackImages = true } = options;
   const config = normalizeGameConfig(window.__GAME_CONFIG__);
   const configuredSrc = config.sound_file;
   const configuredBackgroundMusicSrc = config.background_music_file;
@@ -135,11 +136,11 @@ function syncGameConfig() {
   const malletImageEl = document.querySelector('.muyu-mallet__image');
   if (fishImageEl) {
     const fallbackFish = String(fishImageEl.dataset.defaultSrc || DEFAULT_FISH_IMAGE_SRC).trim() || DEFAULT_FISH_IMAGE_SRC;
-    fishImageEl.src = fishImage || fallbackFish;
+    fishImageEl.src = fishImage || (allowFallbackImages ? fallbackFish : '');
   }
   if (malletImageEl) {
     const fallbackMallet = String(malletImageEl.dataset.defaultSrc || DEFAULT_MALLET_IMAGE_SRC).trim() || DEFAULT_MALLET_IMAGE_SRC;
-    malletImageEl.src = malletImage || fallbackMallet;
+    malletImageEl.src = malletImage || (allowFallbackImages ? fallbackMallet : '');
   }
   externalBackgroundMusicAvailable = false;
   backgroundMusicAudio = null;
@@ -469,8 +470,11 @@ function toggleMusic() {
 
 renderState();
 syncAmbientMusic();
-window.__GAME_CONFIG__ = normalizeGameConfig(readCachedGameConfig() || DEFAULT_GAME_CONFIG);
-syncGameConfig();
+const initialCachedConfig = readCachedGameConfig();
+window.__GAME_CONFIG__ = normalizeGameConfig(initialCachedConfig || DEFAULT_GAME_CONFIG);
+syncGameConfig({
+  allowFallbackImages: Boolean(initialCachedConfig?.cover_image || initialCachedConfig?.secondary_image)
+});
 
 if (typeof window !== 'undefined') {
   const schedule = typeof window.requestIdleCallback === 'function'
@@ -480,12 +484,16 @@ if (typeof window !== 'undefined') {
     prepareStrikeAudio();
     if (state.musicEnabled) prepareBackgroundMusic();
   });
-  schedule(async () => {
-    const config = await fetchBootstrapConfig();
-    if (!config) return;
+  fetchBootstrapConfig().then((config) => {
+    if (!config) {
+      syncGameConfig({ allowFallbackImages: true });
+      return;
+    }
     window.__GAME_CONFIG__ = config;
     writeCachedGameConfig(config);
-    syncGameConfig();
+    syncGameConfig({ allowFallbackImages: true });
+  }).catch(() => {
+    syncGameConfig({ allowFallbackImages: true });
   });
 }
 

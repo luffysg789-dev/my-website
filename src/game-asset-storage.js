@@ -69,6 +69,30 @@ function saveUploadedGameAsset({
   };
 }
 
+function saveDataUrlGameAsset({
+  slug,
+  field,
+  dataUrl,
+  publicRootDir
+}) {
+  const normalized = String(dataUrl || '').trim();
+  const match = normalized.match(/^data:([^;,]+);base64,(.+)$/i);
+  if (!match) {
+    throw new Error('无效的 data URL');
+  }
+  const mimeType = String(match[1] || '').trim().toLowerCase();
+  const buffer = Buffer.from(String(match[2] || ''), 'base64');
+  return saveUploadedGameAsset({
+    slug,
+    field,
+    mimeType,
+    originalName: `asset${getExtension({ mimeType, originalName: '' })}`,
+    buffer,
+    publicRootDir
+  });
+}
+
 module.exports = {
-  saveUploadedGameAsset
+  saveUploadedGameAsset,
+  saveDataUrlGameAsset
 };

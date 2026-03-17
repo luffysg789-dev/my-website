@@ -6,7 +6,7 @@ const { promisify } = require('util');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
-const { saveUploadedGameAsset } = require('./game-asset-storage');
+const { saveUploadedGameAsset, saveDataUrlGameAsset } = require('./game-asset-storage');
 const execFileAsync = promisify(execFile);
 
 const app = express();
@@ -1476,6 +1476,57 @@ function formatGameRow(row = {}) {
   };
 }
 
+function materializeInlineGameAssets(row = {}) {
+  if (!row || !row.id) return row;
+  const publicRootDir = path.join(__dirname, '..', 'public');
+  const updates = {};
+  const nextRow = { ...row };
+  const fields = [
+    ['cover_image', 'cover-image'],
+    ['secondary_image', 'secondary-image'],
+    ['sound_file', 'sound-file'],
+    ['background_music_file', 'background-music']
+  ];
+
+  for (const [column, field] of fields) {
+    const value = String(row[column] || '').trim();
+    if (!value.startsWith('data:')) continue;
+    try {
+      const item = saveDataUrlGameAsset({
+        slug: String(row.slug || 'game').trim() || 'game',
+        field,
+        dataUrl: value,
+        publicRootDir
+      });
+      updates[column] = item.publicPath;
+      nextRow[column] = item.publicPath;
+    } catch {
+      // keep existing value if migration fails
+    }
+  }
+
+  const updateKeys = Object.keys(updates);
+  if (updateKeys.length) {
+    db.prepare(`
+      UPDATE games_catalog
+      SET cover_image = COALESCE(?, cover_image),
+          secondary_image = COALESCE(?, secondary_image),
+          sound_file = COALESCE(?, sound_file),
+          background_music_file = COALESCE(?, background_music_file),
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).run(
+      updates.cover_image ?? null,
+      updates.secondary_image ?? null,
+      updates.sound_file ?? null,
+      updates.background_music_file ?? null,
+      Number(row.id)
+    );
+  }
+
+  return nextRow;
+}
+
 function toLightweightGameAssetRef(value) {
   const normalized = String(value || '').trim();
   if (!normalized) return '';
@@ -1499,7 +1550,7 @@ function formatGameBootstrapRow(row = {}) {
 }
 
 app.get('/api/games', (_req, res) => {
-  const items = listPublicGamesCatalogStmt.all().map(formatGameRow);
+  const items = listPublicGamesCatalogStmt.all().map(materializeInlineGameAssets).map(formatGameRow);
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -1512,10 +1563,11 @@ app.get('/api/games/:slug', (req, res) => {
   if (!row || !Number(row.is_enabled || 0)) {
     return res.status(404).json({ error: '游戏不存在' });
   }
+  const nextRow = materializeInlineGameAssets(row);
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.json({ ok: true, item: formatGameRow(row) });
+  res.json({ ok: true, item: formatGameRow(nextRow) });
 });
 
 app.get('/api/games/:slug/bootstrap', (req, res) => {
@@ -1524,17 +1576,18 @@ app.get('/api/games/:slug/bootstrap', (req, res) => {
   if (!row || !Number(row.is_enabled || 0)) {
     return res.status(404).json({ error: '游戏不存在' });
   }
+  const nextRow = materializeInlineGameAssets(row);
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.json({ ok: true, item: formatGameBootstrapRow(row) });
+  res.json({ ok: true, item: formatGameBootstrapRow(nextRow) });
 });
 
 app.get('/api/admin/games', requireAdmin, (_req, res) => {
   if (typeof db.ensureDefaultGamesCatalog === 'function') {
     db.ensureDefaultGamesCatalog();
   }
-  const items = listGamesCatalogStmt.all().map(formatGameRow);
+  const items = listGamesCatalogStmt.all().map(materializeInlineGameAssets).map(formatGameRow);
   res.json({ ok: true, items });
 });
 
