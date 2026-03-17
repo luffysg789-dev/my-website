@@ -26,6 +26,13 @@ test('woodfish page uses fixed server fish asset as fallback image', () => {
   assert.match(js, /const DEFAULT_FISH_IMAGE_SRC = '\/assets\/muyu-fish-fixed\.webp';/);
 });
 
+test('woodfish page always prefers fixed fish and mallet assets over remote config images', () => {
+  assert.match(js, /const fishImage = DEFAULT_FISH_IMAGE_SRC;/);
+  assert.match(js, /const malletImage = DEFAULT_MALLET_IMAGE_SRC;/);
+  assert.doesNotMatch(js, /const fishImage = config\.cover_image/);
+  assert.doesNotMatch(js, /const malletImage = config\.secondary_image/);
+});
+
 test('woodfish page no longer loads shared games bootstrap script', () => {
   assert.doesNotMatch(html, /src="\/games-config\.js\?v=/);
 });
