@@ -241,7 +241,7 @@ body {
 }
 
 .muyu-wood.is-striking .muyu-mallet {
-  transform: rotate(8deg) translate(-12px, 20px);
+  transform: rotate(8deg) translate(-10px, 18px);
 }
 
 .muyu-wood.is-striking .muyu-impact-ripple {
@@ -354,6 +354,23 @@ body {
     padding: 0;
     border-radius: 10px;
   }
+
+  .muyu-wood {
+    width: min(340px, 88vw);
+    min-height: 310px;
+  }
+
+  .muyu-wood__body {
+    width: min(176px, 46vw);
+    margin-top: 48px;
+  }
+
+  .muyu-mallet {
+    right: 14%;
+    top: 12px;
+    width: clamp(108px, 26vw, 138px);
+    transform: rotate(18deg);
+  }
 }
 
 @media (max-width: 480px) {
@@ -383,20 +400,20 @@ body {
   }
 
   .muyu-wood {
-    width: min(300px, 84vw);
-    min-height: 258px;
+    width: min(336px, 88vw);
+    min-height: 298px;
   }
 
   .muyu-wood__body {
-    width: min(154px, 43.4vw);
-    margin-top: 34px;
+    width: min(170px, 47vw);
+    margin-top: 52px;
   }
 
   .muyu-mallet {
-    right: 74px;
-    top: 90px;
-    width: min(63px, 15.19vw);
-    transform: rotate(20deg);
+    right: 11%;
+    top: 18px;
+    width: clamp(118px, 31vw, 148px);
+    transform: rotate(17deg);
   }
 
   .muyu-meritboard strong {
