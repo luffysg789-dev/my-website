@@ -15,7 +15,7 @@ const DEFAULT_GAMES = [
     sort_order: 40,
     route: '/gomoku/',
     icon: '⚫',
-    actionText: '开始对弈'
+    actionText: '开始游戏'
   },
   {
     slug: 'minesweeper',
@@ -43,7 +43,7 @@ const DEFAULT_GAMES = [
     sort_order: 20,
     route: '/fortune.html',
     icon: '🧧',
-    actionText: '开始抽签'
+    actionText: '开始游戏'
   },
   {
     slug: 'muyu',
@@ -57,15 +57,15 @@ const DEFAULT_GAMES = [
     sort_order: 10,
     route: '/muyu.html',
     icon: '🪵',
-    actionText: '开始敲木鱼'
+    actionText: '开始游戏'
   }
 ];
 
 const GAME_ACTION_TEXT = {
-  gomoku: '开始对弈',
+  gomoku: '开始游戏',
   minesweeper: '开始游戏',
-  fortune: '开始抽签',
-  muyu: '开始敲木鱼'
+  fortune: '开始游戏',
+  muyu: '开始游戏'
 };
 const MUYU_OLD_DESCRIPTION = '轻点木鱼一下，功德 +1。保留简洁仪式感，支持手机触控、音效和自动保存。';
 const MUYU_NEW_DESCRIPTION = '轻点木鱼一下，功德 +1。';

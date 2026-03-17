@@ -1064,15 +1064,19 @@ button.danger { background: var(--danger); }
 }
 
 .game-card {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(217, 225, 216, 0.92);
   border-radius: 24px;
   padding: 20px;
   box-shadow: 0 16px 40px rgba(31, 42, 32, 0.08);
+}
+
+.game-card__body {
+  flex: 1 1 auto;
 }
 
 .game-card__icon {
@@ -1155,6 +1159,7 @@ button.danger { background: var(--danger); }
 .game-card__actions {
   display: flex;
   justify-content: flex-start;
+  margin-top: auto;
 }
 
 .game-card h3 {
@@ -1941,8 +1946,7 @@ button.danger { background: var(--danger); }
   }
 
   .game-card {
-    grid-template-columns: 1fr;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 12px;
   }
 
