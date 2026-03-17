@@ -8,6 +8,7 @@ const blessingTextEl = document.getElementById('muyuBlessingText');
 
 const GAME_SLUG = 'muyu';
 const GAME_CONFIG_CACHE_KEY = `claw800_game_config_cache_v1:${GAME_SLUG}`;
+const MAX_INLINE_GAME_CONFIG_CACHE_SIZE = 120 * 1024;
 const DEFAULT_GAME_CONFIG = {
   slug: GAME_SLUG,
   name: '敲木鱼',
@@ -46,6 +47,10 @@ function readCachedGameConfig() {
   try {
     const raw = window.localStorage.getItem(GAME_CONFIG_CACHE_KEY);
     if (!raw) return null;
+    if (raw.length > MAX_INLINE_GAME_CONFIG_CACHE_SIZE) {
+      window.localStorage.removeItem(GAME_CONFIG_CACHE_KEY);
+      return null;
+    }
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === 'object' ? parsed : null;
   } catch {
@@ -53,10 +58,21 @@ function readCachedGameConfig() {
   }
 }
 
+function toLightweightGameConfig(config) {
+  const normalized = normalizeGameConfig(config);
+  return {
+    ...normalized,
+    cover_image: normalized.cover_image.startsWith('data:') ? '' : normalized.cover_image,
+    secondary_image: normalized.secondary_image.startsWith('data:') ? '' : normalized.secondary_image,
+    sound_file: '',
+    background_music_file: ''
+  };
+}
+
 function writeCachedGameConfig(config) {
   if (typeof window === 'undefined' || !config) return;
   try {
-    window.localStorage.setItem(GAME_CONFIG_CACHE_KEY, JSON.stringify(config));
+    window.localStorage.setItem(GAME_CONFIG_CACHE_KEY, JSON.stringify(toLightweightGameConfig(config)));
   } catch {}
 }
 

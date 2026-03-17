@@ -1476,6 +1476,12 @@ function formatGameRow(row = {}) {
   };
 }
 
+function toLightweightGameAssetRef(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+  return normalized.startsWith('data:') ? '' : normalized;
+}
+
 function formatGameBootstrapRow(row = {}) {
   const slug = String(row.slug || '').trim();
   return {
@@ -1483,8 +1489,8 @@ function formatGameBootstrapRow(row = {}) {
     slug,
     name: String(row.name || '').trim(),
     description: String(row.description || '').trim(),
-    cover_image: String(row.cover_image || '').trim(),
-    secondary_image: String(row.secondary_image || '').trim(),
+    cover_image: toLightweightGameAssetRef(row.cover_image),
+    secondary_image: toLightweightGameAssetRef(row.secondary_image),
     is_enabled: Number(row.is_enabled || 0) ? 1 : 0,
     sort_order: Number(row.sort_order || 0) || 0,
     route: GAME_ROUTE_MAP[slug] || `/games/${encodeURIComponent(slug)}`,
