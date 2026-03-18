@@ -43,6 +43,9 @@ test('woodfish auto-strike button and timer logic exist', () => {
   assert.match(css, /@media \(max-width: 480px\)[\s\S]*?\.muyu-back\s*\{[\s\S]*?width:\s*36px;[\s\S]*?height:\s*36px;/);
   assert.match(css, /@media \(max-width: 480px\)[\s\S]*?\.muyu-auto-btn\s*\{[\s\S]*?min-height:\s*36px;/);
   assert.match(js, /const AUTO_STRIKE_INTERVAL_MS = 1000;/);
+  assert.match(js, /const MOBILE_BACKGROUND_MUSIC_VOLUME = 0\.12;/);
+  assert.match(js, /const MOBILE_AMBIENT_MASTER_GAIN = 0\.008;/);
+  assert.match(js, /function isMobileDevice\(\)/);
   assert.match(js, /function toggleAutoStrike\(\)/);
   assert.match(js, /window\.setInterval\(\(\) => \{\s*strikeWood\(\);/);
 });

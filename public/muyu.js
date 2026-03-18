@@ -30,6 +30,10 @@ const DEFAULT_STRIKE_AUDIO_SRC = '/audio/muyu-strike.mp3';
 const DEFAULT_FISH_IMAGE_SRC = '/assets/muyu-fish-fixed.webp';
 const DEFAULT_MALLET_IMAGE_SRC = '/assets/muyu-mallet-fixed.png';
 const AUTO_STRIKE_INTERVAL_MS = 1000;
+const DESKTOP_BACKGROUND_MUSIC_VOLUME = 0.22;
+const MOBILE_BACKGROUND_MUSIC_VOLUME = 0.12;
+const DESKTOP_AMBIENT_MASTER_GAIN = 0.014;
+const MOBILE_AMBIENT_MASTER_GAIN = 0.008;
 
 let audioContext = null;
 let isStriking = false;
@@ -44,6 +48,21 @@ let backgroundMusicAudio = null;
 let strikeAudioPrepared = false;
 let backgroundMusicPrepared = false;
 let fullConfigLoaded = false;
+
+function isMobileDevice() {
+  if (typeof window === 'undefined') return false;
+  const coarse = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+  const narrowViewport = typeof window.innerWidth === 'number' && window.innerWidth <= 768;
+  return coarse || narrowViewport;
+}
+
+function getBackgroundMusicVolume() {
+  return isMobileDevice() ? MOBILE_BACKGROUND_MUSIC_VOLUME : DESKTOP_BACKGROUND_MUSIC_VOLUME;
+}
+
+function getAmbientMasterGain() {
+  return isMobileDevice() ? MOBILE_AMBIENT_MASTER_GAIN : DESKTOP_AMBIENT_MASTER_GAIN;
+}
 
 function readCachedGameConfig() {
   if (typeof window === 'undefined') return null;
@@ -300,7 +319,7 @@ function stopAmbientMusic() {
   const { context, masterGain, nodes = [] } = ambientNodes;
   const now = context.currentTime;
   masterGain.gain.cancelScheduledValues(now);
-  masterGain.gain.setValueAtTime(masterGain.gain.value || 0.014, now);
+  masterGain.gain.setValueAtTime(masterGain.gain.value || getAmbientMasterGain(), now);
   masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
   nodes.forEach((node) => {
     try {
@@ -331,7 +350,7 @@ function prepareBackgroundMusic() {
   backgroundMusicAudio = new Audio(backgroundMusicSrc);
   backgroundMusicAudio.preload = 'metadata';
   backgroundMusicAudio.loop = true;
-  backgroundMusicAudio.volume = 0.22;
+  backgroundMusicAudio.volume = getBackgroundMusicVolume();
   backgroundMusicAudio.addEventListener('canplaythrough', () => {
     externalBackgroundMusicAvailable = true;
     if (state.musicEnabled) {
@@ -373,7 +392,7 @@ function startAmbientMusic(options = {}) {
 
   const masterGain = context.createGain();
   masterGain.gain.setValueAtTime(0.0001, context.currentTime);
-  masterGain.gain.exponentialRampToValueAtTime(0.014, context.currentTime + 0.6);
+  masterGain.gain.exponentialRampToValueAtTime(getAmbientMasterGain(), context.currentTime + 0.6);
   masterGain.connect(context.destination);
 
   const droneOsc = context.createOscillator();
@@ -383,7 +402,7 @@ function startAmbientMusic(options = {}) {
   droneOsc.frequency.setValueAtTime(174.61, context.currentTime);
   droneFilter.type = 'lowpass';
   droneFilter.frequency.setValueAtTime(620, context.currentTime);
-  droneGain.gain.setValueAtTime(0.009, context.currentTime);
+  droneGain.gain.setValueAtTime(getAmbientMasterGain() * 0.64, context.currentTime);
   droneOsc.connect(droneFilter);
   droneFilter.connect(droneGain);
   droneGain.connect(masterGain);
@@ -395,10 +414,10 @@ function startAmbientMusic(options = {}) {
   const shimmerLfoGain = context.createGain();
   shimmerOsc.type = 'triangle';
   shimmerOsc.frequency.setValueAtTime(523.25, context.currentTime);
-  shimmerGain.gain.setValueAtTime(0.002, context.currentTime);
+  shimmerGain.gain.setValueAtTime(getAmbientMasterGain() * 0.14, context.currentTime);
   shimmerLfo.type = 'sine';
   shimmerLfo.frequency.setValueAtTime(0.18, context.currentTime);
-  shimmerLfoGain.gain.setValueAtTime(0.0015, context.currentTime);
+  shimmerLfoGain.gain.setValueAtTime(getAmbientMasterGain() * 0.1, context.currentTime);
   shimmerLfo.connect(shimmerLfoGain);
   shimmerLfoGain.connect(shimmerGain.gain);
   shimmerOsc.connect(shimmerGain);
