@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 爆炸游戏</title>
+    <meta name="description" content="Claw800 爆炸游戏，50个气球里藏着炸弹，多点触控连点找出全部炸弹。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/game-tip.css?v=20260319-05" />
+    <link rel="stylesheet" href="/blast-balloons/style.css?v=20260319-01" />
+  </head>
+  <body>
+    <main class="balloons-page">
+      <section class="container">
+        <div class="balloons-shell">
+          <div class="balloons-header">
+            <h2 id="gamePageTitle">爆炸游戏</h2>
+            <div class="balloons-intro-row">
+              <a class="balloons-back" href="/games.html" aria-label="返回游戏大全" title="返回游戏大全">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z"
+                  />
+                </svg>
+              </a>
+              <p id="gamePageSubtitle" class="balloons-subtitle">50个气球里藏着炸弹，多触点连点，直到炸弹清零。</p>
+            </div>
+          </div>
+
+          <div class="balloons-statusbar">
+            <div class="balloons-stat">
+              <span>炸弹剩余</span>
+              <strong id="balloonsBombsLeft">0</strong>
+            </div>
+            <div class="balloons-stat">
+              <span>安全气球</span>
+              <strong id="balloonsSafeLeft">50</strong>
+            </div>
+          </div>
+
+          <div class="balloons-board-wrap">
+            <div id="balloonsBoard" class="balloons-board" aria-label="爆炸气球棋盘"></div>
+
+            <div id="balloonsOverlay" class="balloons-overlay">
+              <div class="balloons-overlay__card">
+                <span id="balloonsOverlayEyebrow" class="balloons-overlay__eyebrow">准备开局</span>
+                <h3 id="balloonsOverlayTitle" class="balloons-overlay__title">设置炸弹数量</h3>
+                <p id="balloonsOverlayDesc" class="balloons-overlay__desc">页面中共有50个气球，先决定要放几个炸弹，再开始挑战。</p>
+
+                <div id="balloonsSetupControls" class="balloons-setup">
+                  <div class="balloons-setup__value">
+                    <span>炸弹数量</span>
+                    <strong id="balloonsBombCountValue">6</strong>
+                  </div>
+                  <input id="balloonsBombCountRange" class="balloons-setup__range" type="range" min="1" max="49" step="1" value="6" />
+                  <div class="balloons-setup__presets">
+                    <button type="button" class="balloons-chip" data-bomb-preset="1">1个</button>
+                    <button type="button" class="balloons-chip is-active" data-bomb-preset="6">6个</button>
+                    <button type="button" class="balloons-chip" data-bomb-preset="18">18个</button>
+                    <button type="button" class="balloons-chip" data-bomb-preset="36">36个</button>
+                  </div>
+                </div>
+
+                <div class="balloons-overlay__actions">
+                  <button id="balloonsStartBtn" type="button" class="balloons-primary-btn">开始挑战</button>
+                  <button id="balloonsReplayBtn" type="button" class="balloons-secondary-btn hidden">重新开始</button>
+                  <button id="balloonsResetSetupBtn" type="button" class="balloons-secondary-btn hidden">重新设置</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p id="balloonsHint" class="balloons-hint">支持多触点快速连点，点到普通气球会破，碰到炸弹会爆炸。</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/games-config.js?v=20260319-01"></script>
+    <script>
+      window.ClawGamesConfig?.bootstrapGamePage?.('blast-balloons');
+    </script>
+    <script src="/blast-balloons/script.js?v=20260319-01"></script>
+    <script src="/game-tip.js?v=20260319-05"></script>
+  </body>
+</html>

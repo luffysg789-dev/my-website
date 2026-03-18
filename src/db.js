@@ -202,6 +202,17 @@ db.exec(`
 
 const DEFAULT_GAMES_CATALOG = [
   {
+    slug: 'blast-balloons',
+    name: '爆炸游戏',
+    description: '50个气球里藏着炸弹，多点触控连点找出全部炸弹。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 50
+  },
+  {
     slug: 'gomoku',
     name: '五子棋',
     description: '15x15 棋盘，支持真人对战与人机对战。',
