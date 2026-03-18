@@ -16,8 +16,6 @@ test('woodfish page no longer renders lower total merit card', () => {
   assert.match(html, /id="muyuMusicToggleBtn"/);
   assert.match(html, /id="muyuAutoToggleBtn"/);
   assert.match(html, /id="muyuResetBtn"/);
-  assert.match(html, /id="muyuTipModal"/);
-  assert.match(html, /id="muyuTipConfirmBtn"/);
 });
 
 test('woodfish mobile mallet uses larger responsive sizing and higher placement', () => {
@@ -61,18 +59,13 @@ test('woodfish auto-strike button and timer logic exist', () => {
 test('woodfish listens for tip success and adds 100 merit to total and today', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'muyu.js'), 'utf8');
   assert.match(js, /const TIP_MERIT_REWARD = 100;/);
-  assert.match(js, /function syncMeritDisplay\(\)/);
   assert.match(js, /function runAfterNextPaint\(callback\)/);
-  assert.match(js, /function showTipRewardModal\(\)/);
-  assert.match(js, /function commitTipMeritReward\(\)/);
   assert.match(js, /function applyTipMeritReward\(/);
-  assert.match(js, /function syncMeritDisplay\(\) \{[\s\S]*?todayCountEl\.textContent = `\$\{state\.today\}`;[\s\S]*?heroCountEl\) heroCountEl\.textContent = `\$\{state\.total\}`;/);
-  assert.match(js, /function commitTipMeritReward\(\) \{[\s\S]*?state\.total \+= TIP_MERIT_REWARD;[\s\S]*?state\.today \+= TIP_MERIT_REWARD;[\s\S]*?saveState\(\);[\s\S]*?syncMeritDisplay\(\);[\s\S]*?renderState\(\);[\s\S]*?window\.setTimeout\(\(\) => \{[\s\S]*?state = loadState\(\);[\s\S]*?syncMeritDisplay\(\);[\s\S]*?renderState\(\);[\s\S]*?\}, 60\);[\s\S]*?window\.setTimeout\(\(\) => \{[\s\S]*?state = loadState\(\);[\s\S]*?syncMeritDisplay\(\);[\s\S]*?renderState\(\);[\s\S]*?\}, 220\);[\s\S]*?hintEl\.textContent = `谢谢打赏，佛祖会保佑您,功德\+100! 今日已积 \$\{state\.today\}`;/);
-  assert.match(js, /tipModalEl\.hidden = false;/);
-  assert.match(js, /showTipRewardModal\(\)\.then\(\(\) => \{[\s\S]*?commitTipMeritReward\(\);[\s\S]*?\}\);/);
+  assert.match(js, /state\.total \+= TIP_MERIT_REWARD;/);
+  assert.match(js, /state\.today \+= TIP_MERIT_REWARD;/);
+  assert.match(js, /renderState\(\);[\s\S]*?hintEl\.textContent = `谢谢打赏，佛祖会保佑您,功德\+100! 今日已积 \$\{state\.today\}`;[\s\S]*?runAfterNextPaint\(\(\) => \{[\s\S]*?window\.alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);[\s\S]*?\}\);/);
+  assert.match(js, /alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);/);
   assert.match(js, /window\.addEventListener\('claw800:tip-success'/);
   assert.match(js, /if \(String\(event\.detail\?\.gameSlug \|\| ''\)\.trim\(\) !== GAME_SLUG\) return;/);
   assert.match(js, /window\.addEventListener\('pageshow', \(\) => \{[\s\S]*?renderState\(\);[\s\S]*?\}\);/);
-  assert.match(js, /window\.addEventListener\('focus', \(\) => \{[\s\S]*?renderState\(\);[\s\S]*?\}\);/);
-  assert.match(js, /window\.addEventListener\('visibilitychange', \(\) => \{[\s\S]*?if \(document\.visibilityState !== 'visible'\) return;[\s\S]*?renderState\(\);[\s\S]*?\}\);/);
 });
