@@ -76,6 +76,12 @@
   color: #2f7e43;
 }
 
+@media (max-width: 720px) {
+  .game-tip {
+    transform: translateY(-30px);
+  }
+}
+
 @media (min-width: 721px) {
   .game-tip {
     display: none;

@@ -38,6 +38,7 @@ test('shared tip styles keep the donate bar mobile-first and pinned near the bot
   assert.match(css, /\.game-tip__title\s*\{[\s\S]*text-align:\s*center;/);
   assert.match(css, /\.game-tip__desc\s*\{[\s\S]*text-align:\s*center;/);
   assert.match(css, /\.game-tip__button\s*\{[\s\S]*min-height:\s*46px;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.game-tip\s*\{[\s\S]*transform:\s*translateY\(-30px\);/);
   assert.match(css, /@media \(min-width: 721px\)[\s\S]*?\.game-tip\s*\{[\s\S]*display:\s*none;/);
 });
 
