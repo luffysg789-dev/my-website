@@ -60,10 +60,10 @@ test('woodfish listens for tip success and adds 100 merit to total and today', (
   const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'muyu.js'), 'utf8');
   assert.match(js, /const TIP_MERIT_REWARD = 100;/);
   assert.match(js, /function runAfterNextPaint\(callback\)/);
+  assert.match(js, /function commitTipMeritReward\(\)/);
   assert.match(js, /function applyTipMeritReward\(/);
-  assert.match(js, /state\.total \+= TIP_MERIT_REWARD;/);
-  assert.match(js, /state\.today \+= TIP_MERIT_REWARD;/);
-  assert.match(js, /renderState\(\);[\s\S]*?hintEl\.textContent = `谢谢打赏，佛祖会保佑您,功德\+100! 今日已积 \$\{state\.today\}`;[\s\S]*?runAfterNextPaint\(\(\) => \{[\s\S]*?window\.alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);[\s\S]*?\}\);/);
+  assert.match(js, /function commitTipMeritReward\(\) \{[\s\S]*?state\.total \+= TIP_MERIT_REWARD;[\s\S]*?state\.today \+= TIP_MERIT_REWARD;[\s\S]*?saveState\(\);[\s\S]*?renderState\(\);[\s\S]*?hintEl\.textContent = `谢谢打赏，佛祖会保佑您,功德\+100! 今日已积 \$\{state\.today\}`;/);
+  assert.match(js, /runAfterNextPaint\(\(\) => \{[\s\S]*?window\.alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);[\s\S]*?commitTipMeritReward\(\);[\s\S]*?\}\);/);
   assert.match(js, /alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);/);
   assert.match(js, /window\.addEventListener\('claw800:tip-success'/);
   assert.match(js, /if \(String\(event\.detail\?\.gameSlug \|\| ''\)\.trim\(\) !== GAME_SLUG\) return;/);
