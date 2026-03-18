@@ -20,7 +20,6 @@ const ui = {
   startBtn: document.getElementById('balloonsStartBtn'),
   replayBtn: document.getElementById('balloonsReplayBtn'),
   resetSetupBtn: document.getElementById('balloonsResetSetupBtn'),
-  hint: document.getElementById('balloonsHint'),
   presetButtons: Array.from(document.querySelectorAll('[data-bomb-preset]'))
 };
 
@@ -177,7 +176,6 @@ function hideOverlay() {
 }
 
 function finishGame() {
-  ui.hint.textContent = '炸弹已经清零，点重新开始继续挑战，或重新设置炸弹数量。';
   renderOverlay('result');
 }
 
@@ -203,11 +201,9 @@ function handleBalloonPress(index) {
       ui.board.classList.remove('has-bomb-flash');
     }, 520);
     markBalloonState(index, 'is-bomb-hit');
-    ui.hint.textContent = state.remainingBombs <= 0 ? '最后一个炸弹被点中了。' : `炸到一个炸弹，还剩 ${state.remainingBombs} 个。`;
   } else {
     playPopSound();
     markBalloonState(index, 'is-popped');
-    ui.hint.textContent = '安全气球破掉了，继续把炸弹点出来。';
   }
 
   updateStats();
@@ -259,7 +255,6 @@ function startGame(options = {}) {
   resetBoardAppearance();
   updateStats();
   hideOverlay();
-  ui.hint.textContent = `炸弹已经藏好，共 ${bombCount} 个，开始连点吧。`;
 }
 
 function bindEvents() {
@@ -285,7 +280,6 @@ function bindEvents() {
     renderOverlay('setup');
     state.remainingBombs = state.bombCountSetting;
     updateStats();
-    ui.hint.textContent = '重新设置炸弹数量后，再开始新一局。';
   });
 }
 

@@ -72,8 +72,12 @@ test('blast balloons css uses responsive grid and centered overlay card', () => 
 
   assert.match(css, /\.balloons-board\s*\{[\s\S]*display:\s*grid;/);
   assert.match(css, /grid-template-columns:\s*repeat\(10,\s*minmax\(0,\s*1fr\)\);/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-shell\s*\{[\s\S]*padding:\s*8px;[\s\S]*?\}[\s\S]*\.balloons-board-wrap\s*\{[\s\S]*padding:\s*6px;[\s\S]*?\}[\s\S]*\.balloons-board\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\);[\s\S]*gap:\s*5px;[\s\S]*min-height:\s*auto;/);
+  assert.match(css, /\.balloons-stat\s*\{[\s\S]*display:\s*flex;[\s\S]*align-items:\s*center;[\s\S]*justify-content:\s*space-between;/);
+  assert.match(css, /\.balloons-stat span\s*\{[\s\S]*font-size:\s*24px;[\s\S]*font-weight:\s*700;/);
+  assert.match(css, /\.balloons-stat strong\s*\{[\s\S]*font-size:\s*24px;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-shell\s*\{[\s\S]*padding:\s*8px;[\s\S]*?\}[\s\S]*\.balloons-board-wrap\s*\{[\s\S]*padding:\s*6px;[\s\S]*?\}[\s\S]*\.balloons-board\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\);[\s\S]*width:\s*min\(100%,\s*308px\);[\s\S]*margin:\s*0 auto;[\s\S]*gap:\s*5px;[\s\S]*min-height:\s*auto;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-stat strong\s*\{[\s\S]*font-size:\s*22px;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-stat span\s*\{[\s\S]*font-size:\s*22px;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-header h2\s*\{[\s\S]*display:\s*none;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-overlay\s*\{[\s\S]*align-items:\s*start;[\s\S]*padding:\s*10px 8px;[\s\S]*background:\s*rgba\(235,\s*247,\s*255,\s*0\.18\);/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-overlay__card\s*\{[\s\S]*width:\s*min\(280px,\s*calc\(100% - 104px\)\);[\s\S]*padding:\s*14px 12px 12px;[\s\S]*border-radius:\s*18px;/);
@@ -93,5 +97,6 @@ test('blast balloons css uses responsive grid and centered overlay card', () => 
   assert.match(css, /animation:\s*balloons-board-shake 360ms ease-in-out;/);
   assert.match(css, /\.balloons-overlay\s*\{[\s\S]*position:\s*absolute;[\s\S]*inset:\s*0;/);
   assert.match(css, /\.balloons-overlay__card\s*\{[\s\S]*width:\s*min\(360px,\s*calc\(100% - 24px\)\);/);
+  assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.balloons-board\s*\{[\s\S]*width:\s*min\(100%,\s*286px\);[\s\S]*gap:\s*4px;/);
   assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.balloons-overlay__card\s*\{[\s\S]*width:\s*min\(250px,\s*calc\(100% - 118px\)\);[\s\S]*padding:\s*12px 10px 10px;[\s\S]*border-radius:\s*16px;/);
 });

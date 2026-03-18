@@ -99,6 +99,10 @@ body {
 }
 
 .balloons-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 16px 18px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.9);
@@ -107,15 +111,14 @@ body {
 }
 
 .balloons-stat span {
-  display: block;
   color: var(--balloon-muted);
-  font-size: 13px;
-  margin-bottom: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .balloons-stat strong {
-  display: block;
-  font-size: 36px;
+  font-size: 24px;
   line-height: 1;
   color: #123049;
 }
@@ -505,8 +508,7 @@ body {
   }
 
   .balloons-stat span {
-    font-size: 11px;
-    margin-bottom: 4px;
+    font-size: 22px;
   }
 
   .balloons-board-wrap {
@@ -516,6 +518,8 @@ body {
 
   .balloons-board {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: min(100%, 308px);
+    margin: 0 auto;
     gap: 5px;
     min-height: auto;
   }
@@ -600,6 +604,7 @@ body {
   }
 
   .balloons-board {
+    width: min(100%, 286px);
     gap: 4px;
   }
 
@@ -612,6 +617,10 @@ body {
   }
 
   .balloons-stat strong {
+    font-size: 20px;
+  }
+
+  .balloons-stat span {
     font-size: 20px;
   }
 
