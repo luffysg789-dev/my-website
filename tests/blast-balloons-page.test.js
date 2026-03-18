@@ -72,7 +72,7 @@ test('blast balloons css uses responsive grid and centered overlay card', () => 
 
   assert.match(css, /\.balloons-board\s*\{[\s\S]*display:\s*grid;/);
   assert.match(css, /grid-template-columns:\s*repeat\(10,\s*minmax\(0,\s*1fr\)\);/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-shell\s*\{[\s\S]*padding:\s*8px;[\s\S]*?\}[\s\S]*\.balloons-board-wrap\s*\{[\s\S]*padding:\s*6px;[\s\S]*?\}[\s\S]*\.balloons-board\s*\{[\s\S]*grid-template-columns:\s*repeat\(10,\s*minmax\(0,\s*1fr\)\);[\s\S]*gap:\s*5px;[\s\S]*min-height:\s*auto;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-shell\s*\{[\s\S]*padding:\s*8px;[\s\S]*?\}[\s\S]*\.balloons-board-wrap\s*\{[\s\S]*padding:\s*6px;[\s\S]*?\}[\s\S]*\.balloons-board\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\);[\s\S]*gap:\s*5px;[\s\S]*min-height:\s*auto;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-stat strong\s*\{[\s\S]*font-size:\s*22px;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-header h2\s*\{[\s\S]*display:\s*none;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.balloons-overlay\s*\{[\s\S]*align-items:\s*start;[\s\S]*padding:\s*10px 8px;[\s\S]*background:\s*rgba\(235,\s*247,\s*255,\s*0\.18\);/);
