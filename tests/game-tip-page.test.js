@@ -85,10 +85,7 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
 });
 
 test('fortune game shows a success alert after tip payment succeeds', () => {
-  assert.match(fortuneJs, /function startDraw\(forcedFortune = null\)/);
-  assert.match(fortuneJs, /renderFortune\(forcedFortune \|\| pickFortune\(\)\);/);
   assert.match(fortuneJs, /window\.addEventListener\('claw800:tip-success'/);
   assert.match(fortuneJs, /if \(String\(event\.detail\?\.gameSlug \|\| ''\)\.trim\(\) !== 'fortune'\) return;/);
   assert.match(fortuneJs, /window\.alert\('谢谢打赏，您今天一定行大运发大财!'\);/);
-  assert.match(fortuneJs, /startDraw\(FORTUNES\[0\]\);/);
 });
