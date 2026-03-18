@@ -112,12 +112,19 @@
     statusEl.classList.toggle('is-success', tone === 'success');
   }
 
+  function syncTipCopy(session = loadCachedSession()) {
+    const descEl = document.querySelector('[data-game-tip-desc]');
+    if (!descEl) return;
+    descEl.hidden = Boolean(session);
+  }
+
   function updateButtonState(options = {}) {
     const button = document.querySelector('[data-game-tip-button]');
     if (!button) return;
 
     const session = options.session === undefined ? loadCachedSession() : options.session;
     const busy = Boolean(options.busy);
+    syncTipCopy(session);
 
     button.disabled = busy;
     if (busy) {
@@ -344,11 +351,6 @@
         return;
       }
 
-      const confirmed = window.confirm(`默认打赏 ${TIP_AMOUNT} ${TIP_CURRENCY}，将使用 Nexa 余额支付。是否继续？`);
-      if (!confirmed) {
-        return;
-      }
-
       setStatus('正在准备打赏订单...', '');
       await beginPaymentFlow(game, session);
     } catch (error) {
@@ -372,7 +374,7 @@
     section.innerHTML = `
       <div class="game-tip__copy">
         <strong class="game-tip__title">喜欢这个小游戏？</strong>
-        <p class="game-tip__desc">首次需要授权登录,再次点击打赏即可.</p>
+        <p class="game-tip__desc" data-game-tip-desc>首次需要授权登录,再次点击打赏即可.</p>
       </div>
       <button type="button" class="game-tip__button" data-game-tip-button>${TIP_BUTTON_TEXT_PAY}</button>
       <p class="game-tip__status" data-game-tip-status aria-live="polite"></p>

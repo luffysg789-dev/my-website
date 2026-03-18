@@ -12,6 +12,7 @@
 .game-tip__copy {
   display: grid;
   gap: 4px;
+  justify-items: center;
 }
 
 .game-tip__eyebrow {
@@ -26,6 +27,7 @@
   color: #1f2e20;
   font-size: 18px;
   font-weight: 800;
+  text-align: center;
 }
 
 .game-tip__desc {
@@ -33,6 +35,7 @@
   color: #617064;
   font-size: 13px;
   line-height: 1.5;
+  text-align: center;
 }
 
 .game-tip__button {
