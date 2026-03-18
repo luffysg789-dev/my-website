@@ -7,6 +7,7 @@ const rootDir = path.join(__dirname, '..');
 const serverJs = fs.readFileSync(path.join(rootDir, 'src', 'server.js'), 'utf8');
 const tipJsPath = path.join(rootDir, 'public', 'game-tip.js');
 const tipCssPath = path.join(rootDir, 'public', 'game-tip.css');
+const tipJs = fs.readFileSync(tipJsPath, 'utf8');
 
 const pages = [
   path.join(rootDir, 'public', 'gomoku', 'index.html'),
@@ -41,4 +42,13 @@ test('server exposes nexa tip endpoints', () => {
   assert.match(serverJs, /app\.post\('\/api\/nexa\/tip\/create'/);
   assert.match(serverJs, /app\.post\('\/api\/nexa\/tip\/query'/);
   assert.match(serverJs, /app\.post\('\/api\/nexa\/tip\/notify'/);
+});
+
+test('shared tip script uses explicit login-then-pay flow for Nexa app webview', () => {
+  assert.match(tipJs, /const TIP_BUTTON_TEXT_LOGIN = 'Nexa 登录后打赏';/);
+  assert.match(tipJs, /const TIP_BUTTON_TEXT_PAY = '打赏 0\.1 USDT';/);
+  assert.match(tipJs, /function updateButtonState\(/);
+  assert.match(tipJs, /const session = loadCachedSession\(\);[\s\S]*?if \(!session\)[\s\S]*?await ensureSession\(game\);[\s\S]*?return;/);
+  assert.match(tipJs, /setStatus\('已连接 Nexa 账号，请再次点击按钮完成支付。', 'success'\);/);
+  assert.match(tipJs, /setStatus\('请在 Nexa 中输入六位支付密码完成余额支付。', ''\);/);
 });

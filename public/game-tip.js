@@ -1,6 +1,9 @@
 (function bootstrapGameTip() {
   const TIP_AMOUNT = '0.10';
   const TIP_CURRENCY = 'USDT';
+  const TIP_BUTTON_TEXT_LOGIN = 'Nexa 登录后打赏';
+  const TIP_BUTTON_TEXT_PAY = '打赏 0.1 USDT';
+  const TIP_BUTTON_TEXT_BUSY = '处理中...';
   const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';
   const QUERY_INTERVAL_MS = 2000;
   const QUERY_TIMEOUT_MS = 45000;
@@ -77,6 +80,22 @@
     statusEl.textContent = String(message || '');
     statusEl.classList.toggle('is-error', tone === 'error');
     statusEl.classList.toggle('is-success', tone === 'success');
+  }
+
+  function updateButtonState(options = {}) {
+    const button = document.querySelector('[data-game-tip-button]');
+    if (!button) return;
+
+    const session = options.session === undefined ? loadCachedSession() : options.session;
+    const busy = Boolean(options.busy);
+
+    button.disabled = busy;
+    if (busy) {
+      button.textContent = TIP_BUTTON_TEXT_BUSY;
+      return;
+    }
+
+    button.textContent = session ? TIP_BUTTON_TEXT_PAY : TIP_BUTTON_TEXT_LOGIN;
   }
 
   function normalizeBridgeResponse(value) {
@@ -214,15 +233,23 @@
   async function handleTipClick(event) {
     const button = event.currentTarget;
     const game = getCurrentGame();
-    const confirmed = window.confirm(`默认打赏 ${TIP_AMOUNT} ${TIP_CURRENCY}，将使用 Nexa 余额支付。是否继续？`);
-    if (!confirmed) return;
-
-    button.disabled = true;
-    setStatus('正在准备打赏订单...', '');
+    const session = loadCachedSession();
+    updateButtonState({ busy: true, session });
 
     try {
-      const session = await ensureSession(game);
+      if (!session) {
+        const nextSession = await ensureSession(game);
+        updateButtonState({ session: nextSession });
+        setStatus('已连接 Nexa 账号，请再次点击按钮完成支付。', 'success');
+        return;
+      }
 
+      const confirmed = window.confirm(`默认打赏 ${TIP_AMOUNT} ${TIP_CURRENCY}，将使用 Nexa 余额支付。是否继续？`);
+      if (!confirmed) {
+        return;
+      }
+
+      setStatus('正在准备打赏订单...', '');
       setStatus('正在创建订单...', '');
       const orderResponse = await postJson('/api/nexa/tip/create', {
         gameSlug: game.slug,
@@ -231,7 +258,7 @@
         amount: TIP_AMOUNT
       });
 
-      setStatus('请在 Nexa 中确认余额支付...', '');
+      setStatus('请在 Nexa 中输入六位支付密码完成余额支付。', '');
       await requestPaymentFromBridge(orderResponse.payment);
 
       setStatus('正在确认支付结果...', '');
@@ -248,7 +275,7 @@
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '打赏失败，请稍后重试。', 'error');
     } finally {
-      button.disabled = false;
+      updateButtonState();
     }
   }
 
@@ -264,14 +291,15 @@
       <div class="game-tip__copy">
         <span class="game-tip__eyebrow">Nexa 打赏</span>
         <strong class="game-tip__title">喜欢这个小游戏？</strong>
-        <p class="game-tip__desc">默认 0.1 USDT，确认后会在 Nexa 内使用余额支付。</p>
+        <p class="game-tip__desc">第一次点击先登录 Nexa，登录后再次点击再用余额支付 0.1 USDT。</p>
       </div>
-      <button type="button" class="game-tip__button" data-game-tip-button>打赏 0.1 USDT</button>
+      <button type="button" class="game-tip__button" data-game-tip-button>${TIP_BUTTON_TEXT_PAY}</button>
       <p class="game-tip__status" data-game-tip-status aria-live="polite"></p>
     `;
 
     shell.appendChild(section);
     section.querySelector('[data-game-tip-button]')?.addEventListener('click', handleTipClick);
+    updateButtonState();
   }
 
   function boot() {
