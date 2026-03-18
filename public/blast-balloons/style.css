@@ -477,7 +477,7 @@ body {
   }
 
   .balloons-header h2 {
-    font-size: 22px;
+    display: none;
   }
 
   .balloons-intro-row {
