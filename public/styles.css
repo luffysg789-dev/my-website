@@ -1048,6 +1048,18 @@ button.danger { background: var(--danger); }
   font-size: 28px;
 }
 
+.minesweeper-header h2 {
+  display: none;
+}
+
+.fortune-header h2 {
+  display: none;
+}
+
+.muyu-header h2 {
+  display: none;
+}
+
 .games-hero-card p:last-child,
 .minesweeper-subtitle,
 .fortune-subtitle,

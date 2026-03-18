@@ -24,7 +24,7 @@ test('blast balloons game is listed in config, db defaults, and server route map
 
   assert.match(config, /slug:\s*'blast-balloons'/);
   assert.match(config, /route:\s*'\/blast-balloons\/'/);
-  assert.match(config, /name:\s*'爆炸游戏'/);
+  assert.match(config, /name:\s*'气球爆炸'/);
   assert.match(config, /'blast-balloons':\s*'开始游戏'/);
   assert.match(db, /slug:\s*'blast-balloons'/);
   assert.match(server, /'blast-balloons':\s*'\/blast-balloons\/'/);

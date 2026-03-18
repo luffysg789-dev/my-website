@@ -203,7 +203,7 @@ db.exec(`
 const DEFAULT_GAMES_CATALOG = [
   {
     slug: 'blast-balloons',
-    name: '爆炸游戏',
+    name: '气球爆炸',
     description: '50个气球里藏着炸弹，多点触控连点找出全部炸弹。',
     cover_image: '',
     secondary_image: '',

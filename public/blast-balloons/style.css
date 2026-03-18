@@ -58,6 +58,7 @@ body {
   margin: 0;
   font-size: 30px;
   color: #102534;
+  display: none;
 }
 
 .balloons-intro-row {
