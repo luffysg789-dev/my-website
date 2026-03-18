@@ -235,6 +235,17 @@ function renderState() {
   }
 }
 
+function runAfterNextPaint(callback) {
+  if (typeof callback !== 'function') return;
+  if (typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(callback, 0);
+    });
+    return;
+  }
+  window.setTimeout(callback, 0);
+}
+
 function getAudioContext() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
@@ -501,7 +512,9 @@ function applyTipMeritReward() {
   saveState();
   renderState();
   hintEl.textContent = `谢谢打赏，佛祖会保佑您,功德+100! 今日已积 ${state.today}`;
-  window.alert('谢谢打赏，佛祖会保佑您,功德+100!');
+  runAfterNextPaint(() => {
+    window.alert('谢谢打赏，佛祖会保佑您,功德+100!');
+  });
 }
 
 function resetState() {
@@ -577,6 +590,11 @@ autoToggleBtn?.addEventListener('click', toggleAutoStrike);
 window.addEventListener('claw800:tip-success', (event) => {
   if (String(event.detail?.gameSlug || '').trim() !== GAME_SLUG) return;
   applyTipMeritReward();
+});
+
+window.addEventListener('pageshow', () => {
+  state = loadState();
+  renderState();
 });
 
 window.addEventListener('beforeunload', () => {

@@ -64,6 +64,7 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /function updateButtonState\(/);
   assert.match(tipJs, /function buildNexaAuthorizeUrl\(/);
   assert.match(tipJs, /function buildNexaPaymentUrl\(/);
+  assert.match(tipJs, /function promptDownloadNexaApp\(\)/);
   assert.match(tipJs, /function launchNexaUrl\(/);
   assert.match(tipJs, /return window\.localStorage;/);
   assert.match(tipJs, /const userAgent = String\(window\.navigator\?\.userAgent \|\| ''\)\.trim\(\);/);
@@ -74,8 +75,11 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /getPersistentStorage\(\)\.getItem\(SESSION_STORAGE_KEY\)/);
   assert.match(tipJs, /getPersistentStorage\(\)\.setItem\(SESSION_STORAGE_KEY,/);
   assert.match(tipJs, /getPersistentStorage\(\)\.removeItem\(SESSION_STORAGE_KEY\)/);
-  assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches && isNexaAppEnvironment\(\);/);
+  assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
   assert.match(tipJs, /if \(!shouldRenderTip\(\)\) return;/);
+  assert.match(tipJs, /if \(!isNexaAppEnvironment\(\)\) \{[\s\S]*?promptDownloadNexaApp\(\);[\s\S]*?return;/);
+  assert.match(tipJs, /setStatus\('请下载 Nexa App 玩更多游戏,打赏。', 'error'\);/);
+  assert.match(tipJs, /window\.alert\('请下载 Nexa App 玩更多游戏,打赏。'\);/);
   assert.match(tipJs, /launchNexaUrl\(buildNexaAuthorizeUrl\(/);
   assert.match(tipJs, /launchNexaUrl\(buildNexaPaymentUrl\(/);
   assert.match(tipJs, /const session = loadCachedSession\(\);[\s\S]*?if \(!session\)[\s\S]*?await beginLoginFlow\(game\);[\s\S]*?return;/);

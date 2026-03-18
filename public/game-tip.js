@@ -15,8 +15,8 @@
   let resetStatusTimer = 0;
 
   function shouldRenderTip() {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return isNexaAppEnvironment();
-    return window.matchMedia('(max-width: 720px)').matches && isNexaAppEnvironment();
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+    return window.matchMedia('(max-width: 720px)').matches;
   }
 
   function isNexaAppEnvironment() {
@@ -195,6 +195,11 @@
       redirectUrl
     });
     return `${NEXA_PROTOCOL_ORDER_BASE}?${params.toString()}`;
+  }
+
+  function promptDownloadNexaApp() {
+    setStatus('请下载 Nexa App 玩更多游戏,打赏。', 'error');
+    window.alert('请下载 Nexa App 玩更多游戏,打赏。');
   }
 
   function launchNexaUrl(url) {
@@ -382,6 +387,11 @@
     updateButtonState({ busy: true, session });
 
     try {
+      if (!isNexaAppEnvironment()) {
+        promptDownloadNexaApp();
+        return;
+      }
+
       if (!session) {
         await beginLoginFlow(game);
         return;
