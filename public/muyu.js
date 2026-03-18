@@ -300,7 +300,7 @@ function stopAmbientMusic() {
   const { context, masterGain, nodes = [] } = ambientNodes;
   const now = context.currentTime;
   masterGain.gain.cancelScheduledValues(now);
-  masterGain.gain.setValueAtTime(masterGain.gain.value || 0.028, now);
+  masterGain.gain.setValueAtTime(masterGain.gain.value || 0.014, now);
   masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
   nodes.forEach((node) => {
     try {
@@ -331,7 +331,7 @@ function prepareBackgroundMusic() {
   backgroundMusicAudio = new Audio(backgroundMusicSrc);
   backgroundMusicAudio.preload = 'metadata';
   backgroundMusicAudio.loop = true;
-  backgroundMusicAudio.volume = 0.42;
+  backgroundMusicAudio.volume = 0.22;
   backgroundMusicAudio.addEventListener('canplaythrough', () => {
     externalBackgroundMusicAvailable = true;
     if (state.musicEnabled) {
@@ -373,7 +373,7 @@ function startAmbientMusic(options = {}) {
 
   const masterGain = context.createGain();
   masterGain.gain.setValueAtTime(0.0001, context.currentTime);
-  masterGain.gain.exponentialRampToValueAtTime(0.028, context.currentTime + 0.6);
+  masterGain.gain.exponentialRampToValueAtTime(0.014, context.currentTime + 0.6);
   masterGain.connect(context.destination);
 
   const droneOsc = context.createOscillator();
@@ -383,7 +383,7 @@ function startAmbientMusic(options = {}) {
   droneOsc.frequency.setValueAtTime(174.61, context.currentTime);
   droneFilter.type = 'lowpass';
   droneFilter.frequency.setValueAtTime(620, context.currentTime);
-  droneGain.gain.setValueAtTime(0.018, context.currentTime);
+  droneGain.gain.setValueAtTime(0.009, context.currentTime);
   droneOsc.connect(droneFilter);
   droneFilter.connect(droneGain);
   droneGain.connect(masterGain);
@@ -395,10 +395,10 @@ function startAmbientMusic(options = {}) {
   const shimmerLfoGain = context.createGain();
   shimmerOsc.type = 'triangle';
   shimmerOsc.frequency.setValueAtTime(523.25, context.currentTime);
-  shimmerGain.gain.setValueAtTime(0.004, context.currentTime);
+  shimmerGain.gain.setValueAtTime(0.002, context.currentTime);
   shimmerLfo.type = 'sine';
   shimmerLfo.frequency.setValueAtTime(0.18, context.currentTime);
-  shimmerLfoGain.gain.setValueAtTime(0.003, context.currentTime);
+  shimmerLfoGain.gain.setValueAtTime(0.0015, context.currentTime);
   shimmerLfo.connect(shimmerLfoGain);
   shimmerLfoGain.connect(shimmerGain.gain);
   shimmerOsc.connect(shimmerGain);
