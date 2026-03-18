@@ -376,13 +376,17 @@ body {
 }
 
 @media (max-width: 720px) {
+  .container {
+    width: min(100%, 96vw);
+  }
+
   .muyu-page {
     padding: 10px 0 22px;
   }
 
   .muyu-shell {
     border-radius: 18px;
-    padding: 16px;
+    padding: 14px;
   }
 
   .muyu-header-top {
@@ -425,18 +429,25 @@ body {
     width: clamp(108px, 26vw, 138px);
     transform: rotate(18deg);
   }
+
+  .muyu-wood__label,
+  .muyu-hint,
+  .muyu-controls-grid {
+    transform: translateY(-30px);
+  }
 }
 
 @media (max-width: 480px) {
   .muyu-page .container {
-    max-width: 420px;
+    max-width: none;
     margin: 0 auto;
-    padding: 0 12px;
+    padding: 0 6px;
   }
 
   .muyu-shell {
     width: 100%;
     margin: 0 auto;
+    padding: 12px;
   }
 
   .muyu-header {
