@@ -15,8 +15,16 @@
   let resetStatusTimer = 0;
 
   function shouldRenderTip() {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
-    return window.matchMedia('(max-width: 720px)').matches;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return isNexaAppEnvironment();
+    return window.matchMedia('(max-width: 720px)').matches && isNexaAppEnvironment();
+  }
+
+  function isNexaAppEnvironment() {
+    const userAgent = String(window.navigator?.userAgent || '').trim();
+    const referrer = String(document.referrer || '').trim();
+    const session = loadCachedSession();
+    const hasNexaMarker = /nexa/i.test(userAgent) || /nexa/i.test(referrer);
+    return Boolean(hasNexaMarker || session);
   }
 
   function getCurrentGame() {
@@ -39,6 +47,11 @@
       name: String(config.name || document.getElementById('gamePageTitle')?.textContent || '小游戏').trim(),
       route: String(config.route || path || '/').trim()
     };
+  }
+
+  function getTipTitle(game) {
+    if (String(game?.slug || '').trim() === 'muyu') return '打赏+功德';
+    return '喜欢这个小游戏？';
   }
 
   function getShell() {
@@ -390,13 +403,14 @@
     if (document.querySelector('[data-game-tip]')) return;
     const shell = getShell();
     if (!shell) return;
+    const game = getCurrentGame();
 
         const section = document.createElement('section');
         section.className = 'game-tip';
         section.setAttribute('data-game-tip', '1');
         section.innerHTML = `
           <div class="game-tip__copy">
-            <strong class="game-tip__title">打赏+功德</strong>
+            <strong class="game-tip__title">${getTipTitle(game)}</strong>
             <p class="game-tip__desc" data-game-tip-desc>首次需要授权登录,再次点击打赏即可.</p>
           </div>
           <button type="button" class="game-tip__button" data-game-tip-button>${TIP_BUTTON_TEXT_PAY}</button>

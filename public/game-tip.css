@@ -77,7 +77,7 @@
 }
 
 @media (max-width: 720px) {
-  .game-tip {
+  .muyu-page .game-tip {
     transform: translateY(-30px);
   }
 }
