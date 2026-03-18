@@ -1,0 +1,80 @@
+.game-tip {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(83, 117, 91, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 244, 0.96);
+  box-shadow: 0 16px 34px rgba(59, 39, 13, 0.08);
+}
+
+.game-tip__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.game-tip__eyebrow {
+  color: #8b5a2b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.game-tip__title {
+  color: #1f2e20;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.game-tip__desc {
+  margin: 0;
+  color: #617064;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.game-tip__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2f7e43, #45955a);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(47, 126, 67, 0.24);
+}
+
+.game-tip__button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.game-tip__status {
+  min-height: 20px;
+  margin: 0;
+  color: #516355;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.game-tip__status.is-error {
+  color: #b24a3f;
+}
+
+.game-tip__status.is-success {
+  color: #2f7e43;
+}
+
+@media (min-width: 721px) {
+  .game-tip {
+    display: none;
+  }
+}

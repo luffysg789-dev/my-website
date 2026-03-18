@@ -7,6 +7,18 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const db = require('./db');
 const { saveUploadedGameAsset, saveDataUrlGameAsset } = require('./game-asset-storage');
+const {
+  DEFAULT_NEXA_API_KEY,
+  DEFAULT_NEXA_APP_SECRET,
+  buildNexaAccessTokenPayload,
+  buildNexaUserInfoPayload,
+  buildNexaPaymentCreatePayload,
+  buildNexaPaymentQueryPayload,
+  postNexaJson,
+  unwrapNexaResult,
+  extractSessionKey,
+  extractOpenId
+} = require('./nexa-pay');
 const execFileAsync = promisify(execFile);
 
 const app = express();
@@ -24,6 +36,9 @@ const ADMIN_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 // Use COOKIE_SECURE=true in production HTTPS; keep false for localhost HTTP.
 const COOKIE_SECURE = String(process.env.COOKIE_SECURE || '') === 'true';
 const TRUST_PROXY = String(process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal').trim();
+const NEXA_TIP_AMOUNT = '0.10';
+const NEXA_TIP_CURRENCY = 'USDT';
+const nexaTipOrders = new Map();
 
 app.set('trust proxy', TRUST_PROXY);
 
@@ -173,6 +188,159 @@ function isValidUrl(url) {
   } catch {
     return false;
   }
+}
+
+function getPublicBaseUrl(req) {
+  const configured = String(process.env.SITE_URL || '').trim();
+  if (configured && isValidUrl(configured)) {
+    return configured.replace(/\/+$/, '');
+  }
+
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim() || 'https';
+  const forwardedHost = String(req.headers['x-forwarded-host'] || req.get('host') || '127.0.0.1:3000').split(',')[0].trim() || '127.0.0.1:3000';
+  return `${forwardedProto}://${forwardedHost}`.replace(/\/+$/, '');
+}
+
+function getGameRouteBySlug(slug) {
+  const normalized = String(slug || '').trim();
+  return GAME_ROUTE_MAP[normalized] || `/games/${encodeURIComponent(normalized)}`;
+}
+
+function getGameNameBySlug(slug) {
+  const row = selectGameBySlugStmt.get(String(slug || '').trim());
+  return String(row?.name || '').trim() || '小游戏';
+}
+
+function getNexaCredentials() {
+  return {
+    apiKey: String(DEFAULT_NEXA_API_KEY || '').trim(),
+    appSecret: String(DEFAULT_NEXA_APP_SECRET || '').trim()
+  };
+}
+
+function ensureNexaCredentialsConfigured() {
+  const credentials = getNexaCredentials();
+  if (!credentials.apiKey || !credentials.appSecret) {
+    const error = new Error('Nexa 支付配置不完整，请先设置 API Key 和 App Secret');
+    error.statusCode = 503;
+    throw error;
+  }
+  return credentials;
+}
+
+async function exchangeNexaSessionFromAuthCode(authCode) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const accessPayload = buildNexaAccessTokenPayload({
+    apiKey,
+    appSecret,
+    code: String(authCode || '').trim()
+  });
+
+  const accessResponse = await postNexaJson('/partner/api/openapi/access_token/auth', accessPayload);
+  const accessData = unwrapNexaResult(accessResponse, 'Nexa 授权失败');
+  const sessionKey = extractSessionKey(accessData);
+  if (!sessionKey) {
+    throw new Error('Nexa 没有返回 sessionKey');
+  }
+
+  let openId = extractOpenId(accessData);
+  if (!openId) {
+    const userInfoPayload = buildNexaUserInfoPayload({
+      apiKey,
+      appSecret,
+      sessionKey
+    });
+    const userInfoResponse = await postNexaJson('/partner/api/openapi/user/info', userInfoPayload);
+    const userInfoData = unwrapNexaResult(userInfoResponse, 'Nexa 用户信息获取失败');
+    openId = extractOpenId(userInfoData);
+  }
+
+  if (!openId) {
+    throw new Error('Nexa 没有返回 openId');
+  }
+
+  const expiresInSeconds = Number(accessData.expires_in || accessData.expiresIn || 7200) || 7200;
+  return {
+    openId,
+    sessionKey,
+    expiresIn: expiresInSeconds,
+    expiresAt: Date.now() + expiresInSeconds * 1000
+  };
+}
+
+async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = NEXA_TIP_AMOUNT }) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const normalizedSlug = String(gameSlug || '').trim();
+  const normalizedAmount = String(amount || '').trim() || NEXA_TIP_AMOUNT;
+  const gameName = getGameNameBySlug(normalizedSlug);
+  const route = getGameRouteBySlug(normalizedSlug);
+  const baseUrl = getPublicBaseUrl(req);
+
+  const payload = buildNexaPaymentCreatePayload({
+    apiKey,
+    appSecret,
+    amount: normalizedAmount,
+    currency: NEXA_TIP_CURRENCY,
+    subject: 'Claw800 打赏',
+    body: `打赏 ${gameName}`,
+    notifyUrl: `${baseUrl}/api/nexa/tip/notify`,
+    returnUrl: `${baseUrl}${route}`,
+    openId: String(openId || '').trim(),
+    sessionKey: String(sessionKey || '').trim()
+  });
+
+  const response = await postNexaJson('/partner/api/openapi/payment/create', payload);
+  const data = unwrapNexaResult(response, 'Nexa 下单失败');
+  const orderNo = String(data.orderNo || '').trim();
+  if (!orderNo) {
+    throw new Error('Nexa 没有返回订单号');
+  }
+
+  nexaTipOrders.set(orderNo, {
+    orderNo,
+    gameSlug: normalizedSlug,
+    gameName,
+    amount: normalizedAmount,
+    status: 'PENDING',
+    createdAt: Date.now()
+  });
+
+  return {
+    orderNo,
+    payment: {
+      timestamp: String(data.timestamp || '').trim(),
+      nonce: String(data.nonce || '').trim(),
+      signType: String(data.signType || 'MD5').trim(),
+      paySign: String(data.paySign || '').trim(),
+      apiKey: String(data.apiKey || apiKey).trim(),
+      orderNo
+    }
+  };
+}
+
+async function queryNexaTipOrder(orderNo) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const payload = buildNexaPaymentQueryPayload({
+    apiKey,
+    appSecret,
+    orderNo: String(orderNo || '').trim()
+  });
+  const response = await postNexaJson('/partner/api/openapi/payment/query', payload);
+  const data = unwrapNexaResult(response, 'Nexa 查询订单失败');
+  const normalizedOrderNo = String(data.orderNo || orderNo || '').trim();
+  const normalizedStatus = String(data.status || 'PENDING').trim().toUpperCase();
+  const cached = nexaTipOrders.get(normalizedOrderNo) || {};
+  const next = {
+    ...cached,
+    orderNo: normalizedOrderNo,
+    status: normalizedStatus,
+    amount: String(data.amount || cached.amount || NEXA_TIP_AMOUNT),
+    currency: String(data.currency || NEXA_TIP_CURRENCY),
+    createTime: String(data.createTime || ''),
+    paidTime: String(data.paidTime || '')
+  };
+  nexaTipOrders.set(normalizedOrderNo, next);
+  return next;
 }
 
 function getAdminPassword() {
@@ -1583,6 +1751,100 @@ app.get('/api/games/:slug/bootstrap', (req, res) => {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.json({ ok: true, item: formatGameBootstrapRow(nextRow) });
+});
+
+app.post('/api/nexa/tip/session', async (req, res) => {
+  try {
+    const authCode = String(req.body?.authCode || '').trim();
+    if (!authCode) {
+      return res.status(400).json({ error: 'authCode 必填' });
+    }
+
+    const session = await exchangeNexaSessionFromAuthCode(authCode);
+    res.json({
+      ok: true,
+      session
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    res.status(statusCode).json({ error: String(error?.message || 'Nexa 授权失败') });
+  }
+});
+
+app.post('/api/nexa/tip/create', async (req, res) => {
+  try {
+    const gameSlug = String(req.body?.gameSlug || '').trim();
+    const openId = String(req.body?.openId || '').trim();
+    const sessionKey = String(req.body?.sessionKey || '').trim();
+    const amount = String(req.body?.amount || NEXA_TIP_AMOUNT).trim() || NEXA_TIP_AMOUNT;
+
+    if (!gameSlug) {
+      return res.status(400).json({ error: 'gameSlug 必填' });
+    }
+    if (!openId || !sessionKey) {
+      return res.status(400).json({ error: 'openId 和 sessionKey 必填' });
+    }
+    if (amount !== NEXA_TIP_AMOUNT) {
+      return res.status(400).json({ error: `当前仅支持默认打赏 ${NEXA_TIP_AMOUNT} ${NEXA_TIP_CURRENCY}` });
+    }
+
+    const order = await createNexaTipOrder({
+      req,
+      gameSlug,
+      openId,
+      sessionKey,
+      amount
+    });
+
+    res.json({
+      ok: true,
+      orderNo: order.orderNo,
+      amount,
+      currency: NEXA_TIP_CURRENCY,
+      payment: order.payment
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    res.status(statusCode).json({ error: String(error?.message || 'Nexa 下单失败') });
+  }
+});
+
+app.post('/api/nexa/tip/query', async (req, res) => {
+  try {
+    const orderNo = String(req.body?.orderNo || '').trim();
+    if (!orderNo) {
+      return res.status(400).json({ error: 'orderNo 必填' });
+    }
+
+    const order = await queryNexaTipOrder(orderNo);
+    res.json({
+      ok: true,
+      orderNo: order.orderNo,
+      status: order.status,
+      amount: order.amount,
+      currency: order.currency,
+      createTime: order.createTime,
+      paidTime: order.paidTime
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    res.status(statusCode).json({ error: String(error?.message || 'Nexa 查询失败') });
+  }
+});
+
+app.post('/api/nexa/tip/notify', (req, res) => {
+  const orderNo = String(req.body?.orderNo || req.body?.data?.orderNo || '').trim();
+  const status = String(req.body?.status || req.body?.data?.status || '').trim().toUpperCase();
+  if (orderNo) {
+    const cached = nexaTipOrders.get(orderNo) || {};
+    nexaTipOrders.set(orderNo, {
+      ...cached,
+      orderNo,
+      status: status || cached.status || 'PENDING',
+      paidTime: String(req.body?.paidTime || req.body?.data?.paidTime || cached.paidTime || '')
+    });
+  }
+  res.json({ ok: true });
 });
 
 app.get('/api/admin/games', requireAdmin, (_req, res) => {
