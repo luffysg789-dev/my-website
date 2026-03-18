@@ -109,6 +109,7 @@ function buildNexaPaymentCreatePayloadVariants(options = {}) {
     amount: String(options.amount || '').trim(),
     sessionKey: String(options.sessionKey || '').trim(),
     currency: String(options.currency || DEFAULT_NEXA_CURRENCY).trim(),
+    callbackUrl: String(options.callbackUrl || '').trim(),
     notifyUrl: String(options.notifyUrl || '').trim(),
     returnUrl: String(options.returnUrl || '').trim(),
     subject: String(options.subject || '').trim(),
@@ -119,32 +120,31 @@ function buildNexaPaymentCreatePayloadVariants(options = {}) {
   const appSecret = String(options.appSecret || DEFAULT_NEXA_APP_SECRET).trim();
   const orderNo = String(options.orderNo || '').trim();
   const openId = String(options.openId || '').trim();
-  const callbackUrl = String(options.callbackUrl || '').trim();
 
-  const siteDocPayload = withSignature(
+  const strictGithubPayload = withSignature(
     {
       ...common,
-      openId
-    },
-    appSecret
-  );
-  if (orderNo) {
-    siteDocPayload.orderNo = orderNo;
-  }
-
-  const githubDocPayload = withSignature(
-    {
-      ...common,
-      callbackUrl,
       openid: openId
     },
     appSecret
   );
   if (orderNo) {
-    githubDocPayload.orderNo = orderNo;
+    strictGithubPayload.orderNo = orderNo;
   }
 
-  return [siteDocPayload, githubDocPayload];
+  const phpSamplePayload = withSignature(
+    {
+      ...common,
+      orderNo,
+      openid: openId
+    },
+    appSecret
+  );
+  if (orderNo) {
+    phpSamplePayload.orderNo = orderNo;
+  }
+
+  return [strictGithubPayload, phpSamplePayload];
 }
 
 function isNexaSignatureError(response = {}) {

@@ -145,10 +145,13 @@ test('buildNexaPaymentCreatePayloadVariants covers both documented payment paylo
   });
 
   assert.equal(variants.length, 2);
-  assert.equal(variants[0].openId, 'open-id-123');
-  assert.equal(variants[0].callbackUrl, undefined);
+  assert.equal(variants[0].openid, 'open-id-123');
+  assert.equal(variants[0].callbackUrl, 'https://claw800.com/gomoku/');
+  assert.equal(variants[0].orderNo, 'partner-order-001');
   assert.equal(variants[1].openid, 'open-id-123');
   assert.equal(variants[1].callbackUrl, 'https://claw800.com/gomoku/');
+  assert.equal(variants[1].orderNo, 'partner-order-001');
+  assert.notEqual(variants[0].signature, variants[1].signature);
 });
 
 test('isNexaSignatureError detects common signature error responses', () => {
