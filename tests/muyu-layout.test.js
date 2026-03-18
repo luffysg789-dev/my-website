@@ -58,7 +58,7 @@ test('woodfish listens for tip success and adds 100 merit to total and today', (
   assert.match(js, /function applyTipMeritReward\(/);
   assert.match(js, /state\.total \+= TIP_MERIT_REWARD;/);
   assert.match(js, /state\.today \+= TIP_MERIT_REWARD;/);
-  assert.match(js, /alert\('谢谢打赏，功德\+100'\);/);
+  assert.match(js, /alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);/);
   assert.match(js, /window\.addEventListener\('claw800:tip-success'/);
   assert.match(js, /if \(String\(event\.detail\?\.gameSlug \|\| ''\)\.trim\(\) !== GAME_SLUG\) return;/);
 });

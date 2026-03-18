@@ -500,8 +500,8 @@ function applyTipMeritReward() {
   state.today += TIP_MERIT_REWARD;
   saveState();
   renderState();
-  hintEl.textContent = `谢谢打赏，功德+100，今日已积 ${state.today}`;
-  window.alert('谢谢打赏，功德+100');
+  hintEl.textContent = `谢谢打赏，佛祖会保佑您,功德+100! 今日已积 ${state.today}`;
+  window.alert('谢谢打赏，佛祖会保佑您,功德+100!');
 }
 
 function resetState() {
