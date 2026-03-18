@@ -73,7 +73,16 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   flex-shrink: 0;
+}
+
+.muyu-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .muyu-auto-btn {
@@ -131,7 +140,9 @@ body {
 .muyu-subtitle {
   margin: 0;
   color: var(--muyu-muted);
-  line-height: 1.65;
+  line-height: 1.4;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .muyu-stage {
@@ -395,7 +406,11 @@ body {
   }
 
   .muyu-toolbar {
-    width: 100%;
+    gap: 10px;
+  }
+
+  .muyu-toolbar-left {
+    gap: 10px;
   }
 
   .muyu-auto-btn {
@@ -412,6 +427,11 @@ body {
     min-height: 38px;
     padding: 0;
     border-radius: 999px;
+  }
+
+  .muyu-subtitle {
+    font-size: 12px;
+    line-height: 1.35;
   }
 
   .muyu-wood {
@@ -475,8 +495,12 @@ body {
     gap: 10px;
   }
 
+  .muyu-toolbar-left {
+    gap: 8px;
+  }
+
   .muyu-subtitle {
-    font-size: 0.82rem;
+    font-size: 11px;
     line-height: 1.25;
   }
 

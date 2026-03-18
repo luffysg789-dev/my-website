@@ -40,12 +40,18 @@ test('woodfish mobile mallet uses larger responsive sizing and higher placement'
 test('woodfish auto-strike button and timer logic exist', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'muyu.js'), 'utf8');
   assert.match(html, /自动敲击：关/);
-  assert.match(html, /class="muyu-toolbar"[\s\S]*?class="muyu-back"[\s\S]*?id="muyuAutoToggleBtn"/);
-  assert.match(css, /\.muyu-toolbar\s*\{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/);
+  assert.match(html, /class="muyu-toolbar"[\s\S]*?class="muyu-toolbar-left"[\s\S]*?class="muyu-back"[\s\S]*?id="gamePageSubtitle"[\s\S]*?id="muyuAutoToggleBtn"/);
+  assert.match(css, /\.muyu-toolbar\s*\{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;[\s\S]*?width:\s*100%;/);
+  assert.match(css, /\.muyu-toolbar-left\s*\{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*center;[\s\S]*?flex:\s*1 1 auto;[\s\S]*?min-width:\s*0;/);
+  assert.match(css, /\.muyu-subtitle\s*\{[\s\S]*?line-height:\s*1\.4;[\s\S]*?flex:\s*1 1 auto;[\s\S]*?min-width:\s*0;/);
   assert.match(css, /\.muyu-back\s*\{[\s\S]*?width:\s*42px;[\s\S]*?height:\s*42px;/);
   assert.match(css, /\.muyu-auto-btn\s*\{[\s\S]*?min-height:\s*42px;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.muyu-toolbar-left\s*\{[\s\S]*?gap:\s*10px;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.muyu-subtitle\s*\{[\s\S]*?font-size:\s*12px;[\s\S]*?line-height:\s*1\.35;/);
   assert.match(css, /@media \(max-width: 480px\)[\s\S]*?\.muyu-back\s*\{[\s\S]*?width:\s*36px;[\s\S]*?height:\s*36px;/);
   assert.match(css, /@media \(max-width: 480px\)[\s\S]*?\.muyu-auto-btn\s*\{[\s\S]*?min-height:\s*36px;/);
+  assert.match(css, /@media \(max-width: 480px\)[\s\S]*?\.muyu-toolbar-left\s*\{[\s\S]*?gap:\s*8px;/);
+  assert.match(css, /@media \(max-width: 480px\)[\s\S]*?\.muyu-subtitle\s*\{[\s\S]*?font-size:\s*11px;/);
   assert.match(js, /const AUTO_STRIKE_INTERVAL_MS = 1000;/);
   assert.match(js, /const MOBILE_BACKGROUND_MUSIC_VOLUME = 0\.015;/);
   assert.match(js, /const MOBILE_AMBIENT_MASTER_GAIN = 0\.001;/);
