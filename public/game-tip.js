@@ -391,17 +391,17 @@
     const shell = getShell();
     if (!shell) return;
 
-    const section = document.createElement('section');
-    section.className = 'game-tip';
-    section.setAttribute('data-game-tip', '1');
-    section.innerHTML = `
-      <div class="game-tip__copy">
-        <strong class="game-tip__title">喜欢这个小游戏？</strong>
-        <p class="game-tip__desc" data-game-tip-desc>首次需要授权登录,再次点击打赏即可.</p>
-      </div>
-      <button type="button" class="game-tip__button" data-game-tip-button>${TIP_BUTTON_TEXT_PAY}</button>
-      <p class="game-tip__status" data-game-tip-status aria-live="polite"></p>
-    `;
+        const section = document.createElement('section');
+        section.className = 'game-tip';
+        section.setAttribute('data-game-tip', '1');
+        section.innerHTML = `
+          <div class="game-tip__copy">
+            <strong class="game-tip__title">打赏+功德</strong>
+            <p class="game-tip__desc" data-game-tip-desc>首次需要授权登录,再次点击打赏即可.</p>
+          </div>
+          <button type="button" class="game-tip__button" data-game-tip-button>${TIP_BUTTON_TEXT_PAY}</button>
+          <p class="game-tip__status" data-game-tip-status aria-live="polite"></p>
+        `;
 
     shell.appendChild(section);
     section.querySelector('[data-game-tip-button]')?.addEventListener('click', handleTipClick);

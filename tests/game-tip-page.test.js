@@ -77,7 +77,7 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /window\.setTimeout\(\(\) => \{[\s\S]*?clearPendingOrder\(\);[\s\S]*?setStatus\('', ''\);[\s\S]*?updateButtonState\(\);[\s\S]*?\}, RESET_STATUS_DELAY_MS\);/);
   assert.match(tipJs, /window\.dispatchEvent\(new CustomEvent\('claw800:tip-success'/);
   assert.doesNotMatch(tipJs, /game-tip__eyebrow">Nexa 打赏/);
-  assert.match(tipJs, /喜欢这个小游戏？/);
+  assert.match(tipJs, /打赏\+功德/);
   assert.match(tipJs, /首次需要授权登录,再次点击打赏即可\./);
   assert.match(tipJs, /descEl\.hidden = Boolean\(session\);/);
   assert.match(tipJs, /setStatus\('已连接 Nexa 账号，后续可直接打赏。', 'success'\);/);
