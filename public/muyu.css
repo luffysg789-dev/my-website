@@ -302,6 +302,64 @@ body {
   text-align: center;
 }
 
+.muyu-tip-modal[hidden] {
+  display: none;
+}
+
+.muyu-tip-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 48;
+}
+
+.muyu-tip-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.muyu-tip-modal__dialog {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(320px, calc(100vw - 32px));
+  padding: 24px 20px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 224, 188, 0.14);
+  background:
+    radial-gradient(circle at top, rgba(189, 135, 72, 0.2), transparent 45%),
+    linear-gradient(180deg, rgba(22, 22, 22, 0.98), rgba(9, 9, 9, 0.99));
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.42);
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.muyu-tip-modal__title {
+  display: block;
+  color: #fff4df;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.muyu-tip-modal__text {
+  margin: 14px 0 18px;
+  color: rgba(255, 243, 222, 0.86);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.muyu-tip-modal__button {
+  min-height: 46px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d79a54, #c77b34);
+  color: #fffdf7;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+}
+
 .muyu-controls-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -463,6 +521,12 @@ body {
     min-width: 102px;
     padding: 0 12px;
     font-size: 12px;
+  }
+
+  .muyu-tip-modal__dialog {
+    width: min(304px, calc(100vw - 24px));
+    padding: 22px 16px 18px;
+    border-radius: 22px;
   }
 
   .muyu-header h2 {

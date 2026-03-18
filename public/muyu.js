@@ -6,6 +6,8 @@ const todayCountEl = document.getElementById('muyuTodayCount');
 const heroCountEl = document.getElementById('muyuHeroCount');
 const hintEl = document.getElementById('muyuHint');
 const blessingTextEl = document.getElementById('muyuBlessingText');
+const tipModalEl = document.getElementById('muyuTipModal');
+const tipConfirmEls = document.querySelectorAll('[data-muyu-tip-confirm]');
 
 const GAME_SLUG = 'muyu';
 const GAME_CONFIG_CACHE_KEY = `claw800_game_config_cache_v1:${GAME_SLUG}`;
@@ -249,6 +251,20 @@ function runAfterNextPaint(callback) {
     return;
   }
   window.setTimeout(callback, 0);
+}
+
+function showTipRewardModal() {
+  if (!tipModalEl || !tipConfirmEls.length) return Promise.resolve();
+  tipModalEl.hidden = false;
+  return new Promise((resolve) => {
+    const handleConfirm = () => {
+      tipModalEl.hidden = true;
+      tipConfirmEls.forEach((el) => el.removeEventListener('click', handleConfirm));
+      resolve();
+    };
+
+    tipConfirmEls.forEach((el) => el.addEventListener('click', handleConfirm, { once: true }));
+  });
 }
 
 function getAudioContext() {
@@ -507,8 +523,9 @@ function strikeWood() {
 
 function applyTipMeritReward() {
   runAfterNextPaint(() => {
-    window.alert('谢谢打赏，佛祖会保佑您,功德+100!');
-    commitTipMeritReward();
+    showTipRewardModal().then(() => {
+      commitTipMeritReward();
+    });
   });
 }
 

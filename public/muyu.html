@@ -6,8 +6,8 @@
     <title>Claw800 敲木鱼</title>
     <meta name="description" content="Claw800 敲木鱼小游戏，轻点木鱼一下，功德 +1，支持手机网页与木鱼音效。" />
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="/game-tip.css?v=20260319-04" />
-    <link rel="stylesheet" href="/muyu.css?v=20260319-04" />
+    <link rel="stylesheet" href="/game-tip.css?v=20260319-05" />
+    <link rel="stylesheet" href="/muyu.css?v=20260319-05" />
   </head>
   <body>
     <main class="muyu-page">
@@ -60,11 +60,20 @@
             <button id="muyuMusicToggleBtn" type="button" class="muyu-control-btn">背景音乐：关</button>
             <button id="muyuResetBtn" type="button" class="muyu-control-btn">清零重来</button>
           </div>
+
+          <div id="muyuTipModal" class="muyu-tip-modal" hidden>
+            <div class="muyu-tip-modal__backdrop" data-muyu-tip-confirm></div>
+            <div class="muyu-tip-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="muyuTipModalTitle">
+              <strong id="muyuTipModalTitle" class="muyu-tip-modal__title">谢谢打赏</strong>
+              <p class="muyu-tip-modal__text">佛祖会保佑您,功德+100!</p>
+              <button id="muyuTipConfirmBtn" type="button" class="muyu-tip-modal__button" data-muyu-tip-confirm>收下功德</button>
+            </div>
+          </div>
         </div>
       </section>
     </main>
 
-    <script src="/muyu.js?v=20260319-04"></script>
-    <script src="/game-tip.js?v=20260319-04"></script>
+    <script src="/muyu.js?v=20260319-05"></script>
+    <script src="/game-tip.js?v=20260319-05"></script>
   </body>
 </html>
