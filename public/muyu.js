@@ -31,9 +31,9 @@ const DEFAULT_FISH_IMAGE_SRC = '/assets/muyu-fish-fixed.webp';
 const DEFAULT_MALLET_IMAGE_SRC = '/assets/muyu-mallet-fixed.png';
 const AUTO_STRIKE_INTERVAL_MS = 1000;
 const DESKTOP_BACKGROUND_MUSIC_VOLUME = 0.22;
-const MOBILE_BACKGROUND_MUSIC_VOLUME = 0.12;
+const MOBILE_BACKGROUND_MUSIC_VOLUME = 0.06;
 const DESKTOP_AMBIENT_MASTER_GAIN = 0.014;
-const MOBILE_AMBIENT_MASTER_GAIN = 0.008;
+const MOBILE_AMBIENT_MASTER_GAIN = 0.004;
 
 let audioContext = null;
 let isStriking = false;
