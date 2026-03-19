@@ -220,19 +220,6 @@
     const targetUrl = String(url || '').trim();
     if (!targetUrl) return;
 
-    const anchor = document.createElement('a');
-    anchor.href = targetUrl;
-    anchor.style.display = 'none';
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = targetUrl;
-    document.body.appendChild(iframe);
-    window.setTimeout(() => iframe.remove(), 1500);
-
     window.location.href = targetUrl;
   }
 

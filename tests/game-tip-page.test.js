@@ -72,6 +72,9 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /function buildNexaPaymentUrl\(/);
   assert.match(tipJs, /function promptDownloadNexaApp\(\)/);
   assert.match(tipJs, /function launchNexaUrl\(/);
+  assert.doesNotMatch(tipJs, /document\.createElement\('iframe'\)/);
+  assert.doesNotMatch(tipJs, /document\.createElement\('a'\)/);
+  assert.match(tipJs, /window\.location\.href = targetUrl;/);
   assert.match(tipJs, /return window\.localStorage;/);
   assert.match(tipJs, /const userAgent = String\(window\.navigator\?\.userAgent \|\| ''\)\.trim\(\);/);
   assert.match(tipJs, /const referrer = String\(document\.referrer \|\| ''\)\.trim\(\);/);
