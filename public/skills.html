@@ -248,15 +248,15 @@
 
     .skill-card-top {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
     }
 
     .skill-card-actions {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-shrink: 0;
       margin-left: auto;
     }
@@ -264,8 +264,16 @@
     .skill-card-badges {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      min-height: 34px;
+      gap: 6px;
+      min-height: 32px;
+    }
+
+    .skill-card-badges .site-badge-stack {
+      position: static;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      pointer-events: none;
     }
 
     .skill-favorite-btn {
