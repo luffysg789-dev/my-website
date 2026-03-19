@@ -1645,6 +1645,18 @@ function renderSkillsAdminList(items) {
                   <label class="small">${escapeHtml(t('sort'))}
                     <input id="skillSort-${skill.id}" type="number" value="${Number(skill.sort_order || 0)}" />
                   </label>
+                  <label class="small">${escapeHtml(t('adminLabelPinned'))}
+                    <select id="skillPinned-${skill.id}">
+                      <option value="0" ${skill.is_pinned ? '' : 'selected'}>${escapeHtml(t('enabledNo'))}</option>
+                      <option value="1" ${skill.is_pinned ? 'selected' : ''}>${escapeHtml(t('enabledYes'))}</option>
+                    </select>
+                  </label>
+                  <label class="small">${escapeHtml(t('adminLabelHot'))}
+                    <select id="skillHot-${skill.id}">
+                      <option value="0" ${skill.is_hot ? '' : 'selected'}>${escapeHtml(t('enabledNo'))}</option>
+                      <option value="1" ${skill.is_hot ? 'selected' : ''}>${escapeHtml(t('enabledYes'))}</option>
+                    </select>
+                  </label>
                   <label class="small">${escapeHtml(t('adminLabelDesc'))}
                     <textarea id="skillDesc-${skill.id}" rows="4">${escapeHtml(skill.description || '')}</textarea>
                   </label>
@@ -1656,6 +1668,7 @@ function renderSkillsAdminList(items) {
                  <p>${escapeHtml(skill.description || '')}</p>
                  <p class="small">EN: ${escapeHtml(skill.description_en || '-')}</p>
                  <p class="small">${escapeHtml(t('category'))}：${escapeHtml(skill.category || '-')} / EN：${escapeHtml(skill.category_en || '-')}</p>
+                 <p class="small">${escapeHtml(t('adminLabelPinned'))}：${Number(skill.is_pinned || 0) === 1 ? escapeHtml(t('enabledYes')) : escapeHtml(t('enabledNo'))} / ${escapeHtml(t('adminLabelHot'))}：${Number(skill.is_hot || 0) === 1 ? escapeHtml(t('enabledYes')) : escapeHtml(t('enabledNo'))}</p>
                  <p class="small">${escapeHtml(t('sort'))}：${escapeHtml(String(Number(skill.sort_order || 0)))}</p>`
           }
           ${
@@ -2348,6 +2361,8 @@ window.saveSkillEdit = async function saveSkillEdit(id) {
     category: String(document.getElementById(`skillCategory-${id}`)?.value || '').trim(),
     categoryEn: String(document.getElementById(`skillCategoryEn-${id}`)?.value || '').trim(),
     sortOrder: Number(document.getElementById(`skillSort-${id}`)?.value || 0) || 0,
+    isPinned: Number(document.getElementById(`skillPinned-${id}`)?.value || 0) || 0,
+    isHot: Number(document.getElementById(`skillHot-${id}`)?.value || 0) || 0,
     description: String(document.getElementById(`skillDesc-${id}`)?.value || '').trim(),
     descriptionEn: String(document.getElementById(`skillDescEn-${id}`)?.value || '').trim()
   };

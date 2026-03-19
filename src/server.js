@@ -530,11 +530,11 @@ const selectGameBySlugStmt = db.prepare(`
   LIMIT 1
 `);
 const listSkillsCatalogStmt = db.prepare(`
-  SELECT id, name, name_en, url, description, description_en, category, category_en, icon, sort_order, created_at, updated_at
+  SELECT id, name, name_en, url, description, description_en, category, category_en, icon, sort_order, is_pinned, is_hot, created_at, updated_at
   FROM skills_catalog
   WHERE (? = '' OR category = ?)
     AND (? = '' OR name LIKE ? OR name_en LIKE ? OR description LIKE ? OR description_en LIKE ? OR category LIKE ? OR category_en LIKE ? OR url LIKE ?)
-  ORDER BY sort_order DESC, updated_at DESC, created_at DESC, id DESC
+  ORDER BY is_pinned DESC, sort_order DESC, updated_at DESC, created_at DESC, id DESC
   LIMIT ?
 `);
 const listSkillsCatalogCategoriesStmt = db.prepare(`
@@ -556,10 +556,10 @@ const skillsCatalogSummaryStmt = db.prepare(`
   FROM skills_catalog
 `);
 const listAdminSkillsStmt = db.prepare(`
-  SELECT id, name, name_en, url, description, description_en, category, category_en, icon, sort_order, created_at, updated_at
+  SELECT id, name, name_en, url, description, description_en, category, category_en, icon, sort_order, is_pinned, is_hot, created_at, updated_at
   FROM skills_catalog
   WHERE (? = '' OR name LIKE ? OR name_en LIKE ? OR description LIKE ? OR description_en LIKE ? OR category LIKE ? OR category_en LIKE ? OR url LIKE ?)
-  ORDER BY sort_order DESC, updated_at DESC, created_at DESC, id DESC
+  ORDER BY is_pinned DESC, sort_order DESC, updated_at DESC, created_at DESC, id DESC
 `);
 const selectSkillByUrlStmt = db.prepare('SELECT 1 FROM skills_catalog WHERE url = ? LIMIT 1');
 const upsertSkillCatalogStagingStmt = db.prepare(`
@@ -1618,9 +1618,9 @@ app.get('/api/skills.json', async (_req, res) => {
   const lastSyncMs = parseEpochMs(getSetting('skills_catalog_last_sync_ms', '0'));
   const rows = db
     .prepare(`
-      SELECT name, name_en, url, description, description_en, category, category_en
+      SELECT name, name_en, url, description, description_en, category, category_en, is_pinned, is_hot
       FROM skills_catalog
-      ORDER BY sort_order DESC, updated_at DESC, created_at DESC, id DESC
+      ORDER BY is_pinned DESC, sort_order DESC, updated_at DESC, created_at DESC, id DESC
     `)
     .all();
 
@@ -1634,7 +1634,9 @@ app.get('/api/skills.json', async (_req, res) => {
       description_zh: String(row.description || '').trim(),
       category,
       category_zh: String(row.category || '').trim(),
-      url: String(row.url || '').trim()
+      url: String(row.url || '').trim(),
+      is_pinned: Number(row.is_pinned || 0) || 0,
+      is_hot: Number(row.is_hot || 0) || 0
     };
   });
 
@@ -1648,9 +1650,9 @@ app.get('/api/skills.zh.json', async (_req, res) => {
   const lastSyncMs = parseEpochMs(getSetting('skills_catalog_last_sync_ms', '0'));
   const rows = db
     .prepare(`
-      SELECT name, name_en, url, description, description_en, category, category_en
+      SELECT name, name_en, url, description, description_en, category, category_en, is_pinned, is_hot
       FROM skills_catalog
-      ORDER BY sort_order DESC, updated_at DESC, created_at DESC, id DESC
+      ORDER BY is_pinned DESC, sort_order DESC, updated_at DESC, created_at DESC, id DESC
     `)
     .all();
 
@@ -1667,7 +1669,9 @@ app.get('/api/skills.zh.json', async (_req, res) => {
       description_zh: String(row.description || row.description_en || '').trim(),
       category,
       category_zh: categoryZh,
-      url: String(row.url || '').trim()
+      url: String(row.url || '').trim(),
+      is_pinned: Number(row.is_pinned || 0) || 0,
+      is_hot: Number(row.is_hot || 0) || 0
     };
   });
 
@@ -2006,6 +2010,8 @@ function updateAdminSkill(req, res) {
   const sortOrder = Number.isFinite(Number(req.body.sortOrder ?? req.body.sort_order))
     ? Number(req.body.sortOrder ?? req.body.sort_order)
     : 0;
+  const isPinned = Number(req.body.isPinned ?? req.body.is_pinned);
+  const isHot = Number(req.body.isHot ?? req.body.is_hot);
 
   if (!name || !url) return res.status(400).json({ error: 'name 和 url 必填' });
   if (!isValidUrl(url)) return res.status(400).json({ error: 'url 格式不正确' });
@@ -2017,10 +2023,10 @@ function updateAdminSkill(req, res) {
     const result = db
       .prepare(`
         UPDATE skills_catalog
-        SET name = ?, name_en = ?, url = ?, description = ?, description_en = ?, category = ?, category_en = ?, icon = ?, sort_order = ?, updated_at = datetime('now')
+        SET name = ?, name_en = ?, url = ?, description = ?, description_en = ?, category = ?, category_en = ?, icon = ?, sort_order = ?, is_pinned = ?, is_hot = ?, updated_at = datetime('now')
         WHERE id = ?
       `)
-      .run(name, nameEn, url, description, descriptionEn, category, categoryEn, icon, sortOrder, id);
+      .run(name, nameEn, url, description, descriptionEn, category, categoryEn, icon, sortOrder, isPinned === 1 ? 1 : 0, isHot === 1 ? 1 : 0, id);
     if (!result.changes) return res.status(404).json({ error: '记录不存在' });
     res.json({ ok: true });
   } catch (err) {
@@ -2049,7 +2055,7 @@ app.post('/api/admin/skills', requireAdmin, (req, res) => {
       VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
     `).run(name, url, description, category);
     const item = db.prepare(`
-      SELECT id, name, name_en, url, description, description_en, category, category_en, icon, sort_order, created_at, updated_at
+      SELECT id, name, name_en, url, description, description_en, category, category_en, icon, sort_order, is_pinned, is_hot, created_at, updated_at
       FROM skills_catalog
       WHERE id = ?
       LIMIT 1

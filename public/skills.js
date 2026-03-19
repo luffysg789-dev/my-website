@@ -104,6 +104,8 @@ const i18n = {
     copyBtn: '复制',
     copyToast: (name) => `已复制「${name}」安装提示`,
     copyToastSub: '把这段提示词发给你的 Bot，它会按说明继续安装。',
+    pinnedBadge: '置顶',
+    hotBadge: '热门',
     syncNote: (text) => `最近同步：${text} / 每天早上 10:00 自动同步`,
     loadingZh: '⏳ 正在加载中文数据...',
     allCat: '全部',
@@ -149,6 +151,8 @@ const i18n = {
     copyBtn: 'Copy',
     copyToast: (name) => `Copied install prompt for "${name}"`,
     copyToastSub: 'Paste it to your Bot and continue the install flow there.',
+    pinnedBadge: 'PINNED',
+    hotBadge: 'HOT',
     syncNote: (text) => `Last sync: ${text} / Auto-sync daily at 10:00`,
     loadingZh: '⏳ Loading Chinese data...',
     allCat: 'All',
@@ -382,7 +386,9 @@ function buildSkillsPayloadFromCatalog(data, lang = 'en') {
       description_zh: String(item.description || item.description_en || '').trim(),
       category,
       category_zh: categoryZh,
-      url: String(item.url || '').trim()
+      url: String(item.url || '').trim(),
+      is_pinned: Number(item.is_pinned || 0) || 0,
+      is_hot: Number(item.is_hot || 0) || 0
     };
   });
   return { skills, categories, lang, lastSyncMs };
@@ -887,8 +893,15 @@ function renderSkills(skills) {
   grid.innerHTML = display.map((skill) => {
     const desc = currentLang === 'zh' && skill.description_zh ? skill.description_zh : skill.description;
     const cat = currentLang === 'zh' && skill.category_zh ? skill.category_zh : skill.category;
+    const isPinned = Number(skill.is_pinned || 0) === 1;
+    const isHot = Number(skill.is_hot || 0) === 1;
+    const badges = [];
+    if (isPinned) badges.push(`<div class="site-badge site-badge--pinned">${escHtml(t.pinnedBadge)}</div>`);
+    if (isHot) badges.push(`<div class="site-badge site-badge--hot">${escHtml(t.hotBadge)}</div>`);
+    const badgeHtml = badges.length ? `<div class="site-badge-stack">${badges.join('')}</div>` : '';
 
     return `<div class="skill-card">
+      ${badgeHtml}
       <button class="skill-favorite-btn ${isFavoriteSkill(skill) ? 'active' : ''}" type="button" onclick="toggleFavoriteSkill('${escAttr(skill.url)}', this)" aria-label="${escHtml(t.labelFavorites)}">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
       </button>
@@ -963,8 +976,15 @@ function renderSkillsChunked(skills) {
     const html = display.slice(index, index + chunkSize).map((skill) => {
       const desc = currentLang === 'zh' && skill.description_zh ? skill.description_zh : skill.description;
       const cat = currentLang === 'zh' && skill.category_zh ? skill.category_zh : skill.category;
+      const isPinned = Number(skill.is_pinned || 0) === 1;
+      const isHot = Number(skill.is_hot || 0) === 1;
+      const badges = [];
+      if (isPinned) badges.push(`<div class="site-badge site-badge--pinned">${escHtml(t.pinnedBadge)}</div>`);
+      if (isHot) badges.push(`<div class="site-badge site-badge--hot">${escHtml(t.hotBadge)}</div>`);
+      const badgeHtml = badges.length ? `<div class="site-badge-stack">${badges.join('')}</div>` : '';
 
       return `<div class="skill-card">
+        ${badgeHtml}
         <button class="skill-favorite-btn ${isFavoriteSkill(skill) ? 'active' : ''}" type="button" onclick="toggleFavoriteSkill('${escAttr(skill.url)}', this)" aria-label="${escHtml(t.labelFavorites)}">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
         </button>

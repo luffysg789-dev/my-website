@@ -161,6 +161,8 @@ db.exec(`
     category_en TEXT DEFAULT '',
     icon TEXT DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    is_hot INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -308,6 +310,14 @@ db.prepare(`
 const hasSkillsCatalogSortOrder = db.prepare("SELECT 1 FROM pragma_table_info('skills_catalog') WHERE name = 'sort_order'").get();
 if (!hasSkillsCatalogSortOrder) {
   db.exec('ALTER TABLE skills_catalog ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
+}
+const hasSkillsCatalogPinned = db.prepare("SELECT 1 FROM pragma_table_info('skills_catalog') WHERE name = 'is_pinned'").get();
+if (!hasSkillsCatalogPinned) {
+  db.exec('ALTER TABLE skills_catalog ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0');
+}
+const hasSkillsCatalogHot = db.prepare("SELECT 1 FROM pragma_table_info('skills_catalog') WHERE name = 'is_hot'").get();
+if (!hasSkillsCatalogHot) {
+  db.exec('ALTER TABLE skills_catalog ADD COLUMN is_hot INTEGER NOT NULL DEFAULT 0');
 }
 
 const hasSkillsCatalogStagingSortOrder = db.prepare("SELECT 1 FROM pragma_table_info('skills_catalog_staging') WHERE name = 'sort_order'").get();
