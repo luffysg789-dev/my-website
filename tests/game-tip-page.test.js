@@ -58,6 +58,8 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth:\/\/order';/);
   assert.match(tipJs, /const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';/);
   assert.match(tipJs, /function getPersistentStorage\(\)/);
+  assert.match(tipJs, /const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';/);
+  assert.match(tipJs, /function saveTipSuccessReceipt\(/);
   assert.match(tipJs, /function isNexaAppEnvironment\(\)/);
   assert.match(tipJs, /function shouldRenderTip\(\)/);
   assert.match(tipJs, /function clearCachedSession\(\)/);
@@ -89,6 +91,7 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /setStatus\('支付失败', 'error'\);/);
   assert.match(tipJs, /window\.setTimeout\(\(\) => \{[\s\S]*?clearPendingOrder\(\);[\s\S]*?setStatus\('', ''\);[\s\S]*?updateButtonState\(\);[\s\S]*?\}, RESET_STATUS_DELAY_MS\);/);
   assert.match(tipJs, /window\.dispatchEvent\(new CustomEvent\('claw800:tip-success'/);
+  assert.match(tipJs, /saveTipSuccessReceipt\(pendingOrder\.gameSlug,\s*pendingOrder\.orderNo\);/);
   assert.doesNotMatch(tipJs, /game-tip__eyebrow">Nexa 打赏/);
   assert.match(tipJs, /function getTipTitle\(game\)/);
   assert.match(tipJs, /if \(String\(game\?\.slug \|\| ''\)\.trim\(\) === 'muyu'\) return '打赏\+功德';/);

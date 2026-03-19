@@ -26,6 +26,8 @@ function shouldRestartHtmlAudio(audio) {
 }
 
 const STORAGE_KEY = 'claw800_muyu_state_v1';
+const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';
+const TIP_REWARD_MARKER_KEY = 'claw800_muyu_tip_reward_marker_v1';
 const DEFAULT_STRIKE_AUDIO_SRC = '/audio/muyu-strike.mp3';
 const DEFAULT_FISH_IMAGE_SRC = '/assets/muyu-fish-fixed.webp';
 const DEFAULT_MALLET_IMAGE_SRC = '/assets/muyu-mallet-fixed.png';
@@ -51,6 +53,7 @@ let backgroundMusicAudio = null;
 let strikeAudioPrepared = false;
 let backgroundMusicPrepared = false;
 let fullConfigLoaded = false;
+let lastRewardedTipOrderNo = '';
 
 function isMobileDevice() {
   if (typeof window === 'undefined') return false;
@@ -220,6 +223,23 @@ let state = loadState();
 
 function saveState() {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadTipRewardMarker() {
+  try {
+    return String(window.localStorage.getItem(TIP_REWARD_MARKER_KEY) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function saveTipRewardMarker(orderNo) {
+  lastRewardedTipOrderNo = String(orderNo || '').trim();
+  try {
+    if (lastRewardedTipOrderNo) {
+      window.localStorage.setItem(TIP_REWARD_MARKER_KEY, lastRewardedTipOrderNo);
+    }
+  } catch {}
 }
 
 function renderState() {
@@ -517,6 +537,43 @@ function applyTipMeritReward() {
   });
 }
 
+function readTipSuccessReceipt() {
+  try {
+    const raw = window.localStorage.getItem(TIP_SUCCESS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearTipSuccessReceipt() {
+  try {
+    window.localStorage.removeItem(TIP_SUCCESS_STORAGE_KEY);
+  } catch {}
+}
+
+function applyTipRewardFromDetail(detail) {
+  const gameSlug = String(detail?.gameSlug || '').trim();
+  const orderNo = String(detail?.orderNo || '').trim();
+  if (gameSlug !== GAME_SLUG || !orderNo) return false;
+  if (orderNo === lastRewardedTipOrderNo) {
+    clearTipSuccessReceipt();
+    return false;
+  }
+  saveTipRewardMarker(orderNo);
+  clearTipSuccessReceipt();
+  applyTipMeritReward();
+  return true;
+}
+
+function syncTipRewardReceipt() {
+  const receipt = readTipSuccessReceipt();
+  if (!receipt) return false;
+  return applyTipRewardFromDetail(receipt);
+}
+
 function resetState() {
   state = getDefaultState();
   saveState();
@@ -556,6 +613,8 @@ function toggleAutoStrike() {
 renderState();
 syncAmbientMusic();
 syncAutoStrike();
+lastRewardedTipOrderNo = loadTipRewardMarker();
+syncTipRewardReceipt();
 const initialCachedConfig = readCachedGameConfig();
 window.__GAME_CONFIG__ = normalizeGameConfig(initialCachedConfig || DEFAULT_GAME_CONFIG);
 syncGameConfig({
@@ -588,13 +647,13 @@ resetBtn?.addEventListener('click', resetState);
 musicToggleBtn?.addEventListener('click', toggleMusic);
 autoToggleBtn?.addEventListener('click', toggleAutoStrike);
 window.addEventListener('claw800:tip-success', (event) => {
-  if (String(event.detail?.gameSlug || '').trim() !== GAME_SLUG) return;
-  applyTipMeritReward();
+  applyTipRewardFromDetail(event.detail);
 });
 
 window.addEventListener('pageshow', () => {
   state = loadState();
   renderState();
+  syncTipRewardReceipt();
 });
 
 window.addEventListener('beforeunload', () => {

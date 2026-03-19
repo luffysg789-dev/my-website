@@ -9,6 +9,7 @@
   const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
   const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';
   const PENDING_ORDER_STORAGE_KEY = 'claw800_nexa_tip_pending_order_v1';
+  const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';
   const QUERY_INTERVAL_MS = 2000;
   const QUERY_TIMEOUT_MS = 45000;
   const RESET_STATUS_DELAY_MS = 3000;
@@ -116,6 +117,19 @@
   function clearPendingOrder() {
     try {
       window.sessionStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
+    } catch {}
+  }
+
+  function saveTipSuccessReceipt(gameSlug, orderNo) {
+    const payload = {
+      gameSlug: String(gameSlug || '').trim(),
+      orderNo: String(orderNo || '').trim(),
+      amount: TIP_AMOUNT,
+      currency: TIP_CURRENCY,
+      createdAt: Date.now()
+    };
+    try {
+      getPersistentStorage().setItem(TIP_SUCCESS_STORAGE_KEY, JSON.stringify(payload));
     } catch {}
   }
 
@@ -324,6 +338,7 @@
       const finalStatus = String(response.status || '').trim().toUpperCase();
       if (finalStatus === 'SUCCESS') {
         clearPendingOrder();
+        saveTipSuccessReceipt(pendingOrder.gameSlug, pendingOrder.orderNo);
         notifyTipSuccess(pendingOrder.gameSlug, pendingOrder.orderNo);
         setStatus('打赏成功，感谢支持。', 'success');
         return;

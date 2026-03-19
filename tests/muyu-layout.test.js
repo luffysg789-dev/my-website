@@ -65,13 +65,24 @@ test('woodfish auto-strike button and timer logic exist', () => {
 test('woodfish listens for tip success and adds 100 merit to total and today', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'muyu.js'), 'utf8');
   assert.match(js, /const TIP_MERIT_REWARD = 100;/);
+  assert.match(js, /const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';/);
+  assert.match(js, /const TIP_REWARD_MARKER_KEY = 'claw800_muyu_tip_reward_marker_v1';/);
+  assert.match(js, /function loadTipRewardMarker\(\)/);
+  assert.match(js, /function saveTipRewardMarker\(/);
   assert.match(js, /function runAfterNextPaint\(callback\)/);
   assert.match(js, /function applyTipMeritReward\(/);
+  assert.match(js, /function readTipSuccessReceipt\(\)/);
+  assert.match(js, /function clearTipSuccessReceipt\(\)/);
+  assert.match(js, /function applyTipRewardFromDetail\(/);
+  assert.match(js, /function syncTipRewardReceipt\(\)/);
   assert.match(js, /state\.total \+= TIP_MERIT_REWARD;/);
   assert.match(js, /state\.today \+= TIP_MERIT_REWARD;/);
   assert.match(js, /renderState\(\);[\s\S]*?hintEl\.textContent = `谢谢打赏，佛祖会保佑您,功德\+100! 今日已积 \$\{state\.today\}`;[\s\S]*?runAfterNextPaint\(\(\) => \{[\s\S]*?window\.alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);[\s\S]*?\}\);/);
   assert.match(js, /alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);/);
   assert.match(js, /window\.addEventListener\('claw800:tip-success'/);
-  assert.match(js, /if \(String\(event\.detail\?\.gameSlug \|\| ''\)\.trim\(\) !== GAME_SLUG\) return;/);
-  assert.match(js, /window\.addEventListener\('pageshow', \(\) => \{[\s\S]*?renderState\(\);[\s\S]*?\}\);/);
+  assert.match(js, /if \(gameSlug !== GAME_SLUG \|\| !orderNo\) return false;/);
+  assert.match(js, /if \(orderNo === lastRewardedTipOrderNo\) \{[\s\S]*?clearTipSuccessReceipt\(\);[\s\S]*?return false;/);
+  assert.match(js, /saveTipRewardMarker\(orderNo\);[\s\S]*?clearTipSuccessReceipt\(\);[\s\S]*?applyTipMeritReward\(\);/);
+  assert.match(js, /lastRewardedTipOrderNo = loadTipRewardMarker\(\);[\s\S]*?syncTipRewardReceipt\(\);/);
+  assert.match(js, /window\.addEventListener\('pageshow', \(\) => \{[\s\S]*?renderState\(\);[\s\S]*?syncTipRewardReceipt\(\);[\s\S]*?\}\);/);
 });
