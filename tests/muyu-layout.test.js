@@ -67,6 +67,8 @@ test('woodfish listens for tip success and adds 100 merit to total and today', (
   assert.match(js, /const TIP_MERIT_REWARD = 100;/);
   assert.match(js, /const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';/);
   assert.match(js, /const TIP_REWARD_MARKER_KEY = 'claw800_muyu_tip_reward_marker_v1';/);
+  assert.match(js, /const TIP_RECEIPT_SYNC_WINDOW_MS = 20000;/);
+  assert.match(js, /const TIP_RECEIPT_SYNC_INTERVAL_MS = 800;/);
   assert.match(js, /function loadTipRewardMarker\(\)/);
   assert.match(js, /function saveTipRewardMarker\(/);
   assert.match(js, /function runAfterNextPaint\(callback\)/);
@@ -75,6 +77,8 @@ test('woodfish listens for tip success and adds 100 merit to total and today', (
   assert.match(js, /function clearTipSuccessReceipt\(\)/);
   assert.match(js, /function applyTipRewardFromDetail\(/);
   assert.match(js, /function syncTipRewardReceipt\(\)/);
+  assert.match(js, /function stopTipReceiptSync\(\)/);
+  assert.match(js, /function startTipReceiptSyncWindow\(\)/);
   assert.match(js, /state\.total \+= TIP_MERIT_REWARD;/);
   assert.match(js, /state\.today \+= TIP_MERIT_REWARD;/);
   assert.match(js, /renderState\(\);[\s\S]*?hintEl\.textContent = `谢谢打赏，佛祖会保佑您,功德\+100! 今日已积 \$\{state\.today\}`;[\s\S]*?runAfterNextPaint\(\(\) => \{[\s\S]*?window\.alert\('谢谢打赏，佛祖会保佑您,功德\+100!'\);[\s\S]*?\}\);/);
@@ -83,6 +87,8 @@ test('woodfish listens for tip success and adds 100 merit to total and today', (
   assert.match(js, /if \(gameSlug !== GAME_SLUG \|\| !orderNo\) return false;/);
   assert.match(js, /if \(orderNo === lastRewardedTipOrderNo\) \{[\s\S]*?clearTipSuccessReceipt\(\);[\s\S]*?return false;/);
   assert.match(js, /saveTipRewardMarker\(orderNo\);[\s\S]*?clearTipSuccessReceipt\(\);[\s\S]*?applyTipMeritReward\(\);/);
-  assert.match(js, /lastRewardedTipOrderNo = loadTipRewardMarker\(\);[\s\S]*?syncTipRewardReceipt\(\);/);
-  assert.match(js, /window\.addEventListener\('pageshow', \(\) => \{[\s\S]*?renderState\(\);[\s\S]*?syncTipRewardReceipt\(\);[\s\S]*?\}\);/);
+  assert.match(js, /lastRewardedTipOrderNo = loadTipRewardMarker\(\);[\s\S]*?syncTipRewardReceipt\(\);[\s\S]*?startTipReceiptSyncWindow\(\);/);
+  assert.match(js, /window\.addEventListener\('pageshow', \(\) => \{[\s\S]*?renderState\(\);[\s\S]*?syncTipRewardReceipt\(\);[\s\S]*?startTipReceiptSyncWindow\(\);[\s\S]*?\}\);/);
+  assert.match(js, /window\.addEventListener\('focus', \(\) => \{[\s\S]*?syncTipRewardReceipt\(\);[\s\S]*?startTipReceiptSyncWindow\(\);[\s\S]*?\}\);/);
+  assert.match(js, /window\.addEventListener\('visibilitychange', \(\) => \{[\s\S]*?document\.visibilityState !== 'visible'[\s\S]*?syncTipRewardReceipt\(\);[\s\S]*?startTipReceiptSyncWindow\(\);[\s\S]*?\}\);/);
 });

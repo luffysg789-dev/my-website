@@ -39,6 +39,8 @@ const DESKTOP_AMBIENT_MASTER_GAIN = 0.014;
 const MOBILE_AMBIENT_MASTER_GAIN = 0.001;
 const STRIKE_BODY_GAIN = 0.18;
 const STRIKE_CLICK_GAIN = 0.05;
+const TIP_RECEIPT_SYNC_WINDOW_MS = 20000;
+const TIP_RECEIPT_SYNC_INTERVAL_MS = 800;
 
 let audioContext = null;
 let isStriking = false;
@@ -54,6 +56,7 @@ let strikeAudioPrepared = false;
 let backgroundMusicPrepared = false;
 let fullConfigLoaded = false;
 let lastRewardedTipOrderNo = '';
+let tipReceiptSyncTimer = null;
 
 function isMobileDevice() {
   if (typeof window === 'undefined') return false;
@@ -574,6 +577,23 @@ function syncTipRewardReceipt() {
   return applyTipRewardFromDetail(receipt);
 }
 
+function stopTipReceiptSync() {
+  if (!tipReceiptSyncTimer) return;
+  window.clearInterval(tipReceiptSyncTimer);
+  tipReceiptSyncTimer = null;
+}
+
+function startTipReceiptSyncWindow() {
+  stopTipReceiptSync();
+  const startedAt = Date.now();
+  tipReceiptSyncTimer = window.setInterval(() => {
+    syncTipRewardReceipt();
+    if (Date.now() - startedAt >= TIP_RECEIPT_SYNC_WINDOW_MS) {
+      stopTipReceiptSync();
+    }
+  }, TIP_RECEIPT_SYNC_INTERVAL_MS);
+}
+
 function resetState() {
   state = getDefaultState();
   saveState();
@@ -615,6 +635,7 @@ syncAmbientMusic();
 syncAutoStrike();
 lastRewardedTipOrderNo = loadTipRewardMarker();
 syncTipRewardReceipt();
+startTipReceiptSyncWindow();
 const initialCachedConfig = readCachedGameConfig();
 window.__GAME_CONFIG__ = normalizeGameConfig(initialCachedConfig || DEFAULT_GAME_CONFIG);
 syncGameConfig({
@@ -654,8 +675,21 @@ window.addEventListener('pageshow', () => {
   state = loadState();
   renderState();
   syncTipRewardReceipt();
+  startTipReceiptSyncWindow();
+});
+
+window.addEventListener('focus', () => {
+  syncTipRewardReceipt();
+  startTipReceiptSyncWindow();
+});
+
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  syncTipRewardReceipt();
+  startTipReceiptSyncWindow();
 });
 
 window.addEventListener('beforeunload', () => {
   stopAutoStrike();
+  stopTipReceiptSync();
 });
