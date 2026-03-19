@@ -545,21 +545,24 @@ button.danger { background: var(--danger); }
 
 .site-badge-stack {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 12px;
+  right: 54px;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   pointer-events: none;
+  z-index: 1;
 }
 
 .site-badge {
   color: #fff;
   font-size: 12px;
   font-weight: 700;
+  min-width: 30px;
   padding: 4px 8px;
   border-radius: 999px;
   line-height: 1;
+  text-align: center;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
