@@ -4,6 +4,20 @@ const { getGameCardMediaMarkup } = typeof window === 'undefined'
 
 const DEFAULT_GAMES = [
   {
+    slug: 'zodiac-today',
+    name: '今日星座运势',
+    description: '输入名字和阳历生日，生成你今天的专属星座分析。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 35,
+    route: '/zodiac-today/',
+    icon: '✨',
+    actionText: '开始游戏'
+  },
+  {
     slug: 'blast-balloons',
     name: '气球爆炸',
     description: '50个气球里藏着炸弹，多点触控连点找出全部炸弹。',
@@ -76,6 +90,7 @@ const DEFAULT_GAMES = [
 ];
 
 const GAME_ACTION_TEXT = {
+  'zodiac-today': '开始游戏',
   'blast-balloons': '开始游戏',
   gomoku: '开始游戏',
   minesweeper: '开始游戏',

@@ -56,7 +56,7 @@
   }
 
   function getShell() {
-    return document.querySelector('.gomoku-shell, .minesweeper-shell, .fortune-shell, .muyu-shell, .balloons-shell');
+    return document.querySelector('.gomoku-shell, .minesweeper-shell, .fortune-shell, .muyu-shell, .balloons-shell, .zodiac-shell');
   }
 
   function getPersistentStorage() {

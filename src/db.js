@@ -202,6 +202,17 @@ db.exec(`
 
 const DEFAULT_GAMES_CATALOG = [
   {
+    slug: 'zodiac-today',
+    name: '今日星座运势',
+    description: '输入名字和阳历生日，生成你今天的专属星座分析。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 35
+  },
+  {
     slug: 'blast-balloons',
     name: '气球爆炸',
     description: '50个气球里藏着炸弹，多点触控连点找出全部炸弹。',

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 今日星座运势</title>
+    <meta name="description" content="Claw800 今日星座运势，输入名字和阳历生日，生成你的当天专属星座分析。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/game-tip.css?v=20260319-03" />
+    <link rel="stylesheet" href="/zodiac-today/style.css?v=20260319-02" />
+  </head>
+  <body>
+    <main class="zodiac-page">
+      <section class="container">
+        <div class="zodiac-shell">
+          <div class="zodiac-stars" aria-hidden="true">
+            <span class="zodiac-star zodiac-star--1"></span>
+            <span class="zodiac-star zodiac-star--2"></span>
+            <span class="zodiac-star zodiac-star--3"></span>
+            <span class="zodiac-star zodiac-star--4"></span>
+            <span class="zodiac-star zodiac-star--5"></span>
+            <span class="zodiac-star zodiac-star--6"></span>
+          </div>
+          <div class="zodiac-header">
+            <div class="zodiac-intro-row">
+              <a class="zodiac-back" href="/games.html" aria-label="返回游戏大全" title="返回游戏大全">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z"
+                  />
+                </svg>
+              </a>
+              <div class="zodiac-intro-copy">
+                <h2 id="gamePageTitle">今日星座运势</h2>
+                <p id="gamePageSubtitle" class="zodiac-subtitle">输入名字和阳历生日，生成你今天的专属星座运势。</p>
+              </div>
+            </div>
+          </div>
+
+          <section class="zodiac-form-card">
+            <form id="zodiacForm" class="zodiac-form">
+              <label class="zodiac-field">
+                <span>你的名字</span>
+                <input id="zodiacNameInput" name="name" type="text" maxlength="20" placeholder="请输入你的名字" autocomplete="name" required />
+              </label>
+              <label class="zodiac-field">
+                <span>阳历生日</span>
+                <input
+                  id="zodiacBirthdayInput"
+                  name="birthday"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="YYYY-MM-DD"
+                  autocomplete="bday"
+                  pattern="^\d{4}-\d{2}-\d{2}$"
+                  maxlength="10"
+                  required
+                />
+              </label>
+              <button id="zodiacSubmitBtn" type="submit" class="zodiac-submit">生成今日星座运势</button>
+            </form>
+            <p id="zodiacHint" class="zodiac-hint">名字和生日会参与今日运势生成，每天都可能出现不同结果。</p>
+          </section>
+
+          <section id="zodiacResult" class="zodiac-result hidden" aria-live="polite">
+            <div class="zodiac-result-hero">
+              <div class="zodiac-stars zodiac-stars--hero" aria-hidden="true">
+                <span class="zodiac-star zodiac-star--7"></span>
+                <span class="zodiac-star zodiac-star--8"></span>
+                <span class="zodiac-star zodiac-star--9"></span>
+              </div>
+              <div class="zodiac-sign-pill">
+                <span id="zodiacSignName">白羊座</span>
+                <strong id="zodiacDateLabel">今天</strong>
+              </div>
+              <div class="zodiac-result-score">
+                <span>综合指数</span>
+                <strong id="zodiacScore">88</strong>
+              </div>
+            </div>
+
+            <div class="zodiac-summary-card">
+              <h3 id="zodiacSummaryTitle">今天气场明亮，适合主动行动</h3>
+              <p id="zodiacSummary" class="zodiac-summary"></p>
+            </div>
+
+            <div class="zodiac-result-grid">
+              <article class="zodiac-card">
+                <span>爱情</span>
+                <p id="zodiacLove"></p>
+              </article>
+              <article class="zodiac-card">
+                <span>事业</span>
+                <p id="zodiacCareer"></p>
+              </article>
+              <article class="zodiac-card">
+                <span>财运</span>
+                <p id="zodiacWealth"></p>
+              </article>
+              <article class="zodiac-card">
+                <span>健康</span>
+                <p id="zodiacHealth"></p>
+              </article>
+              <article class="zodiac-card">
+                <span>社交</span>
+                <p id="zodiacSocial"></p>
+              </article>
+              <article class="zodiac-card zodiac-card--lucky">
+                <span>幸运提示</span>
+                <p><strong id="zodiacLuckyColor"></strong> · <strong id="zodiacLuckyNumber"></strong></p>
+              </article>
+            </div>
+
+            <div class="zodiac-advice-card">
+              <span>今日建议</span>
+              <p id="zodiacAdvice"></p>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="/games-config.js?v=20260319-01"></script>
+    <script>
+      window.ClawGamesConfig?.bootstrapGamePage?.('zodiac-today');
+    </script>
+    <script src="/zodiac-today/script.js?v=20260319-01"></script>
+    <script src="/game-tip.js?v=20260319-03"></script>
+  </body>
+</html>

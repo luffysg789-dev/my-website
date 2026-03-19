@@ -13,6 +13,7 @@ const fortuneJs = fs.readFileSync(path.join(rootDir, 'public', 'fortune.js'), 'u
 const pages = [
   path.join(rootDir, 'public', 'blast-balloons', 'index.html'),
   path.join(rootDir, 'public', 'gomoku', 'index.html'),
+  path.join(rootDir, 'public', 'zodiac-today', 'index.html'),
   path.join(rootDir, 'public', 'minesweeper.html'),
   path.join(rootDir, 'public', 'fortune.html'),
   path.join(rootDir, 'public', 'muyu.html')
@@ -103,6 +104,7 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /if \(String\(game\?\.slug \|\| ''\)\.trim\(\) === 'muyu'\) return '打赏\+功德';/);
   assert.match(tipJs, /return '喜欢这个小游戏？';/);
   assert.match(tipJs, /\.balloons-shell/);
+  assert.match(tipJs, /\.zodiac-shell/);
   assert.match(tipJs, /首次需要授权登录,再次点击打赏即可\./);
   assert.match(tipJs, /descEl\.hidden = Boolean\(session\);/);
   assert.match(tipJs, /setStatus\('已连接 Nexa 账号，后续可直接打赏。', 'success'\);/);
