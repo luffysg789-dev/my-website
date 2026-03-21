@@ -10,6 +10,7 @@
   const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';
   const PENDING_ORDER_STORAGE_KEY = 'claw800_nexa_tip_pending_order_v1';
   const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';
+  const MAX_SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const QUERY_INTERVAL_MS = 2000;
   const QUERY_TIMEOUT_MS = 45000;
   const RESET_STATUS_DELAY_MS = 3000;
@@ -67,17 +68,24 @@
     }
   }
 
+  function getSessionExpiryTimestamp(session) {
+    const savedAt = Number(session?.savedAt || 0) || Date.now();
+    return savedAt + MAX_SESSION_RETENTION_MS;
+  }
+
   function loadCachedSession() {
     try {
       const raw = getPersistentStorage().getItem(SESSION_STORAGE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') return null;
-      if (parsed.expiresAt && Number(parsed.expiresAt) < Date.now()) {
+      if (!parsed.openId || !parsed.sessionKey) return null;
+      parsed.savedAt = Number(parsed.savedAt || 0) || Date.now();
+      parsed.expiresAt = getSessionExpiryTimestamp(parsed);
+      if (parsed.expiresAt < Date.now()) {
         getPersistentStorage().removeItem(SESSION_STORAGE_KEY);
         return null;
       }
-      if (!parsed.openId || !parsed.sessionKey) return null;
       return parsed;
     } catch {
       return null;
@@ -86,7 +94,13 @@
 
   function saveCachedSession(session) {
     try {
-      getPersistentStorage().setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      const normalizedSession = {
+        ...session,
+        savedAt: Number(session?.savedAt || 0) || Date.now(),
+        expiresAt: 0
+      };
+      normalizedSession.expiresAt = getSessionExpiryTimestamp(normalizedSession);
+      getPersistentStorage().setItem(SESSION_STORAGE_KEY, JSON.stringify(normalizedSession));
     } catch {}
   }
 

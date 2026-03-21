@@ -53,6 +53,7 @@ test('server exposes nexa tip endpoints', () => {
 });
 
 test('shared tip script uses explicit login-then-pay flow for Nexa app webview', () => {
+  assert.match(tipJs, /const MAX_SESSION_RETENTION_MS = 30 \* 24 \* 60 \* 60 \* 1000;/);
   assert.match(tipJs, /const TIP_BUTTON_TEXT_LOGIN = 'Nexa 登录后打赏';/);
   assert.match(tipJs, /const TIP_BUTTON_TEXT_PAY = '打赏 0\.1 USDT';/);
   assert.match(tipJs, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
@@ -77,6 +78,9 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.doesNotMatch(tipJs, /document\.createElement\('a'\)/);
   assert.match(tipJs, /window\.location\.href = targetUrl;/);
   assert.match(tipJs, /return window\.localStorage;/);
+  assert.match(tipJs, /function getSessionExpiryTimestamp\(session\)/);
+  assert.match(tipJs, /const savedAt = Number\(session\?\.savedAt \|\| 0\) \|\| Date\.now\(\);/);
+  assert.match(tipJs, /return savedAt \+ MAX_SESSION_RETENTION_MS;/);
   assert.match(tipJs, /const userAgent = String\(window\.navigator\?\.userAgent \|\| ''\)\.trim\(\);/);
   assert.match(tipJs, /const referrer = String\(document\.referrer \|\| ''\)\.trim\(\);/);
   assert.match(tipJs, /const session = loadCachedSession\(\);/);
@@ -85,6 +89,9 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /getPersistentStorage\(\)\.getItem\(SESSION_STORAGE_KEY\)/);
   assert.match(tipJs, /getPersistentStorage\(\)\.setItem\(SESSION_STORAGE_KEY,/);
   assert.match(tipJs, /getPersistentStorage\(\)\.removeItem\(SESSION_STORAGE_KEY\)/);
+  assert.match(tipJs, /parsed\.savedAt = Number\(parsed\.savedAt \|\| 0\) \|\| Date\.now\(\);/);
+  assert.match(tipJs, /parsed\.expiresAt = getSessionExpiryTimestamp\(parsed\);/);
+  assert.match(tipJs, /const normalizedSession = \{[\s\S]*?savedAt: Number\(session\?\.savedAt \|\| 0\) \|\| Date\.now\(\),[\s\S]*?expiresAt: 0[\s\S]*?\};/);
   assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
   assert.match(tipJs, /if \(!shouldRenderTip\(\)\) return;/);
   assert.match(tipJs, /if \(!isNexaAppEnvironment\(\)\) \{[\s\S]*?promptDownloadNexaApp\(\);[\s\S]*?return;/);
