@@ -79,8 +79,9 @@ test('xiangqi html includes mobile wallet, room, and board sections', () => {
   assert.match(html, /id="xiangqiStartMatchBtn"/);
   assert.match(html, /xiangqi-player-card--footer/);
   assert.match(html, /id="xiangqiBoard"/);
-  assert.match(html, /class="xiangqi-board-head"[\s\S]*?id="xiangqiTopSide"[\s\S]*?id="xiangqiTopPlayer"[\s\S]*?id="xiangqiRoomBadge"[\s\S]*?id="xiangqiMatchStatus"/);
+  assert.match(html, /class="xiangqi-board-head"[\s\S]*?id="xiangqiTopSide"[\s\S]*?id="xiangqiTopPlayer"[\s\S]*?id="xiangqiRoomBadge"/);
   assert.match(html, /id="xiangqiRoomBadge">房间号:\s*<span class="xiangqi-room-badge__value">000000<\/span><\/span>/);
+  assert.match(html, /class="xiangqi-board-foot"[\s\S]*?id="xiangqiMatchStatus"[\s\S]*?id="xiangqiBottomSide"[\s\S]*?id="xiangqiBottomPlayer"/);
   assert.match(html, /class="xiangqi-action-bar"[\s\S]*?id="xiangqiCancelRoomBtn"[\s\S]*?id="xiangqiBottomSide"[\s\S]*?id="xiangqiBottomPlayer"/);
   assert.doesNotMatch(html, /id="xiangqiActiveRoomCard"/);
   assert.doesNotMatch(html, /id="xiangqiMyRoomBtn"/);
@@ -234,6 +235,8 @@ test('xiangqi css delivers a distinctive mobile-first room layout', () => {
   assert.match(css, /\.xiangqi-board-overlay__detail\s*\{/);
   assert.match(css, /\.xiangqi-board-overlay__start\s*\{/);
   assert.match(css, /\.xiangqi-player-card--footer\s*\{/);
+  assert.match(css, /\.xiangqi-board-foot\s*\{/);
+  assert.match(css, /\.xiangqi-board-status-pill\s*\{/);
   assert.match(css, /\.xiangqi-player-card--red\s*\{/);
   assert.match(css, /\.xiangqi-player-card--black\s*\{/);
   assert.match(css, /\.xiangqi-board-head\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*0\.9fr\)\s+minmax\(0,\s*1\.1fr\);/);
