@@ -107,6 +107,38 @@ function buildNexaPaymentCreatePayload({
   );
 }
 
+function buildNexaLegacyPaymentCreatePayload({
+  apiKey = DEFAULT_NEXA_API_KEY,
+  appSecret = DEFAULT_NEXA_APP_SECRET,
+  amount,
+  currency = DEFAULT_NEXA_CURRENCY,
+  subject,
+  body,
+  notifyUrl,
+  returnUrl,
+  openId,
+  sessionKey,
+  nonce,
+  timestamp
+}) {
+  return withSignature(
+    {
+      apiKey: String(apiKey || '').trim(),
+      amount: String(amount || '').trim(),
+      currency: String(currency || DEFAULT_NEXA_CURRENCY).trim(),
+      subject: String(subject || '').trim(),
+      body: String(body || '').trim(),
+      notifyUrl: String(notifyUrl || '').trim(),
+      returnUrl: String(returnUrl || '').trim(),
+      openId: String(openId || '').trim(),
+      sessionKey: String(sessionKey || '').trim(),
+      timestamp: String(timestamp || Date.now()).trim(),
+      nonce: String(nonce || createNonce()).trim()
+    },
+    appSecret
+  );
+}
+
 function buildNexaPaymentCreatePayloadVariants(options = {}) {
   const common = {
     apiKey: String(options.apiKey || DEFAULT_NEXA_API_KEY).trim(),
@@ -360,6 +392,7 @@ module.exports = {
   buildNexaAccessTokenPayload,
   buildNexaUserInfoPayload,
   buildNexaPaymentCreatePayload,
+  buildNexaLegacyPaymentCreatePayload,
   buildNexaPaymentCreatePayloadVariants,
   prioritizeNexaPaymentCreateVariants,
   buildNexaPaymentQueryPayload,

@@ -12,6 +12,7 @@ const {
   DEFAULT_NEXA_APP_SECRET,
   buildNexaAccessTokenPayload,
   buildNexaUserInfoPayload,
+  buildNexaLegacyPaymentCreatePayload,
   buildNexaPaymentCreatePayloadVariants,
   prioritizeNexaPaymentCreateVariants,
   buildNexaPaymentQueryPayload,
@@ -282,6 +283,18 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
   const baseUrl = getPublicBaseUrl(req);
 
   const partnerOrderNo = `claw800_${normalizedSlug}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const legacyPayload = buildNexaLegacyPaymentCreatePayload({
+    apiKey,
+    appSecret,
+    amount: normalizedAmount,
+    currency: NEXA_TIP_CURRENCY,
+    subject: 'Claw800 打赏',
+    body: `打赏 ${gameName}`,
+    notifyUrl: `${baseUrl}/api/nexa/tip/notify`,
+    returnUrl: `${baseUrl}${route}`,
+    openId: String(openId || '').trim(),
+    sessionKey: String(sessionKey || '').trim()
+  });
   const variants = prioritizeNexaPaymentCreateVariants(
     buildNexaPaymentCreatePayloadVariants({
       apiKey,
@@ -302,6 +315,28 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
 
   let response = null;
   let lastSignatureResponse = null;
+  try {
+    response = await postNexaJson('/partner/api/openapi/payment/create', legacyPayload);
+  } catch (error) {
+    if (isNexaRateLimitError(error)) {
+      const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+      rateLimitError.statusCode = 429;
+      throw rateLimitError;
+    }
+    throw error;
+  }
+
+  if (isNexaRateLimitError(response)) {
+    const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+    rateLimitError.statusCode = 429;
+    throw rateLimitError;
+  }
+
+  if (isNexaSignatureError(response)) {
+    lastSignatureResponse = response;
+    response = null;
+  }
+
   for (const variant of variants) {
     try {
       response = await postNexaJson('/partner/api/openapi/payment/create', variant.payload);

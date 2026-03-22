@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   buildNexaSignature,
   buildNexaPaymentCreatePayload,
+  buildNexaLegacyPaymentCreatePayload,
   buildNexaPaymentCreatePayloadVariants,
   prioritizeNexaPaymentCreateVariants,
   isNexaSignatureError,
@@ -234,6 +235,53 @@ test('buildNexaPaymentCreatePayload excludes orderNo from signature per Nexa doc
   );
 
   assert.notEqual(payload.signature, withOrderNo);
+});
+
+test('buildNexaLegacyPaymentCreatePayload matches the old working tip payload shape', () => {
+  const payload = buildNexaLegacyPaymentCreatePayload({
+    apiKey: 'testAppKey',
+    appSecret: 'testAppSecret',
+    amount: '0.10',
+    currency: 'USDT',
+    subject: 'Claw800 打赏',
+    body: '打赏 五子棋',
+    notifyUrl: 'https://claw800.com/api/nexa/tip/notify',
+    returnUrl: 'https://claw800.com/gomoku/',
+    openId: 'open-id-legacy',
+    sessionKey: 'session-123',
+    nonce: 'nonce-legacy',
+    timestamp: '1615887873123'
+  });
+
+  assert.deepEqual(payload, {
+    apiKey: 'testAppKey',
+    amount: '0.10',
+    currency: 'USDT',
+    subject: 'Claw800 打赏',
+    body: '打赏 五子棋',
+    notifyUrl: 'https://claw800.com/api/nexa/tip/notify',
+    returnUrl: 'https://claw800.com/gomoku/',
+    openId: 'open-id-legacy',
+    sessionKey: 'session-123',
+    nonce: 'nonce-legacy',
+    timestamp: '1615887873123',
+    signature: buildNexaSignature(
+      {
+        apiKey: 'testAppKey',
+        amount: '0.10',
+        currency: 'USDT',
+        subject: 'Claw800 打赏',
+        body: '打赏 五子棋',
+        notifyUrl: 'https://claw800.com/api/nexa/tip/notify',
+        returnUrl: 'https://claw800.com/gomoku/',
+        openId: 'open-id-legacy',
+        sessionKey: 'session-123',
+        nonce: 'nonce-legacy',
+        timestamp: '1615887873123'
+      },
+      'testAppSecret'
+    )
+  });
 });
 
 test('buildNexaPaymentCreatePayloadVariants covers both documented payment payload styles', () => {
