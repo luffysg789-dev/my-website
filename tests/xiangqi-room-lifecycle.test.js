@@ -857,3 +857,51 @@ test('finished room without rematch request expires after 60 seconds and disband
     harness.cleanup();
   }
 });
+
+test('joining a disbanded room returns room not found', async () => {
+  const harness = createHarness();
+  const creatorUserId = seedUser(harness.db, { openid: 'disbanded-creator', availableBalance: '20.00' });
+  const joinerUserId = seedUser(harness.db, { openid: 'disbanded-joiner', availableBalance: '20.00' });
+
+  try {
+    const createResponse = await harness.request('POST', '/api/xiangqi/rooms/create', {
+      userId: creatorUserId,
+      stakeAmount: '5.00',
+      timeControlMinutes: 15
+    });
+    const roomCode = createResponse.body.roomCode;
+
+    await harness.request('POST', '/api/xiangqi/rooms/join', {
+      userId: joinerUserId,
+      roomCode
+    });
+    await harness.request('POST', `/api/xiangqi/rooms/${roomCode}/start`, {
+      userId: creatorUserId
+    });
+
+    const room = getRoomByCode(harness.db, roomCode);
+    const match = getMatchByRoomId(harness.db, room.id);
+    await harness.request('POST', `/api/xiangqi/matches/${match.id}/resign`, {
+      userId: joinerUserId
+    });
+
+    harness.db.prepare(`
+      UPDATE xiangqi_rooms
+      SET status = 'DISBANDED'
+      WHERE room_code = ?
+    `).run(roomCode);
+
+    const response = await harness.request('POST', '/api/xiangqi/rooms/join', {
+      userId: joinerUserId,
+      roomCode
+    });
+
+    assert.equal(response.statusCode, 404);
+    assert.deepEqual(response.body, {
+      ok: false,
+      error: 'ROOM_NOT_FOUND'
+    });
+  } finally {
+    harness.cleanup();
+  }
+});

@@ -3199,6 +3199,9 @@ const createXiangqiRoom = db.transaction((payload) => {
 const joinXiangqiRoom = db.transaction((payload) => {
   const room = selectXiangqiRoomByCodeStmt.get(payload.roomCode);
   if (!room) return { kind: 'room_not_found' };
+  if (String(room.status || '').toUpperCase() === 'DISBANDED') {
+    return { kind: 'room_not_found' };
+  }
 
   const requesterUserId = Number(payload.userId);
   const isCreator = Number(room.creator_user_id) === requesterUserId;
