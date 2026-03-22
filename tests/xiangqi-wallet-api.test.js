@@ -115,31 +115,31 @@ test('xiangqi session sync creates the user wallet on demand', async () => {
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.ok, true);
     assert.equal(response.body.user.openId, 'nexa-open-user-1');
-    assert.equal(response.body.wallet.availableBalance, '1000.00');
+    assert.equal(response.body.wallet.availableBalance, '0.00');
     assert.equal(response.body.wallet.frozenBalance, '0.00');
   } finally {
     harness.cleanup();
   }
 });
 
-test('xiangqi demo session tops up an existing zero-balance wallet to 1000 usdt', async () => {
+test('xiangqi local browser session keeps an existing zero-balance wallet at zero', async () => {
   const harness = createHarness();
   const userId = seedUser(harness.db, {
-    openid: 'xiangqi-demo-local',
+    openid: 'xiangqi-browser-local',
     availableBalance: '0.00',
     frozenBalance: '0.00'
   });
 
   try {
     const response = await harness.request('POST', '/api/xiangqi/session', {
-      openId: 'xiangqi-demo-local',
-      nickname: '测试账号'
+      openId: 'xiangqi-browser-local',
+      nickname: 'Nexa 玩家'
     });
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.ok, true);
     assert.equal(response.body.user.id, userId);
-    assert.equal(response.body.wallet.availableBalance, '1000.00');
+    assert.equal(response.body.wallet.availableBalance, '0.00');
     assert.equal(response.body.wallet.frozenBalance, '0.00');
   } finally {
     harness.cleanup();

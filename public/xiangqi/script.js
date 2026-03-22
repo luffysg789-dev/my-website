@@ -669,6 +669,11 @@ async function resumePendingAction() {
   if (!pendingAction?.type) return;
   clearPendingAction();
 
+  if (String(pendingAction.type) === 'deposit') {
+    await beginDepositFlow(String(pendingAction.amount || '').trim());
+    return;
+  }
+
   if (String(pendingAction.type) === 'join') {
     if (ui.joinRoomCode && pendingAction.roomCode) {
       ui.joinRoomCode.value = String(pendingAction.roomCode || '').trim().toUpperCase();
@@ -690,14 +695,31 @@ async function resumePendingAction() {
   }
 }
 
-async function beginDepositFlow() {
-  if (!state.user?.userId || !state.session?.openId || !state.session?.sessionKey) {
-    setStatus('请先在 Nexa App 中完成登录后再充值。');
+async function beginDepositFlow(prefilledAmount = '') {
+  if (!isNexaAppEnvironment()) {
+    setStatus('请在 Nexa App 内充值。');
     return;
   }
 
-  const amount = String(window.prompt('输入要充值到游戏账户的 USDT 金额', '10.00') || '').trim();
+  const amount = String(prefilledAmount || window.prompt('输入要充值到游戏账户的 USDT 金额', '') || '').trim();
   if (!amount) return;
+
+  if (!state.session?.openId || !state.session?.sessionKey) {
+    savePendingAction({
+      type: 'deposit',
+      amount
+    });
+    setStatus('请先完成 Nexa 登录授权。');
+    beginLoginFlow();
+    return;
+  }
+
+  if (!state.user?.userId) {
+    await syncSessionAndWallet();
+  }
+  if (!state.user?.userId) {
+    throw new Error('Nexa 账户同步失败，请重新登录后再充值。');
+  }
 
   const response = await postJson('/api/xiangqi/deposit/create', {
     userId: state.user.userId,
@@ -706,6 +728,7 @@ async function beginDepositFlow() {
     amount
   });
 
+  clearPendingAction();
   savePendingDeposit({
     orderNo: response.orderNo,
     partnerOrderNo: response.partnerOrderNo
@@ -724,7 +747,7 @@ async function beginWithdrawFlow() {
     return;
   }
 
-  const amount = String(window.prompt('输入要提现回 Nexa 的 USDT 金额', '5.00') || '').trim();
+  const amount = String(window.prompt('输入要提现回 Nexa 的 USDT 金额', '') || '').trim();
   if (!amount) return;
   const partnerOrderNo = `xiangqi_wd_${Date.now()}`;
 
