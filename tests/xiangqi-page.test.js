@@ -157,7 +157,7 @@ test('xiangqi css delivers a distinctive mobile-first room layout', () => {
   assert.match(css, /\.xiangqi-shell\.is-room-mode\s+\.xiangqi-board-wrap\s*\{[\s\S]*?display:\s*block;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.xiangqi-shell\s*\{[\s\S]*?padding:\s*20px 14px 30px;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.xiangqi-room-cta\s*\{[\s\S]*?min-height:\s*64px;/);
-  assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-shell\s*\{[\s\S]*?padding:\s*12px 10px 20px;/);
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-shell\s*\{[\s\S]*?padding:\s*12px 6px 20px;/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-wallet-card__amount strong\s*\{[\s\S]*?font-size:\s*clamp\(42px,\s*15vw,\s*56px\);/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-room-grid\s*\{[\s\S]*?gap:\s*12px;/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-room-card\s*\{[\s\S]*?padding:\s*16px;/);

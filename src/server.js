@@ -1920,6 +1920,7 @@ const XIANGQI_ROOM_CODE_LENGTH = 6;
 const XIANGQI_ACTIVE_ROOM_STATUSES = ['WAITING', 'READY', 'PLAYING'];
 const XIANGQI_ALLOWED_TIME_CONTROLS = new Set([10, 15, 30]);
 const XIANGQI_SETTLEMENT_RESULTS = new Set(['RED_WIN', 'BLACK_WIN', 'DRAW', 'TIMEOUT_DRAW']);
+const XIANGQI_LEGACY_DEMO_OPEN_ID = 'xiangqi-demo-local';
 
 const selectXiangqiWalletStmt = db.prepare(
   'SELECT user_id, available_balance, frozen_balance FROM game_wallets WHERE user_id = ?'
@@ -2188,7 +2189,16 @@ function ensureXiangqiUserWallet({ openId, nickname = 'Nexa 玩家', avatar = ''
       insertXiangqiWalletStmt.run(userId);
       user = selectXiangqiUserByOpenIdStmt.get(normalizedOpenId);
     }
-    const wallet = selectXiangqiWalletStmt.get(user.id);
+    let wallet = selectXiangqiWalletStmt.get(user.id);
+    if (normalizedOpenId === XIANGQI_LEGACY_DEMO_OPEN_ID && wallet) {
+      const needsReset =
+        String(wallet.available_balance || '0.00') !== '0.00' ||
+        String(wallet.frozen_balance || '0.00') !== '0.00';
+      if (needsReset) {
+        updateXiangqiWalletBalancesStmt.run('0.00', '0.00', user.id);
+        wallet = selectXiangqiWalletStmt.get(user.id);
+      }
+    }
     return {
       user: {
         id: Number(user.id),
