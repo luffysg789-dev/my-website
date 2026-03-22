@@ -295,7 +295,7 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
     openId: String(openId || '').trim(),
     sessionKey: String(sessionKey || '').trim()
   });
-  const variants = prioritizeNexaPaymentCreateVariants(
+  const fallbackVariants = prioritizeNexaPaymentCreateVariants(
     buildNexaPaymentCreatePayloadVariants({
       apiKey,
       appSecret,
@@ -311,7 +311,7 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
       sessionKey: String(sessionKey || '').trim()
     }),
     preferredNexaPaymentVariantName
-  );
+  ).slice(0, 1);
 
   let response = null;
   let lastSignatureResponse = null;
@@ -337,7 +337,7 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
     response = null;
   }
 
-  for (const variant of variants) {
+  for (const variant of fallbackVariants) {
     try {
       response = await postNexaJson('/partner/api/openapi/payment/create', variant.payload);
     } catch (error) {
