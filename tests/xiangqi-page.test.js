@@ -92,6 +92,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /const FILE_LABELS = \['9', '8', '7', '6', '5', '4', '3', '2', '1'\];/);
   assert.match(js, /const RANK_LABELS = \['9', '8', '7', '6', '5', '4', '3', '2', '1', '0'\];/);
   assert.match(js, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
+  assert.match(js, /const XIANGQI_MOVE_AUDIO_SRC = '\/audio\/muyu-strike\.mp3';/);
   assert.match(js, /const XIANGQI_BROWSER_LOCAL_OPEN_ID = 'xiangqi-browser-local';/);
   assert.doesNotMatch(js, /XIANGQI_DEMO_OPEN_ID/);
   assert.doesNotMatch(js, /XIANGQI_DEMO_STARTING_BALANCE/);
@@ -127,6 +128,9 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /setStatus\('请先完成 Nexa 登录授权。'\);\s*beginLoginFlow\(\);\s*return;/);
   assert.match(js, /launchNexaUrl\(buildNexaPaymentUrl\(response\.payment\)\)/);
   assert.match(js, /function buildPreviewPieces\(/);
+  assert.match(js, /function primeMoveAudio\(/);
+  assert.match(js, /function playMoveSound\(/);
+  assert.match(js, /new Audio\(XIANGQI_MOVE_AUDIO_SRC\)/);
   assert.match(js, /function syncRoomUrl\(/);
   assert.match(js, /function syncTimePresetButtons\(/);
   assert.match(js, /function cancelWaitingRoom\(/);
@@ -158,6 +162,8 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /\/api\/xiangqi\/rooms\/active\?userId=/);
   assert.match(js, /state\.room && !state\.match/);
   assert.doesNotMatch(js, /function renderActiveRoomCard\(/);
+  assert.match(js, /await postJson\(`\/api\/xiangqi\/matches\/\$\{state\.match\.id\}\/move`, \{/);
+  assert.match(js, /playMoveSound\(\);\s*if \(response\.status === 'finished'\)/);
   assert.match(js, /function bindActions\(/);
   assert.match(js, /ui\.createRoomBtn\?\.addEventListener\('click', \(\) => createRoom\(\)\.catch\(\(error\) => setStatus\(getFriendlyXiangqiErrorMessage\(error, 'create_room'\)\)\)\);/);
   assert.match(js, /await requestAmount\('输入要充值到游戏账户的 USDT 金额'\)/);

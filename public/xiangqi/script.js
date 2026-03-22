@@ -4,6 +4,7 @@ const RANK_LABELS = ['9', '8', '7', '6', '5', '4', '3', '2', '1', '0'];
 const NEXA_API_KEY = 'NEXA2033522880098676737';
 const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
 const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
+const XIANGQI_MOVE_AUDIO_SRC = '/audio/muyu-strike.mp3';
 const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';
 const XIANGQI_USER_STORAGE_KEY = 'claw800_xiangqi_user_v1';
 const XIANGQI_PENDING_DEPOSIT_KEY = 'claw800_xiangqi_pending_deposit_v1';
@@ -75,7 +76,8 @@ const state = {
   roomEventSource: null,
   countdownTimer: 0,
   timeoutSubmitting: false,
-  amountRequest: null
+  amountRequest: null,
+  moveAudio: null
 };
 
 function buildPreviewPieces() {
@@ -258,6 +260,30 @@ function launchNexaUrl(url) {
   const targetUrl = String(url || '').trim();
   if (!targetUrl) return;
   window.location.href = targetUrl;
+}
+
+function primeMoveAudio() {
+  if (state.moveAudio) return state.moveAudio;
+  try {
+    state.moveAudio = new Audio(XIANGQI_MOVE_AUDIO_SRC);
+    state.moveAudio.preload = 'auto';
+  } catch {
+    state.moveAudio = null;
+  }
+  return state.moveAudio;
+}
+
+function playMoveSound() {
+  const baseAudio = primeMoveAudio();
+  if (!baseAudio) return;
+  try {
+    const playableAudio = typeof baseAudio.cloneNode === 'function'
+      ? baseAudio.cloneNode()
+      : new Audio(XIANGQI_MOVE_AUDIO_SRC);
+    playableAudio.volume = 0.55;
+    playableAudio.currentTime = 0;
+    playableAudio.play().catch(() => {});
+  } catch {}
 }
 
 function extractAuthCodeFromUrl() {
@@ -965,6 +991,7 @@ async function handleBoardTap(file, rank) {
       from,
       to: { file, rank }
     });
+    playMoveSound();
     if (response.status === 'finished') {
       await refreshWallet();
     }
@@ -999,6 +1026,7 @@ function startCountdownLoop() {
 }
 
 function bindActions() {
+  primeMoveAudio();
   ui.depositBtn?.addEventListener('click', () => beginDepositFlow().catch((error) => setStatus(error.message)));
   ui.withdrawBtn?.addEventListener('click', () => beginWithdrawFlow().catch((error) => setStatus(error.message)));
   ui.createRoomBtn?.addEventListener('click', () => createRoom().catch((error) => setStatus(getFriendlyXiangqiErrorMessage(error, 'create_room'))));
@@ -1057,6 +1085,7 @@ function bindActions() {
     }
   });
   ui.board?.addEventListener('click', (event) => {
+    primeMoveAudio();
     const target = event.target.closest('[data-file][data-rank]');
     if (!target) return;
     handleBoardTap(Number(target.dataset.file), Number(target.dataset.rank));
