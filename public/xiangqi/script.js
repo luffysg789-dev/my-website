@@ -106,7 +106,9 @@ const state = {
   amountRequest: null,
   moveAudio: null,
   moveAudioUnlocked: false,
-  ledgerItems: []
+  ledgerItems: [],
+  lastStartPromptKey: '',
+  lastRematchPromptKey: ''
 };
 
 function buildPreviewPieces() {
@@ -350,6 +352,30 @@ function speakXiangqiCue(cue) {
   } catch {}
 }
 
+function speakText(text, delayMs = 80) {
+  const normalizedText = String(text || '').trim();
+  if (!normalizedText) return;
+  try {
+    if (!window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== 'function') return;
+    const utterance = new window.SpeechSynthesisUtterance();
+    utterance.lang = 'zh-CN';
+    utterance.text = normalizedText;
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    window.speechSynthesis.cancel();
+    window.setTimeout(() => {
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch {}
+    }, delayMs);
+  } catch {}
+}
+
+function speakStartPrompt() {
+  speakText('请点击开始');
+}
+
 function speakFinishedMatchResult(match) {
   const result = String(match?.result || '').trim().toUpperCase();
   let text = '';
@@ -363,35 +389,13 @@ function speakFinishedMatchResult(match) {
     text = '超时和棋';
   }
   if (!text) return;
-  try {
-    if (!window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== 'function') return;
-    const utterance = new window.SpeechSynthesisUtterance();
-    utterance.lang = 'zh-CN';
-    utterance.text = text;
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    window.speechSynthesis.cancel();
-    window.setTimeout(() => {
-      try {
-        window.speechSynthesis.speak(utterance);
-        const isCreator = isCurrentUserRoomCreator();
-        if (!isCreator && (result === 'RED_WIN' || result === 'BLACK_WIN')) {
-          const followUp = new window.SpeechSynthesisUtterance();
-          followUp.lang = 'zh-CN';
-          followUp.text = '等待房主再来一局';
-          followUp.rate = 1;
-          followUp.pitch = 1;
-          followUp.volume = 1;
-          window.setTimeout(() => {
-            try {
-              window.speechSynthesis.speak(followUp);
-            } catch {}
-          }, 1400);
-        }
-      } catch {}
-    }, 80);
-  } catch {}
+  speakText(text);
+  const isCreator = isCurrentUserRoomCreator();
+  if (isCreator && (result === 'RED_WIN' || result === 'BLACK_WIN')) {
+    speakText('房主请点击再来一局', 1400);
+  } else if (!isCreator && (result === 'RED_WIN' || result === 'BLACK_WIN')) {
+    speakText('等待房主再来一局', 1400);
+  }
 }
 
 function extractAuthCodeFromUrl() {
@@ -453,6 +457,9 @@ function getFriendlyXiangqiErrorMessage(error, context = '') {
   }
   if (code === 'ROOM_NOT_FOUND') {
     return '房间号不存在';
+  }
+  if (code === 'ILLEGAL_MOVE') {
+    return '不能这么移动';
   }
   return String(error?.message || '操作失败，请稍后再试。');
 }
@@ -897,6 +904,9 @@ function getRoomOverlayState() {
 function renderBoardOverlay() {
   if (!ui.boardOverlay || !ui.boardOverlayMessage || !ui.startMatchBtn || !ui.boardOverlayDetail) return;
   const overlayState = getRoomOverlayState();
+  const nextStartPromptKey = overlayState.showStart && state.room?.roomCode
+    ? `${String(state.room.roomCode)}:${String(state.room?.status || '')}:${String(state.match?.status || '')}`
+    : '';
   ui.boardOverlay.hidden = !overlayState.visible;
   ui.boardOverlayMessage.textContent = overlayState.message;
   ui.boardOverlayDetail.textContent = overlayState.detail;
@@ -909,6 +919,34 @@ function renderBoardOverlay() {
   const overlayActions = ui.rematchBtn?.parentElement;
   if (overlayActions) {
     overlayActions.hidden = !overlayState.showFinishedActions;
+  }
+  if (nextStartPromptKey && state.lastStartPromptKey !== nextStartPromptKey) {
+    state.lastStartPromptKey = nextStartPromptKey;
+    speakStartPrompt();
+  } else if (!nextStartPromptKey) {
+    state.lastStartPromptKey = '';
+  }
+}
+
+function maybeSpeakRematchConfirmationPrompt() {
+  const roomStatus = String(state.room?.status || '').toUpperCase();
+  const matchStatus = String(state.match?.status || '').toUpperCase();
+  const isCreator = isCurrentUserRoomCreator();
+  const rematchRequestedBy = Number(state.room?.rematchRequestedBy || 0);
+  const creatorUserId = Number(state.room?.creatorUserId || state.match?.redUserId || 0);
+  const promptKey = roomStatus === 'FINISHED'
+    && matchStatus === 'FINISHED'
+    && !isCreator
+    && rematchRequestedBy > 0
+    && rematchRequestedBy === creatorUserId
+    && state.room?.roomCode
+    ? `${String(state.room.roomCode)}:${rematchRequestedBy}:${roomStatus}:${matchStatus}`
+    : '';
+  if (promptKey && state.lastRematchPromptKey !== promptKey) {
+    state.lastRematchPromptKey = promptKey;
+    speakText('请确认再来一局');
+  } else if (!promptKey) {
+    state.lastRematchPromptKey = '';
   }
 }
 
@@ -1197,12 +1235,14 @@ function connectRoomEvents(roomCode) {
     state.room = payload.room || state.room;
     state.match = payload.room?.match || state.match;
     renderMatch();
+    maybeSpeakRematchConfirmationPrompt();
   });
   source.addEventListener('room.updated', (event) => {
     const payload = JSON.parse(event.data || '{}');
     state.room = payload.room || state.room;
     state.match = payload.room?.match || state.match;
     renderMatch();
+    maybeSpeakRematchConfirmationPrompt();
     refreshWallet().catch(() => {});
   });
   source.addEventListener('match.updated', (event) => {
@@ -1494,7 +1534,7 @@ async function handleBoardTap(file, rank) {
       await refreshMatch(state.match.id);
     }
   } catch (error) {
-    setStatus(String(error?.message || '走子失败'));
+    setStatus(getFriendlyXiangqiErrorMessage(error, 'move'));
   }
 }
 

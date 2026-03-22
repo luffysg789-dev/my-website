@@ -174,13 +174,17 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /async function unlockMoveSound\(/);
   assert.match(js, /state\.moveAudioUnlocked/);
   assert.match(js, /function speakXiangqiCue\(/);
+  assert.match(js, /function speakText\(/);
+  assert.match(js, /function speakStartPrompt\(/);
   assert.match(js, /function speakFinishedMatchResult\(/);
   assert.match(js, /window\.speechSynthesis/);
   assert.match(js, /utterance\.text = cue === 'check' \? '将军' : '吃';/);
   assert.match(js, /红方胜利/);
   assert.match(js, /黑方胜利/);
   assert.match(js, /本局和棋/);
+  assert.match(js, /房主请点击再来一局/);
   assert.match(js, /等待房主再来一局/);
+  assert.match(js, /请确认再来一局/);
   assert.match(js, /new Audio\(XIANGQI_MOVE_AUDIO_SRC\)/);
   assert.match(js, /function syncRoomUrl\(/);
   assert.match(js, /function syncTimePresetButtons\(/);
@@ -208,8 +212,11 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.doesNotMatch(js, /function renderDrawActionState\(/);
   assert.match(js, /function getRoomOverlayState\(/);
   assert.match(js, /function renderBoardOverlay\(/);
+  assert.match(js, /state\.lastStartPromptKey/);
+  assert.match(js, /speakStartPrompt\(\);/);
   assert.match(js, /overlayState\.detail/);
   assert.match(js, /ui\.boardOverlayDetail\.classList\.toggle\('is-rematch-waiting', overlayState\.detail === '等待房主再来'\);/);
+  assert.match(js, /function maybeSpeakRematchConfirmationPrompt\(/);
   assert.match(js, /function getFinishedMatchOverlayCopy\(/);
   assert.match(js, /赢得押金/);
   assert.match(js, /押金已退回/);
@@ -241,6 +248,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /function getFriendlyXiangqiErrorMessage\(/);
   assert.match(js, /if \(code === 'INSUFFICIENT_BALANCE'\) \{\s*return context === 'create_room' \? '余额不足，无法创建房间。' : '余额不足，无法加入房间。';\s*\}/);
   assert.match(js, /if \(code === 'ROOM_NOT_FOUND'\) \{\s*return '房间号不存在';\s*\}/);
+  assert.match(js, /if \(code === 'ILLEGAL_MOVE'\) \{\s*return '不能这么移动';\s*\}/);
   assert.match(js, /function showCreateRoomInsufficientBalanceAlert\(/);
   assert.match(js, /window\.alert\('余额不足，无法创建房间。'\)/);
   assert.match(js, /function showJoinRoomNotFoundAlert\(/);
@@ -263,6 +271,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /\/api\/xiangqi\/rooms\/\$\{encodeURIComponent\(state\.room\.roomCode\)\}\/rematch\/confirm/);
   assert.match(js, /等待房主开始/);
   assert.match(js, /await postJson\(`\/api\/xiangqi\/matches\/\$\{state\.match\.id\}\/move`, \{/);
+  assert.match(js, /setStatus\(getFriendlyXiangqiErrorMessage\(error, 'move'\)\);/);
   assert.match(js, /if \(response\.match\) \{\s*state\.match = response\.match;\s*renderMatch\(\);\s*\}/);
   assert.match(js, /playMoveSound\(\);\s*speakXiangqiCue\(response\.audioCue\);[\s\S]*?if \(response\.status === 'finished'\)/);
   assert.match(js, /if \(response\.status === 'finished'\) \{[\s\S]*?speakFinishedMatchResult\(response\.match\);[\s\S]*?await refreshWallet\(\);/);
@@ -273,6 +282,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.doesNotMatch(js, /actionDrawRejectBtn/);
   assert.match(js, /if \(response\?\.match\) \{\s*state\.match = response\.match;\s*renderMatch\(\);\s*\} else \{\s*await refreshMatch\(state\.match\.id\);\s*\}/);
   assert.match(js, /source\.addEventListener\('match\.finished',[\s\S]*?speakFinishedMatchResult\(payload\.match\);/);
+  assert.match(js, /source\.addEventListener\('room\.updated',[\s\S]*?maybeSpeakRematchConfirmationPrompt\(\);/);
   assert.match(js, /source\.addEventListener\('match\.draw-offer',[\s\S]*?openDrawConfirmModal\(\);/);
   assert.match(js, /function bindActions\(/);
   assert.match(js, /ui\.startMatchBtn\?\.addEventListener\('click', \(\) => startReadyMatch\(\)\.catch/);
