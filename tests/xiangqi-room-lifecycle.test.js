@@ -410,6 +410,43 @@ test('start room transitions a ready match into playing state', async () => {
   }
 });
 
+test('only the room creator can start a ready room', async () => {
+  const harness = createHarness();
+  const creatorUserId = seedUser(harness.db, { openid: 'creator-start-only', availableBalance: '20.00' });
+  const joinerUserId = seedUser(harness.db, { openid: 'joiner-start-blocked', availableBalance: '20.00' });
+
+  try {
+    const createResponse = await harness.request('POST', '/api/xiangqi/rooms/create', {
+      userId: creatorUserId,
+      stakeAmount: '5.00',
+      timeControlMinutes: 15
+    });
+    const roomCode = createResponse.body.roomCode;
+
+    await harness.request('POST', '/api/xiangqi/rooms/join', {
+      userId: joinerUserId,
+      roomCode
+    });
+
+    const startResponse = await harness.request('POST', `/api/xiangqi/rooms/${roomCode}/start`, {
+      userId: joinerUserId
+    });
+
+    assert.equal(startResponse.statusCode, 403);
+    assert.deepEqual(startResponse.body, {
+      ok: false,
+      error: 'ROOM_FORBIDDEN'
+    });
+
+    const room = getRoomByCode(harness.db, roomCode);
+    const match = getMatchByRoomId(harness.db, room.id);
+    assert.equal(room.status, 'READY');
+    assert.equal(match.status, 'READY');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('cancel waiting room unfreezes the creator stake', async () => {
   const harness = createHarness();
   const creatorUserId = seedUser(harness.db, { openid: 'cancel-creator', availableBalance: '20.00' });

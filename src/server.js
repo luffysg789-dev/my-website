@@ -2224,6 +2224,11 @@ const updateXiangqiMatchStateStmt = db.prepare(`
   SET current_fen = ?, turn_side = ?, red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = datetime('now')
   WHERE id = ?
 `);
+const updateXiangqiMatchFinishedSnapshotStmt = db.prepare(`
+  UPDATE xiangqi_matches
+  SET current_fen = ?, red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = datetime('now')
+  WHERE id = ?
+`);
 const updateXiangqiMatchSnapshotStmt = db.prepare(`
   UPDATE xiangqi_matches
   SET current_fen = ?
@@ -2504,6 +2509,12 @@ function findXiangqiPiece(state, file, rank) {
   return state.pieces.find((piece) => piece.file === file && piece.rank === rank) || null;
 }
 
+function findXiangqiKing(state, side) {
+  return state.pieces.find(
+    (piece) => piece.type === 'king' && String(piece.side || '').toUpperCase() === String(side || '').toUpperCase()
+  ) || null;
+}
+
 function isWithinXiangqiBoard(file, rank) {
   return Number.isInteger(file) && Number.isInteger(rank) && file >= 0 && file <= 8 && rank >= 0 && rank <= 9;
 }
@@ -2593,6 +2604,49 @@ function validateXiangqiMove(state, piece, targetPiece, from, to) {
 function getXiangqiUserSide(match, userId) {
   if (Number(match.red_user_id) === Number(userId)) return 'RED';
   if (Number(match.black_user_id) === Number(userId)) return 'BLACK';
+  return '';
+}
+
+function isXiangqiKingInCheck(state, side) {
+  const normalizedSide = String(side || '').toUpperCase();
+  const king = findXiangqiKing(state, normalizedSide);
+  if (!king) return false;
+
+  const opponentSide = normalizedSide === 'RED' ? 'BLACK' : 'RED';
+  const opponentKing = findXiangqiKing(state, opponentSide);
+  if (
+    opponentKing &&
+    opponentKing.file === king.file &&
+    countPiecesBetween(
+      state,
+      { file: opponentKing.file, rank: opponentKing.rank },
+      { file: king.file, rank: king.rank }
+    ) === 0
+  ) {
+    return true;
+  }
+
+  return state.pieces.some((piece) => {
+    if (String(piece.side || '').toUpperCase() !== opponentSide) return false;
+    if (piece.type === 'king') return false;
+    return validateXiangqiMove(
+      state,
+      piece,
+      king,
+      { file: piece.file, rank: piece.rank },
+      { file: king.file, rank: king.rank }
+    );
+  });
+}
+
+function getXiangqiMoveAudioCue(state, movingSide, targetPiece) {
+  const opponentSide = String(movingSide || '').toUpperCase() === 'RED' ? 'BLACK' : 'RED';
+  if (isXiangqiKingInCheck(state, opponentSide)) {
+    return 'check';
+  }
+  if (targetPiece) {
+    return 'capture';
+  }
   return '';
 }
 
@@ -3111,10 +3165,7 @@ const startXiangqiRoom = db.transaction((payload) => {
   if (String(room.status || '') !== 'READY') return { kind: 'room_not_ready' };
 
   const requesterUserId = Number(payload.userId);
-  if (
-    requesterUserId !== Number(room.creator_user_id) &&
-    requesterUserId !== Number(room.joiner_user_id)
-  ) {
+  if (requesterUserId !== Number(room.creator_user_id)) {
     return { kind: 'room_forbidden' };
   }
 
@@ -3297,6 +3348,7 @@ const moveXiangqiMatch = db.transaction((payload) => {
   const nextTurnSide = side === 'RED' ? 'BLACK' : 'RED';
   const serializedState = serializeXiangqiState(nextState);
   const moveNo = Number(selectXiangqiMoveCountStmt.get(match.id)?.count || 0) + 1;
+  const audioCue = getXiangqiMoveAudioCue(nextState, side, targetPiece);
 
   insertXiangqiMoveStmt.run(
     match.id,
@@ -3306,6 +3358,20 @@ const moveXiangqiMatch = db.transaction((payload) => {
     `${to.file},${to.rank}`,
     serializedState
   );
+
+  if (targetPiece?.type === 'king') {
+    updateXiangqiMatchFinishedSnapshotStmt.run(
+      serializedState,
+      timers.redTimeLeftMs,
+      timers.blackTimeLeftMs,
+      match.id
+    );
+    return settleXiangqiMatch({
+      matchId: match.id,
+      result: side === 'RED' ? 'RED_WIN' : 'BLACK_WIN'
+    });
+  }
+
   updateXiangqiMatchStateStmt.run(
     serializedState,
     nextTurnSide,
@@ -3315,7 +3381,14 @@ const moveXiangqiMatch = db.transaction((payload) => {
   );
 
   const updated = selectXiangqiMatchDetailStmt.get(match.id);
-  return { kind: 'moved', moveNo, turnSide: nextTurnSide, match: updated };
+  return {
+    kind: 'moved',
+    moveNo,
+    turnSide: nextTurnSide,
+    match: updated,
+    audioCue,
+    actorUserId: Number(payload.userId)
+  };
 });
 
 const offerXiangqiDraw = db.transaction((payload) => {
@@ -4146,14 +4219,17 @@ app.post('/api/xiangqi/matches/:id/move', (req, res) => {
   const room = selectXiangqiRoomCodeByIdStmt.get(result.match.room_id);
   if (room?.room_code) {
     emitXiangqiRoomEvent(room.room_code, 'match.updated', {
-      match: formatXiangqiMatchItem(result.match)
+      match: formatXiangqiMatchItem(result.match),
+      audioCue: result.audioCue,
+      actorUserId: result.actorUserId
     });
   }
   return res.json({
     ok: true,
     status: 'playing',
     turnSide: result.turnSide,
-    moveNo: result.moveNo
+    moveNo: result.moveNo,
+    audioCue: result.audioCue
   });
 });
 

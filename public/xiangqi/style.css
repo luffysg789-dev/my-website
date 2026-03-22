@@ -437,6 +437,16 @@ select {
   box-shadow: 0 10px 24px rgba(36, 25, 15, 0.18);
 }
 
+.xiangqi-board-overlay__detail {
+  margin: -2px 0 0;
+  padding: 0 10px;
+  color: #fff5de;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 8px rgba(36, 25, 15, 0.28);
+}
+
 .xiangqi-board-overlay__start {
   min-width: 136px;
   min-height: 54px;
@@ -983,6 +993,10 @@ select {
   .xiangqi-board-overlay__message {
     padding: 10px 16px;
     font-size: 16px;
+  }
+
+  .xiangqi-board-overlay__detail {
+    font-size: 14px;
   }
 
   .xiangqi-board-overlay__start {

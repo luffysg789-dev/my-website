@@ -159,6 +159,23 @@ function getWallet(db, userId) {
   return db.prepare('SELECT available_balance, frozen_balance FROM game_wallets WHERE user_id = ?').get(userId);
 }
 
+function setCustomMatchState(db, matchId, { pieces, turnSide = 'RED' }) {
+  db.prepare(
+    `
+      UPDATE xiangqi_matches
+      SET current_fen = ?, turn_side = ?
+      WHERE id = ?
+    `
+  ).run(
+    JSON.stringify({
+      pendingDrawOfferSide: null,
+      pieces
+    }),
+    turnSide,
+    matchId
+  );
+}
+
 test('only the current side can move', async () => {
   const harness = createHarness();
 
@@ -221,7 +238,8 @@ test('legal moves update stored state', async () => {
       ok: true,
       status: 'playing',
       turnSide: 'BLACK',
-      moveNo: 1
+      moveNo: 1,
+      audioCue: ''
     });
     assert.equal(matchResponse.statusCode, 200);
     assert.equal(matchResponse.body.item.turnSide, 'BLACK');
@@ -320,6 +338,126 @@ test('draw offer and acceptance mark the match as draw', async () => {
     assert.deepEqual(getWallet(harness.db, context.blackUserId), {
       available_balance: '20.00',
       frozen_balance: '0.00'
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('capturing the opposing king ends the match immediately', async () => {
+  const harness = createHarness();
+
+  try {
+    const context = await createPlayingMatch(harness);
+    setCustomMatchState(harness.db, context.matchId, {
+      turnSide: 'BLACK',
+      pieces: [
+        { file: 4, rank: 0, side: 'BLACK', type: 'king' },
+        { file: 4, rank: 8, side: 'BLACK', type: 'rook' },
+        { file: 4, rank: 9, side: 'RED', type: 'king' }
+      ]
+    });
+
+    const response = await harness.request('POST', `/api/xiangqi/matches/${context.matchId}/move`, {
+      userId: context.blackUserId,
+      from: { file: 4, rank: 8 },
+      to: { file: 4, rank: 9 }
+    });
+    const matchResponse = await harness.request('GET', `/api/xiangqi/matches/${context.matchId}`);
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, {
+      ok: true,
+      status: 'finished',
+      result: 'BLACK_WIN'
+    });
+    assert.equal(matchResponse.statusCode, 200);
+    assert.equal(matchResponse.body.item.status, 'FINISHED');
+    assert.equal(matchResponse.body.item.result, 'BLACK_WIN');
+    assert.equal(matchResponse.body.item.winnerUserId, context.blackUserId);
+    assert.equal(
+      matchResponse.body.item.pieces.some((piece) => piece.side === 'RED' && piece.type === 'king'),
+      false
+    );
+    assert.equal(
+      matchResponse.body.item.pieces.some((piece) => piece.side === 'BLACK' && piece.type === 'rook' && piece.file === 4 && piece.rank === 9),
+      true
+    );
+    assert.deepEqual(getWallet(harness.db, context.redUserId), {
+      available_balance: '15.00',
+      frozen_balance: '0.00'
+    });
+    assert.deepEqual(getWallet(harness.db, context.blackUserId), {
+      available_balance: '25.00',
+      frozen_balance: '0.00'
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('capturing a piece returns the capture audio cue', async () => {
+  const harness = createHarness();
+
+  try {
+    const context = await createPlayingMatch(harness);
+    setCustomMatchState(harness.db, context.matchId, {
+      turnSide: 'RED',
+      pieces: [
+        { file: 4, rank: 0, side: 'BLACK', type: 'king' },
+        { file: 4, rank: 9, side: 'RED', type: 'king' },
+        { file: 4, rank: 5, side: 'RED', type: 'pawn' },
+        { file: 0, rank: 5, side: 'RED', type: 'rook' },
+        { file: 0, rank: 4, side: 'BLACK', type: 'pawn' }
+      ]
+    });
+
+    const response = await harness.request('POST', `/api/xiangqi/matches/${context.matchId}/move`, {
+      userId: context.redUserId,
+      from: { file: 0, rank: 5 },
+      to: { file: 0, rank: 4 }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, {
+      ok: true,
+      status: 'playing',
+      turnSide: 'BLACK',
+      moveNo: 1,
+      audioCue: 'capture'
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('checking the opposing king returns the check audio cue', async () => {
+  const harness = createHarness();
+
+  try {
+    const context = await createPlayingMatch(harness);
+    setCustomMatchState(harness.db, context.matchId, {
+      turnSide: 'RED',
+      pieces: [
+        { file: 4, rank: 0, side: 'BLACK', type: 'king' },
+        { file: 3, rank: 9, side: 'RED', type: 'king' },
+        { file: 3, rank: 1, side: 'RED', type: 'rook' }
+      ]
+    });
+
+    const response = await harness.request('POST', `/api/xiangqi/matches/${context.matchId}/move`, {
+      userId: context.redUserId,
+      from: { file: 3, rank: 1 },
+      to: { file: 4, rank: 1 }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, {
+      ok: true,
+      status: 'playing',
+      turnSide: 'BLACK',
+      moveNo: 1,
+      audioCue: 'check'
     });
   } finally {
     harness.cleanup();

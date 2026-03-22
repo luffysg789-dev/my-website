@@ -54,6 +54,7 @@ const ui = {
   bottomTime: document.getElementById('xiangqiBottomTime'),
   boardOverlay: document.getElementById('xiangqiBoardOverlay'),
   boardOverlayMessage: document.getElementById('xiangqiBoardOverlayMessage'),
+  boardOverlayDetail: document.getElementById('xiangqiBoardOverlayDetail'),
   startMatchBtn: document.getElementById('xiangqiStartMatchBtn'),
   createStake: document.getElementById('xiangqiCreateStake'),
   createTimeControl: document.getElementById('xiangqiCreateTimeControl'),
@@ -84,7 +85,8 @@ const state = {
   countdownTimer: 0,
   timeoutSubmitting: false,
   amountRequest: null,
-  moveAudio: null
+  moveAudio: null,
+  moveAudioUnlocked: false
 };
 
 function buildPreviewPieces() {
@@ -280,6 +282,25 @@ function primeMoveAudio() {
   return state.moveAudio;
 }
 
+async function unlockMoveSound() {
+  if (state.moveAudioUnlocked) return;
+  const audio = primeMoveAudio();
+  if (!audio || typeof audio.play !== 'function') return;
+  try {
+    const previousMuted = Boolean(audio.muted);
+    const previousVolume = Number(audio.volume);
+    audio.muted = true;
+    audio.volume = 0;
+    audio.currentTime = 0;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = previousMuted;
+    audio.volume = Number.isFinite(previousVolume) ? previousVolume : 1;
+    state.moveAudioUnlocked = true;
+  } catch {}
+}
+
 function playMoveSound() {
   const baseAudio = primeMoveAudio();
   if (!baseAudio) return;
@@ -290,6 +311,22 @@ function playMoveSound() {
     playableAudio.volume = 0.55;
     playableAudio.currentTime = 0;
     playableAudio.play().catch(() => {});
+  } catch {}
+}
+
+function speakXiangqiCue(cue) {
+  const normalizedCue = String(cue || '').trim().toLowerCase();
+  if (normalizedCue !== 'check' && normalizedCue !== 'capture') return;
+  try {
+    if (!window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== 'function') return;
+    const utterance = new window.SpeechSynthesisUtterance();
+    utterance.lang = 'zh-CN';
+    utterance.text = cue === 'check' ? '将军' : '吃';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   } catch {}
 }
 
@@ -531,23 +568,77 @@ function getRenderablePieces() {
   return [];
 }
 
+function shouldFlipBoardPerspective() {
+  return getCurrentUserSide() === 'BLACK';
+}
+
+function getFinishedMatchOverlayCopy() {
+  const result = String(state.match?.result || '').toUpperCase();
+  const currentSide = getCurrentUserSide();
+  if (result === 'RED_WIN') {
+    return {
+      message: '红方胜利',
+      detail: currentSide === 'RED' ? '赢得押金' : '遗憾落败'
+    };
+  }
+  if (result === 'BLACK_WIN') {
+    return {
+      message: '黑方胜利',
+      detail: currentSide === 'BLACK' ? '赢得押金' : '遗憾落败'
+    };
+  }
+  if (result === 'TIMEOUT_DRAW') {
+    return {
+      message: '超时和棋',
+      detail: '押金已退回'
+    };
+  }
+  if (result === 'DRAW') {
+    return {
+      message: '和棋',
+      detail: '押金已退回'
+    };
+  }
+  return {
+    message: '本局结束',
+    detail: ''
+  };
+}
+
 function getRoomOverlayState() {
   const roomStatus = String(state.room?.status || '').toUpperCase();
   const matchStatus = String(state.match?.status || '').toUpperCase();
+  if (matchStatus === 'FINISHED') {
+    const finishedCopy = getFinishedMatchOverlayCopy();
+    return {
+      visible: true,
+      message: finishedCopy.message,
+      detail: finishedCopy.detail,
+      showStart: false
+    };
+  }
   if (roomStatus === 'WAITING') {
-    return { visible: true, message: '等待对手加入', showStart: false };
+    return { visible: true, message: '等待对手加入', detail: '', showStart: false };
   }
   if (roomStatus === 'READY' || matchStatus === 'READY') {
-    return { visible: true, message: '双方已到齐，点击开始', showStart: true };
+    const isCreator = Number(state.user?.userId || 0) === Number(state.room?.creatorUserId || state.match?.redUserId || 0);
+    return {
+      visible: true,
+      message: isCreator ? '双方已到齐，点击开始' : '等待房主开始',
+      detail: '',
+      showStart: isCreator
+    };
   }
-  return { visible: false, message: '', showStart: false };
+  return { visible: false, message: '', detail: '', showStart: false };
 }
 
 function renderBoardOverlay() {
-  if (!ui.boardOverlay || !ui.boardOverlayMessage || !ui.startMatchBtn) return;
+  if (!ui.boardOverlay || !ui.boardOverlayMessage || !ui.startMatchBtn || !ui.boardOverlayDetail) return;
   const overlayState = getRoomOverlayState();
   ui.boardOverlay.hidden = !overlayState.visible;
   ui.boardOverlayMessage.textContent = overlayState.message;
+  ui.boardOverlayDetail.textContent = overlayState.detail;
+  ui.boardOverlayDetail.hidden = !overlayState.detail;
   ui.startMatchBtn.hidden = !overlayState.showStart;
 }
 
@@ -556,24 +647,31 @@ function buildBoardMarkup() {
 
   const pieces = getRenderablePieces();
   const selectedKey = state.selected ? `${state.selected.file},${state.selected.rank}` : '';
+  const shouldFlip = shouldFlipBoardPerspective();
   const cells = [];
 
   for (let rank = 0; rank < 10; rank += 1) {
     for (let file = 0; file < 9; file += 1) {
-      const piece = pieces.find((item) => Number(item.file) === file && Number(item.rank) === rank);
-      const key = `${file},${rank}`;
+      const boardFile = shouldFlip ? 8 - file : file;
+      const boardRank = shouldFlip ? 9 - rank : rank;
+      const actualFile = shouldFlip ? 8 - file : file;
+      const actualRank = shouldFlip ? 9 - rank : rank;
+      const piece = pieces.find(
+        (item) => Number(item.file) === actualFile && Number(item.rank) === actualRank
+      );
+      const key = `${actualFile},${actualRank}`;
       const isSelected = selectedKey === key;
       const pieceMarkup = piece
         ? `<button
             type="button"
             class="xiangqi-board__piece xiangqi-board__piece--${String(piece.side || '').toLowerCase()}${isSelected ? ' is-selected' : ''}"
-            data-file="${file}"
-            data-rank="${rank}"
+            data-file="${actualFile}"
+            data-rank="${actualRank}"
           >${PIECE_LABELS[piece.side]?.[piece.type] || '?'}</button>`
         : '';
 
       cells.push(`
-        <div class="xiangqi-board__cell" data-file="${file}" data-rank="${rank}">
+        <div class="xiangqi-board__cell" data-file="${boardFile}" data-rank="${boardRank}">
           ${pieceMarkup}
         </div>
       `);
@@ -843,6 +941,10 @@ function connectRoomEvents(roomCode) {
     if (payload.match) {
       state.match = payload.match;
       renderMatch();
+      if (payload.audioCue && payload.actorUserId !== Number(state.user?.userId || 0)) {
+        speakXiangqiCue(payload.audioCue);
+        playMoveSound();
+      }
     }
   });
   source.addEventListener('match.finished', (event) => {
@@ -1080,6 +1182,7 @@ async function handleBoardTap(file, rank) {
       to: { file, rank }
     });
     playMoveSound();
+    speakXiangqiCue(response.audioCue);
     if (response.status === 'finished') {
       await refreshWallet();
     }
@@ -1115,6 +1218,11 @@ function startCountdownLoop() {
 
 function bindActions() {
   primeMoveAudio();
+  ['touchstart', 'pointerdown', 'keydown'].forEach((eventName) => {
+    document.addEventListener(eventName, () => {
+      unlockMoveSound().catch(() => {});
+    }, { once: true, passive: true });
+  });
   ui.depositBtn?.addEventListener('click', () => beginDepositFlow().catch((error) => setStatus(error.message)));
   ui.withdrawBtn?.addEventListener('click', () => beginWithdrawFlow().catch((error) => setStatus(error.message)));
   ui.createRoomBtn?.addEventListener('click', () => createRoom().catch((error) => {
