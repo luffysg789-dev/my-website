@@ -202,9 +202,12 @@ function getPublicBaseUrl(req) {
     return configured.replace(/\/+$/, '');
   }
 
-  const forwardedProto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim() || 'https';
   const forwardedHost = String(req.headers['x-forwarded-host'] || req.get('host') || '127.0.0.1:3000').split(',')[0].trim() || '127.0.0.1:3000';
-  return `${forwardedProto}://${forwardedHost}`.replace(/\/+$/, '');
+  const hostname = String(forwardedHost).split(':')[0].trim().toLowerCase();
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim() || 'https';
+  const normalizedProto = isLocalHost ? forwardedProto : 'https';
+  return `${normalizedProto}://${forwardedHost}`.replace(/\/+$/, '');
 }
 
 function getGameRouteBySlug(slug) {
