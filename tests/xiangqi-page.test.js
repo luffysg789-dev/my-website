@@ -84,12 +84,15 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /const XIANGQI_BROWSER_LOCAL_OPEN_ID = 'xiangqi-browser-local';/);
   assert.doesNotMatch(js, /XIANGQI_DEMO_OPEN_ID/);
   assert.doesNotMatch(js, /XIANGQI_DEMO_STARTING_BALANCE/);
+  assert.match(js, /function isLocalDevelopmentHost\(/);
+  assert.match(js, /window\.location\.hostname/);
+  assert.match(js, /return hostname === 'localhost' \|\| hostname === '127\.0\.0\.1';/);
   assert.match(js, /function buildNexaAuthorizeUrl\(/);
   assert.match(js, /function buildNexaPaymentUrl\(/);
   assert.match(js, /function exchangeSessionFromUrlCode\(/);
   assert.match(js, /function beginLoginFlow\(/);
   assert.match(js, /async function ensureAuthorizedForRoomAction\(/);
-  assert.match(js, /if \(!isNexaAppEnvironment\(\)\) \{/);
+  assert.match(js, /if \(!isNexaAppEnvironment\(\) && isLocalDevelopmentHost\(\)\) \{/);
   assert.match(js, /openId:\s*XIANGQI_BROWSER_LOCAL_OPEN_ID/);
   assert.match(js, /const XIANGQI_PENDING_ACTION_KEY = 'claw800_xiangqi_pending_action_v1';/);
   assert.match(js, /function savePendingAction\(/);
@@ -125,7 +128,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /classList\.toggle\('is-room-mode'/);
   assert.match(js, /state\.session = loadCachedNexaSession\(\);/);
   assert.match(js, /const cachedUser = loadCachedUser\(\);/);
-  assert.match(js, /if \(!isNexaAppEnvironment\(\) && cachedUser\?\.userId\) \{/);
+  assert.match(js, /if \(!isNexaAppEnvironment\(\) && isLocalDevelopmentHost\(\) && cachedUser\?\.userId\) \{/);
   assert.match(js, /await refreshWallet\(\);/);
   assert.match(js, /\/api\/xiangqi\/rooms\/active\?userId=/);
   assert.match(js, /state\.room && !state\.match/);
@@ -158,6 +161,7 @@ test('xiangqi css delivers a distinctive mobile-first room layout', () => {
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.xiangqi-shell\s*\{[\s\S]*?padding:\s*20px 14px 30px;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.xiangqi-room-cta\s*\{[\s\S]*?min-height:\s*64px;/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-shell\s*\{[\s\S]*?padding:\s*12px 6px 20px;/);
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]*?width:\s*calc\(100% - 12px\);/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-wallet-card__amount strong\s*\{[\s\S]*?font-size:\s*clamp\(42px,\s*15vw,\s*56px\);/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-room-grid\s*\{[\s\S]*?gap:\s*12px;/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.xiangqi-room-card\s*\{[\s\S]*?padding:\s*16px;/);

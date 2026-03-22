@@ -170,6 +170,30 @@ test('legacy xiangqi demo session is normalized back to zero balance', async () 
   }
 });
 
+test('legacy browser-local xiangqi session is normalized back to zero balance', async () => {
+  const harness = createHarness();
+  const userId = seedUser(harness.db, {
+    openid: 'xiangqi-browser-local',
+    availableBalance: '995.00',
+    frozenBalance: '0.00'
+  });
+
+  try {
+    const response = await harness.request('POST', '/api/xiangqi/session', {
+      openId: 'xiangqi-browser-local',
+      nickname: 'Nexa 玩家'
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.ok, true);
+    assert.equal(response.body.user.id, userId);
+    assert.equal(response.body.wallet.availableBalance, '0.00');
+    assert.equal(response.body.wallet.frozenBalance, '0.00');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('xiangqi wallet endpoints return summary and recent ledger items', async () => {
   const harness = createHarness();
   const userId = seedUser(harness.db);

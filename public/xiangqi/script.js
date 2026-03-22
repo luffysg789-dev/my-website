@@ -239,6 +239,11 @@ function isNexaAppEnvironment() {
   return Boolean(hasNexaMarker || state.session?.openId);
 }
 
+function isLocalDevelopmentHost() {
+  const hostname = String(window.location.hostname || '').trim().toLowerCase();
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
 function buildNexaAuthorizeUrl() {
   const redirectUri = buildCleanReturnUrl();
   return `${NEXA_PROTOCOL_AUTH_BASE}?apikey=${encodeURIComponent(NEXA_API_KEY)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
@@ -460,7 +465,7 @@ async function syncSessionAndWallet() {
   updateLoginButtonState();
   if (!state.session?.openId || !state.session?.sessionKey) {
     const cachedUser = loadCachedUser();
-    if (!isNexaAppEnvironment() && cachedUser?.userId) {
+    if (!isNexaAppEnvironment() && isLocalDevelopmentHost() && cachedUser?.userId) {
       state.user = cachedUser;
       await refreshWallet();
       return;
@@ -534,7 +539,7 @@ async function ensureAuthorizedForRoomAction() {
     await syncSessionAndWallet();
     return Boolean(state.user?.userId);
   }
-  if (!isNexaAppEnvironment()) {
+  if (!isNexaAppEnvironment() && isLocalDevelopmentHost()) {
     const response = await postJson('/api/xiangqi/session', {
       openId: XIANGQI_BROWSER_LOCAL_OPEN_ID,
       nickname: 'Nexa 玩家'
