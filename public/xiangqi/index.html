@@ -6,7 +6,7 @@
     <title>Claw800 中国象棋在线</title>
     <meta name="description" content="Claw800 中国象棋在线，支持真钱房间、USDT 充值提现与手机实时对战。" />
     <link rel="stylesheet" href="/game-tip.css?v=20260321-01" />
-    <link rel="stylesheet" href="/xiangqi/style.css?v=20260322-19" />
+    <link rel="stylesheet" href="/xiangqi/style.css?v=20260322-20" />
   </head>
   <body>
     <main class="xiangqi-page">
@@ -114,13 +114,39 @@
           </div>
         </section>
       </section>
+
+      <div id="xiangqiAmountModal" class="xiangqi-amount-modal" hidden>
+        <div class="xiangqi-amount-modal__backdrop" data-amount-close="true"></div>
+        <section class="xiangqi-amount-sheet" role="dialog" aria-modal="true" aria-labelledby="xiangqiAmountTitle">
+          <div class="xiangqi-amount-sheet__head">
+            <strong id="xiangqiAmountTitle">输入金额</strong>
+            <button id="xiangqiAmountCancelBtn" class="xiangqi-amount-sheet__close" type="button" aria-label="关闭">取消</button>
+          </div>
+          <label class="xiangqi-amount-field" for="xiangqiAmountInput">
+            <span>USDT 金额</span>
+            <input
+              id="xiangqiAmountInput"
+              class="xiangqi-amount-input"
+              type="text"
+              inputmode="decimal"
+              enterkeyhint="done"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              pattern="[0-9]*[.,]?[0-9]*"
+              placeholder="请输入金额"
+            />
+          </label>
+          <button id="xiangqiAmountConfirmBtn" class="xiangqi-room-cta" type="button">确认</button>
+        </section>
+      </div>
     </main>
 
     <script src="/games-config.js?v=20260322-01"></script>
     <script>
       window.ClawGamesConfig?.bootstrapGamePage?.('xiangqi');
     </script>
-    <script src="/xiangqi/script.js?v=20260322-19"></script>
+    <script src="/xiangqi/script.js?v=20260322-20"></script>
     <script src="/game-tip.js?v=20260321-01"></script>
   </body>
 </html>

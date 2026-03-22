@@ -46,6 +46,12 @@ test('xiangqi html includes mobile wallet, room, and board sections', () => {
   assert.match(html, /id="xiangqiWithdrawBtn"/);
   assert.match(html, /id="xiangqiDepositBtn"[\s\S]*?id="xiangqiWithdrawBtn"/);
   assert.match(html, /id="xiangqiWithdrawBtn"[^>]*>提现</);
+  assert.match(html, /id="xiangqiAmountModal"/);
+  assert.match(html, /id="xiangqiAmountInput"/);
+  assert.match(html, /inputmode="decimal"/);
+  assert.match(html, /pattern="\[0-9\]\*\[.,\]\?\[0-9\]\*"/);
+  assert.match(html, /id="xiangqiAmountConfirmBtn"/);
+  assert.match(html, /id="xiangqiAmountCancelBtn"/);
   assert.match(html, /id="xiangqiCreateStake"/);
   assert.match(html, /type="hidden"[^>]*id="xiangqiCreateStake"|id="xiangqiCreateStake"[^>]*type="hidden"/);
   assert.match(html, /data-stake-preset="1"/);
@@ -107,7 +113,12 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /function updateLoginButtonState\(/);
   assert.match(js, /if \(ui\.withdrawBtn\) \{\s*ui\.withdrawBtn\.disabled = !isNexaAppEnvironment\(\);\s*\}/);
   assert.match(js, /launchNexaUrl\(buildNexaAuthorizeUrl\(\)\)/);
-  assert.match(js, /window\.prompt\('输入要充值到游戏账户的 USDT 金额', ''\)/);
+  assert.match(js, /amountModal: document\.getElementById\('xiangqiAmountModal'\)/);
+  assert.match(js, /amountInput: document\.getElementById\('xiangqiAmountInput'\)/);
+  assert.match(js, /function sanitizeMoneyInput\(/);
+  assert.match(js, /function openAmountModal\(/);
+  assert.match(js, /function closeAmountModal\(/);
+  assert.match(js, /function requestAmount\(/);
   assert.match(js, /setStatus\('请在 Nexa App 内充值。'\);\s*return;/);
   assert.match(js, /savePendingAction\(\{\s*type:\s*'deposit',\s*amount/);
   assert.match(js, /setStatus\('请先完成 Nexa 登录授权。'\);\s*beginLoginFlow\(\);\s*return;/);
@@ -141,7 +152,8 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.doesNotMatch(js, /function renderActiveRoomCard\(/);
   assert.match(js, /function bindActions\(/);
   assert.match(js, /ui\.createRoomBtn\?\.addEventListener\('click', \(\) => createRoom\(\)\.catch\(\(error\) => setStatus\(getFriendlyXiangqiErrorMessage\(error, 'create_room'\)\)\)\);/);
-  assert.match(js, /window\.prompt\('输入要提现回 Nexa 的 USDT 金额', ''\)/);
+  assert.match(js, /await requestAmount\('输入要充值到游戏账户的 USDT 金额'\)/);
+  assert.match(js, /await requestAmount\('输入要提现回 Nexa 的 USDT 金额'\)/);
   assert.match(js, /setStatus\('请在 Nexa App 内提现吗。'\);/);
   assert.match(js, /timePresetButtons: Array\.from\(document\.querySelectorAll\('\[data-time-preset\]'\)\)/);
 });
@@ -157,6 +169,9 @@ test('xiangqi css delivers a distinctive mobile-first room layout', () => {
   assert.match(css, /\.xiangqi-room-cancel-wrap\s*\{/);
   assert.match(css, /\.xiangqi-wallet-card__actions\s*\{/);
   assert.match(css, /\.xiangqi-wallet-action\s*\{/);
+  assert.match(css, /\.xiangqi-amount-modal\s*\{/);
+  assert.match(css, /\.xiangqi-amount-sheet\s*\{/);
+  assert.match(css, /\.xiangqi-amount-input\s*\{/);
   assert.match(css, /\.xiangqi-create-options\s*\{/);
   assert.match(css, /\.xiangqi-option-group\s*\{/);
   assert.match(css, /\.xiangqi-time-preset\s*\{/);

@@ -35,6 +35,10 @@ const ui = {
   board: document.getElementById('xiangqiBoard'),
   walletAvailable: document.getElementById('xiangqiWalletAvailable'),
   walletFrozen: document.getElementById('xiangqiWalletFrozen'),
+  amountModal: document.getElementById('xiangqiAmountModal'),
+  amountInput: document.getElementById('xiangqiAmountInput'),
+  amountConfirmBtn: document.getElementById('xiangqiAmountConfirmBtn'),
+  amountCancelBtn: document.getElementById('xiangqiAmountCancelBtn'),
   roomSummary: document.getElementById('xiangqiRoomSummary'),
   roomBadge: document.getElementById('xiangqiRoomBadge'),
   matchStake: document.getElementById('xiangqiMatchStake'),
@@ -70,7 +74,8 @@ const state = {
   selected: null,
   roomEventSource: null,
   countdownTimer: 0,
-  timeoutSubmitting: false
+  timeoutSubmitting: false,
+  amountRequest: null
 };
 
 function buildPreviewPieces() {
@@ -323,6 +328,54 @@ function getFriendlyXiangqiErrorMessage(error, context = '') {
     return context === 'create_room' ? '余额不足，无法创建房间。' : '余额不足，无法加入房间。';
   }
   return String(error?.message || '操作失败，请稍后再试。');
+}
+
+function sanitizeMoneyInput(value) {
+  const raw = String(value || '');
+  let next = raw.replace(/,/g, '.').replace(/[^\d.]/g, '');
+  const firstDot = next.indexOf('.');
+  if (firstDot >= 0) {
+    next = `${next.slice(0, firstDot + 1)}${next.slice(firstDot + 1).replace(/\./g, '')}`;
+  }
+  const [whole = '', fraction = ''] = next.split('.');
+  const normalizedWhole = whole.replace(/^0+(?=\d)/, '');
+  if (next.includes('.')) {
+    return `${normalizedWhole || '0'}.${fraction.slice(0, 2)}`;
+  }
+  return normalizedWhole;
+}
+
+function closeAmountModal() {
+  if (ui.amountModal) {
+    ui.amountModal.hidden = true;
+  }
+  if (ui.amountInput) {
+    ui.amountInput.value = '';
+  }
+  state.amountRequest = null;
+}
+
+function openAmountModal(title, resolve) {
+  if (!ui.amountModal || !ui.amountInput || !ui.amountConfirmBtn) {
+    resolve('');
+    return;
+  }
+  const titleNode = document.getElementById('xiangqiAmountTitle');
+  if (titleNode) {
+    titleNode.textContent = String(title || '输入金额');
+  }
+  state.amountRequest = { resolve };
+  ui.amountModal.hidden = false;
+  ui.amountInput.value = '';
+  window.setTimeout(() => {
+    ui.amountInput?.focus();
+  }, 30);
+}
+
+function requestAmount(title) {
+  return new Promise((resolve) => {
+    openAmountModal(title, resolve);
+  });
 }
 
 function setStatus(message) {
@@ -733,7 +786,7 @@ async function beginDepositFlow(prefilledAmount = '') {
     return;
   }
 
-  const amount = String(prefilledAmount || window.prompt('输入要充值到游戏账户的 USDT 金额', '') || '').trim();
+  const amount = String(prefilledAmount || await requestAmount('输入要充值到游戏账户的 USDT 金额') || '').trim();
   if (!amount) return;
 
   if (!state.session?.openId || !state.session?.sessionKey) {
@@ -779,7 +832,7 @@ async function beginWithdrawFlow() {
     return;
   }
 
-  const amount = String(window.prompt('输入要提现回 Nexa 的 USDT 金额', '') || '').trim();
+  const amount = String(await requestAmount('输入要提现回 Nexa 的 USDT 金额') || '').trim();
   if (!amount) return;
   const partnerOrderNo = `xiangqi_wd_${Date.now()}`;
 
@@ -980,6 +1033,33 @@ function bindActions() {
     const target = event.target.closest('[data-file][data-rank]');
     if (!target) return;
     handleBoardTap(Number(target.dataset.file), Number(target.dataset.rank));
+  });
+  ui.amountInput?.addEventListener('input', () => {
+    ui.amountInput.value = sanitizeMoneyInput(ui.amountInput.value);
+  });
+  ui.amountInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      ui.amountConfirmBtn?.click();
+    }
+  });
+  ui.amountCancelBtn?.addEventListener('click', () => {
+    const request = state.amountRequest;
+    closeAmountModal();
+    request?.resolve('');
+  });
+  ui.amountModal?.addEventListener('click', (event) => {
+    if (!event.target.closest('.xiangqi-amount-sheet') || event.target.dataset.amountClose === 'true') {
+      const request = state.amountRequest;
+      closeAmountModal();
+      request?.resolve('');
+    }
+  });
+  ui.amountConfirmBtn?.addEventListener('click', () => {
+    const request = state.amountRequest;
+    const value = String(ui.amountInput?.value || '').trim();
+    closeAmountModal();
+    request?.resolve(value);
   });
 }
 
