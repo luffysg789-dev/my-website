@@ -461,9 +461,11 @@ select {
 }
 
 .xiangqi-room-badge__value {
-  font-size: 30px;
+  display: inline-block;
+  font-size: 34px;
   font-weight: 900;
   color: #1f5cff;
+  line-height: 1;
   letter-spacing: 0.08em;
 }
 
@@ -935,7 +937,7 @@ select {
   }
 
   .xiangqi-room-badge__value {
-    font-size: 22px;
+    font-size: 26px;
     color: #1f5cff;
   }
 
