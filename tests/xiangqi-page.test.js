@@ -217,6 +217,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /function getRoomOverlayState\(/);
   assert.match(js, /if \(roomStatus === 'DISBANDED'\)/);
   assert.match(js, /message: '房间已经解散'/);
+  assert.match(js, /if \(roomStatus === 'DISBANDED'\) \{[\s\S]*?showFinishedActions:\s*true,[\s\S]*?showReturnLobby:\s*true/);
   assert.match(js, /function getRematchCountdownSeconds\(/);
   assert.match(js, /function renderBoardOverlay\(/);
   assert.match(js, /state\.lastStartPromptKey/);

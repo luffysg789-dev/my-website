@@ -912,7 +912,7 @@ function getRoomOverlayState() {
       message: '房间已经解散',
       detail: '',
       showStart: false,
-      showFinishedActions: false,
+      showFinishedActions: true,
       showRematch: false,
       showConfirmRematch: false,
       showReturnLobby: true
