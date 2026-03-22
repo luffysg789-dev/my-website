@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 
-const DEFAULT_NEXA_API_BASE_URL = String(process.env.NEXA_API_BASE_URL || 'https://nexaexworthcn.super.site').trim();
+const DEFAULT_NEXA_API_BASE_URL = String(process.env.NEXA_API_BASE_URL || 'https://merchantapi.nexaexworth.com').trim();
 const DEFAULT_NEXA_API_KEY = String(process.env.NEXA_API_KEY || 'NEXA2033522880098676737').trim();
 const DEFAULT_NEXA_APP_SECRET = String(process.env.NEXA_APP_SECRET || '0eebb98fa14d403d8567f0bf5bb5dd80TOSPAMDN').trim();
 const DEFAULT_NEXA_CURRENCY = 'USDT';
