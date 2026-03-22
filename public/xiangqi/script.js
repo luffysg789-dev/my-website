@@ -913,11 +913,14 @@ function getFinishedMatchStatusLabel(result) {
 }
 
 function getRematchCountdownSeconds() {
-  const requestedAt = String(state.room?.rematchRequestedAt || '').trim();
-  if (!requestedAt) return 60;
-  const requestedAtMs = Date.parse(requestedAt.replace(' ', 'T') + 'Z');
-  if (!Number.isFinite(requestedAtMs)) return 60;
-  const remainingMs = Math.max(0, 60 * 1000 - (Date.now() - requestedAtMs));
+  const requestedBy = Number(state.room?.rematchRequestedBy || 0);
+  const anchorValue = requestedBy > 0
+    ? String(state.room?.rematchRequestedAt || '').trim()
+    : String(state.room?.finishedAt || '').trim();
+  if (!anchorValue) return 60;
+  const anchorMs = Date.parse(anchorValue.replace(' ', 'T') + 'Z');
+  if (!Number.isFinite(anchorMs)) return 60;
+  const remainingMs = Math.max(0, 60 * 1000 - (Date.now() - anchorMs));
   return Math.max(0, Math.ceil(remainingMs / 1000));
 }
 
@@ -927,7 +930,7 @@ function getRoomOverlayState() {
   if (roomStatus === 'DISBANDED') {
     return {
       visible: true,
-      message: '房间已经解散',
+      message: '房间已解除',
       detail: '',
       showStart: false,
       showFinishedActions: true,
@@ -947,7 +950,7 @@ function getRoomOverlayState() {
       message: finishedCopy.message,
       detail: isCreator
         ? (rematchRequested ? `等待挑战者确认再来(${getRematchCountdownSeconds()}s)` : finishedCopy.detail)
-        : (rematchRequested ? '房主邀请再来一局' : '等待房主再来'),
+        : (rematchRequested ? '房主邀请再来一局' : `等待房主再来(${getRematchCountdownSeconds()}s)`),
       showStart: false,
       showFinishedActions: true,
       showRematch: isCreator && !rematchRequested,
@@ -990,7 +993,12 @@ function renderBoardOverlay() {
     || String(overlayState.detail || '').startsWith('等待挑战者确认再来')
   );
   ui.startMatchBtn.hidden = !overlayState.showStart;
-  if (ui.rematchBtn) ui.rematchBtn.hidden = !overlayState.showRematch;
+  if (ui.rematchBtn) {
+    ui.rematchBtn.hidden = !overlayState.showRematch;
+    ui.rematchBtn.textContent = overlayState.showRematch
+      ? `再来一局(${getRematchCountdownSeconds()}s)`
+      : '再来一局';
+  }
   if (ui.confirmRematchBtn) {
     ui.confirmRematchBtn.hidden = !overlayState.showConfirmRematch;
     ui.confirmRematchBtn.textContent = overlayState.showConfirmRematch
@@ -1053,9 +1061,8 @@ function maybeSpeakRematchConfirmationPrompt() {
 async function maybeExpireRematchRequest() {
   const roomStatus = String(state.room?.status || '').toUpperCase();
   const matchStatus = String(state.match?.status || '').toUpperCase();
-  const rematchRequestedBy = Number(state.room?.rematchRequestedBy || 0);
   if (state.rematchExpireSubmitting) return;
-  if (roomStatus !== 'FINISHED' || matchStatus !== 'FINISHED' || rematchRequestedBy <= 0) return;
+  if (roomStatus !== 'FINISHED' || matchStatus !== 'FINISHED') return;
   if (getRematchCountdownSeconds() > 0) return;
   state.rematchExpireSubmitting = true;
   try {

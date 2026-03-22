@@ -807,3 +807,53 @@ test('rematch request expires after 60 seconds and disbands the room', async () 
     harness.cleanup();
   }
 });
+
+test('finished room without rematch request expires after 60 seconds and disbands the room', async () => {
+  const harness = createHarness();
+  const creatorUserId = seedUser(harness.db, { openid: 'finished-expire-creator', availableBalance: '20.00' });
+  const joinerUserId = seedUser(harness.db, { openid: 'finished-expire-joiner', availableBalance: '20.00' });
+
+  try {
+    const createResponse = await harness.request('POST', '/api/xiangqi/rooms/create', {
+      userId: creatorUserId,
+      stakeAmount: '5.00',
+      timeControlMinutes: 15
+    });
+    const roomCode = createResponse.body.roomCode;
+
+    await harness.request('POST', '/api/xiangqi/rooms/join', {
+      userId: joinerUserId,
+      roomCode
+    });
+    await harness.request('POST', `/api/xiangqi/rooms/${roomCode}/start`, {
+      userId: creatorUserId
+    });
+
+    const room = getRoomByCode(harness.db, roomCode);
+    const match = getMatchByRoomId(harness.db, room.id);
+    await harness.request('POST', `/api/xiangqi/matches/${match.id}/resign`, {
+      userId: joinerUserId
+    });
+
+    harness.db.prepare(`
+      UPDATE xiangqi_rooms
+      SET finished_at = datetime('now', '-61 seconds')
+      WHERE room_code = ?
+    `).run(roomCode);
+
+    const expireResponse = await harness.request('POST', `/api/xiangqi/rooms/${roomCode}/rematch/expire`, {});
+    assert.equal(expireResponse.statusCode, 200);
+    assert.deepEqual(expireResponse.body, {
+      ok: true,
+      status: 'disbanded',
+      roomCode
+    });
+
+    const expiredRoom = getRoomByCode(harness.db, roomCode);
+    assert.equal(expiredRoom.status, 'DISBANDED');
+    assert.equal(expiredRoom.rematch_requested_by, null);
+    assert.equal(String(expiredRoom.rematch_requested_at || ''), '');
+  } finally {
+    harness.cleanup();
+  }
+});

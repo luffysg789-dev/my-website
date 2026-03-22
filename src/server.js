@@ -2737,6 +2737,7 @@ function formatXiangqiRoomItem(room, match = null) {
     rematchRequestedBy: room.rematch_requested_by == null ? null : Number(room.rematch_requested_by),
     rematchRequestedAt: String(room.rematch_requested_at || '').trim(),
     startedAt: String(room.started_at || '').trim(),
+    finishedAt: String(room.finished_at || '').trim(),
     match: match ? formatXiangqiMatchItem(match) : null
   };
 }
@@ -2748,11 +2749,17 @@ function parseSqliteUtcTimestamp(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function isXiangqiRematchRequestExpired(room, nowMs = Date.now()) {
+function getXiangqiRematchExpiryAnchorMs(room) {
   const requestedBy = Number(room?.rematch_requested_by || 0);
   const requestedAtMs = parseSqliteUtcTimestamp(room?.rematch_requested_at);
-  if (requestedBy <= 0 || requestedAtMs <= 0) return false;
-  return nowMs - requestedAtMs >= 60 * 1000;
+  if (requestedBy > 0 && requestedAtMs > 0) return requestedAtMs;
+  return parseSqliteUtcTimestamp(room?.finished_at);
+}
+
+function isXiangqiRematchRequestExpired(room, nowMs = Date.now()) {
+  const anchorMs = getXiangqiRematchExpiryAnchorMs(room);
+  if (anchorMs <= 0) return false;
+  return nowMs - anchorMs >= 60 * 1000;
 }
 
 function getXiangqiRemainingTimers(match) {
@@ -3358,7 +3365,6 @@ const expireXiangqiRoomRematch = db.transaction((payload) => {
   const room = selectXiangqiRoomByCodeStmt.get(payload.roomCode);
   if (!room) return { kind: 'room_not_found' };
   if (String(room.status || '').toUpperCase() !== 'FINISHED') return { kind: 'room_not_finished' };
-  if (Number(room.rematch_requested_by || 0) <= 0) return { kind: 'rematch_not_requested' };
   if (!isXiangqiRematchRequestExpired(room, Number(payload.nowMs || Date.now()))) {
     return { kind: 'rematch_not_expired' };
   }
@@ -4351,9 +4357,6 @@ app.post('/api/xiangqi/rooms/:roomCode/rematch/expire', (req, res) => {
   }
   if (result.kind === 'room_not_finished') {
     return res.status(409).json({ ok: false, error: 'ROOM_NOT_FINISHED' });
-  }
-  if (result.kind === 'rematch_not_requested') {
-    return res.status(409).json({ ok: false, error: 'REMATCH_NOT_REQUESTED' });
   }
   if (result.kind === 'rematch_not_expired') {
     return res.status(409).json({ ok: false, error: 'REMATCH_NOT_EXPIRED' });

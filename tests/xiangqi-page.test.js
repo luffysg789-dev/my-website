@@ -227,7 +227,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.doesNotMatch(js, /function renderDrawActionState\(/);
   assert.match(js, /function getRoomOverlayState\(/);
   assert.match(js, /if \(roomStatus === 'DISBANDED'\)/);
-  assert.match(js, /message: '房间已经解散'/);
+  assert.match(js, /message: '房间已解除'/);
   assert.match(js, /if \(roomStatus === 'DISBANDED'\) \{[\s\S]*?showFinishedActions:\s*true,[\s\S]*?showReturnLobby:\s*true/);
   assert.match(js, /function getRematchCountdownSeconds\(/);
   assert.match(js, /function renderBoardOverlay\(/);
@@ -248,9 +248,10 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /黑方胜/);
   assert.match(js, /if \(matchStatus === 'FINISHED'\)/);
   assert.match(js, /showFinishedActions:\s*true/);
-  assert.match(js, /等待房主再来/);
+  assert.match(js, /等待房主再来\(\$\{getRematchCountdownSeconds\(\)\}s\)/);
   assert.match(js, /确认再来\(\$\{getRematchCountdownSeconds\(\)\}s\)/);
   assert.match(js, /等待挑战者确认再来\(\$\{getRematchCountdownSeconds\(\)\}s\)/);
+  assert.match(js, /再来一局\(\$\{getRematchCountdownSeconds\(\)\}s\)/);
   assert.match(js, /确认再来/);
   assert.match(js, /async function maybeExpireRematchRequest\(/);
   assert.match(js, /\/api\/xiangqi\/rooms\/\$\{encodeURIComponent\(state\.room\.roomCode\)\}\/rematch\/expire/);
