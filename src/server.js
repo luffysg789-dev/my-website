@@ -43,7 +43,7 @@ const NEXA_TIP_AMOUNT = '0.10';
 const NEXA_TIP_CURRENCY = 'USDT';
 const nexaTipOrders = new Map();
 const xiangqiRoomEventStreams = new Map();
-let preferredNexaPaymentVariantName = 'github-doc-order-signed';
+let preferredNexaPaymentVariantName = 'github-doc-strict';
 
 app.set('trust proxy', TRUST_PROXY);
 

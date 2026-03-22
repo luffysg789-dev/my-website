@@ -262,8 +262,31 @@ test('prioritizeNexaPaymentCreateVariants tries the preferred variant first and 
 
   assert.deepEqual(
     ordered.map((item) => item.name),
-    ['github-java-sample', 'github-doc-order-signed', 'github-doc-strict']
+    ['github-java-sample', 'github-doc-strict', 'github-doc-order-signed']
   );
+});
+
+test('prioritizeNexaPaymentCreateVariants prefers github-doc-strict by default', () => {
+  const variants = buildNexaPaymentCreatePayloadVariants({
+    apiKey: 'testAppKey',
+    appSecret: 'testAppSecret',
+    orderNo: 'partner-order-001',
+    amount: '0.10',
+    currency: 'USDT',
+    subject: 'Claw800 打赏',
+    body: '打赏 五子棋',
+    callbackUrl: 'https://claw800.com/gomoku/',
+    notifyUrl: 'https://claw800.com/api/nexa/tip/notify',
+    returnUrl: 'https://claw800.com/gomoku/',
+    openId: 'open-id-123',
+    sessionKey: 'session-123',
+    nonce: 'nonce-3',
+    timestamp: '1615887873123'
+  });
+
+  const prioritized = prioritizeNexaPaymentCreateVariants(variants);
+  assert.equal(prioritized[0].name, 'github-doc-strict');
+  assert.equal(prioritized[1].name, 'github-doc-order-signed');
 });
 
 test('isNexaSignatureError detects common signature error responses', () => {

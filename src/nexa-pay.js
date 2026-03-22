@@ -187,8 +187,8 @@ function prioritizeNexaPaymentCreateVariants(variants = [], preferredName = '') 
   const preferred = String(preferredName || '').trim();
   const priority = [
     preferred,
-    'github-doc-order-signed',
     'github-doc-strict',
+    'github-doc-order-signed',
     'github-java-sample'
   ].filter(Boolean);
 
