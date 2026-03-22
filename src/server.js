@@ -294,7 +294,7 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
     amount: normalizedAmount,
     currency: NEXA_TIP_CURRENCY,
     subject: 'Claw800 打赏',
-    body: `打赏 ${gameName}`,
+    body: gameName,
     notifyUrl: `${baseUrl}/api/nexa/tip/notify`,
     returnUrl: `${baseUrl}${route}`,
     openId: String(openId || '').trim(),
@@ -309,7 +309,7 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
       currency: NEXA_TIP_CURRENCY,
       callbackUrl: `${baseUrl}${route}`,
       subject: 'Claw800 打赏',
-      body: `打赏 ${gameName}`,
+      body: gameName,
       notifyUrl: `${baseUrl}/api/nexa/tip/notify`,
       returnUrl: `${baseUrl}${route}`,
       openId: String(openId || '').trim(),
@@ -2197,7 +2197,7 @@ const selectXiangqiMatchByRoomIdStmt = db.prepare(
 const updateXiangqiMatchPlayingStmt = db.prepare(`
   UPDATE xiangqi_matches
   SET status = 'PLAYING',
-      last_move_at = datetime('now')
+      last_move_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
   WHERE id = ?
 `);
 const selectXiangqiMatchDetailStmt = db.prepare(`
@@ -2213,20 +2213,20 @@ const selectXiangqiMatchDetailStmt = db.prepare(`
     status,
     result,
     winner_user_id,
-    finished_at
-    ,
+    finished_at,
+    last_move_at,
     created_at
   FROM xiangqi_matches
   WHERE id = ?
 `);
 const updateXiangqiMatchStateStmt = db.prepare(`
   UPDATE xiangqi_matches
-  SET current_fen = ?, turn_side = ?, red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = datetime('now')
+  SET current_fen = ?, turn_side = ?, red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
   WHERE id = ?
 `);
 const updateXiangqiMatchFinishedSnapshotStmt = db.prepare(`
   UPDATE xiangqi_matches
-  SET current_fen = ?, red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = datetime('now')
+  SET current_fen = ?, red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
   WHERE id = ?
 `);
 const updateXiangqiMatchSnapshotStmt = db.prepare(`
@@ -2278,7 +2278,7 @@ const markXiangqiMatchSettledStmt = db.prepare(`
 `);
 const updateXiangqiMatchTimeoutStateStmt = db.prepare(`
   UPDATE xiangqi_matches
-  SET red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = datetime('now')
+  SET red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
   WHERE id = ?
 `);
 

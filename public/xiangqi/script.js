@@ -35,8 +35,14 @@ const ui = {
   shell: document.querySelector('.xiangqi-shell'),
   board: document.getElementById('xiangqiBoard'),
   walletAvailable: document.getElementById('xiangqiWalletAvailable'),
-  walletFrozen: document.getElementById('xiangqiWalletFrozen'),
+  ledgerBtn: document.getElementById('xiangqiLedgerBtn'),
+  ledgerModal: document.getElementById('xiangqiLedgerModal'),
+  ledgerList: document.getElementById('xiangqiLedgerList'),
+  ledgerCloseBtn: document.getElementById('xiangqiLedgerCloseBtn'),
   amountModal: document.getElementById('xiangqiAmountModal'),
+  drawConfirmModal: document.getElementById('xiangqiDrawConfirmModal'),
+  drawConfirmAcceptBtn: document.getElementById('xiangqiDrawConfirmAcceptBtn'),
+  drawConfirmRejectBtn: document.getElementById('xiangqiDrawConfirmRejectBtn'),
   amountInput: document.getElementById('xiangqiAmountInput'),
   amountConfirmBtn: document.getElementById('xiangqiAmountConfirmBtn'),
   amountCancelBtn: document.getElementById('xiangqiAmountCancelBtn'),
@@ -97,7 +103,8 @@ const state = {
   timeoutSubmitting: false,
   amountRequest: null,
   moveAudio: null,
-  moveAudioUnlocked: false
+  moveAudioUnlocked: false,
+  ledgerItems: []
 };
 
 function buildPreviewPieces() {
@@ -448,6 +455,71 @@ function sanitizeMoneyInput(value) {
   return normalizedWhole;
 }
 
+function getLedgerEntryPresentation(item) {
+  const type = String(item?.type || '').trim().toLowerCase();
+  const amount = String(item?.amount || '0.00').trim();
+  const rawAmount = Number.parseFloat(amount || '0');
+  const isPositive = rawAmount > 0 || ['deposit_credit', 'withdraw_refund', 'unfreeze_stake', 'match_win'].includes(type);
+  const labelMap = {
+    deposit_credit: '充值到游戏',
+    withdraw_debit: '提现申请',
+    withdraw_refund: '提现驳回退回',
+    freeze_stake: '创建/加入房间冻结',
+    unfreeze_stake: '房间解除或和棋退回',
+    match_win: '本局胜利结算',
+    match_loss: '本局失败结算'
+  };
+
+  return {
+    label: labelMap[type] || '资金变动',
+    amountText: `${isPositive ? '+' : '-'}${amount.replace(/^-/, '')} USDT`,
+    toneClass: isPositive ? 'is-positive' : 'is-negative',
+    timeText: String(item?.createdAt || '').trim().replace('T', ' ').replace(/\.\d+$/, '')
+  };
+}
+
+function renderLedgerList() {
+  if (!ui.ledgerList) return;
+  if (!Array.isArray(state.ledgerItems) || state.ledgerItems.length === 0) {
+    ui.ledgerList.innerHTML = '<p class="xiangqi-ledger-empty">暂无资金明细</p>';
+    return;
+  }
+
+  ui.ledgerList.innerHTML = state.ledgerItems
+    .map((item) => {
+      const entry = getLedgerEntryPresentation(item);
+      return `
+        <article class="xiangqi-ledger-item">
+          <div class="xiangqi-ledger-item__meta">
+            <strong>${entry.label}</strong>
+            <span>${entry.timeText || '刚刚'}</span>
+          </div>
+          <div class="xiangqi-ledger-item__amount ${entry.toneClass}">${entry.amountText}</div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function closeLedgerModal() {
+  if (ui.ledgerModal) {
+    ui.ledgerModal.hidden = true;
+  }
+}
+
+async function openLedgerModal() {
+  if (!state.user?.userId) {
+    setStatus('请先完成 Nexa 登录授权。');
+    return;
+  }
+  const response = await fetchJson(`/api/xiangqi/wallet/ledger?userId=${encodeURIComponent(state.user.userId)}&limit=20`);
+  state.ledgerItems = Array.isArray(response?.items) ? response.items : [];
+  renderLedgerList();
+  if (ui.ledgerModal) {
+    ui.ledgerModal.hidden = false;
+  }
+}
+
 function closeAmountModal() {
   if (ui.amountModal) {
     ui.amountModal.hidden = true;
@@ -456,6 +528,17 @@ function closeAmountModal() {
     ui.amountInput.value = '';
   }
   state.amountRequest = null;
+}
+
+function closeDrawConfirmModal() {
+  if (ui.drawConfirmModal) {
+    ui.drawConfirmModal.hidden = true;
+  }
+}
+
+function openDrawConfirmModal() {
+  if (!ui.drawConfirmModal) return;
+  ui.drawConfirmModal.hidden = false;
 }
 
 function openAmountModal(title, resolve) {
@@ -567,7 +650,6 @@ function getDisplayedCountdownState() {
 
 function renderWallet() {
   if (ui.walletAvailable) ui.walletAvailable.textContent = state.wallet.availableBalance;
-  if (ui.walletFrozen) ui.walletFrozen.textContent = `${state.wallet.frozenBalance} USDT`;
 }
 
 function syncRoomUrl(roomCode) {
@@ -1099,6 +1181,9 @@ function connectRoomEvents(roomCode) {
       state.match = payload.match;
       renderMatch();
       setStatus(`收到${payload.match.pendingDrawOfferSide === 'RED' ? '红方' : '黑方'}的求和请求`);
+      if (String(payload.match.pendingDrawOfferSide || '').toUpperCase() !== getCurrentUserSide()) {
+        openDrawConfirmModal();
+      }
     }
   });
   source.onerror = () => {};
@@ -1367,6 +1452,7 @@ function bindActions() {
   });
   ui.depositBtn?.addEventListener('click', () => beginDepositFlow().catch((error) => setStatus(error.message)));
   ui.withdrawBtn?.addEventListener('click', () => beginWithdrawFlow().catch((error) => setStatus(error.message)));
+  ui.ledgerBtn?.addEventListener('click', () => openLedgerModal().catch((error) => setStatus(error.message)));
   ui.createRoomBtn?.addEventListener('click', () => createRoom().catch((error) => {
     const message = getFriendlyXiangqiErrorMessage(error, 'create_room');
     showCreateRoomInsufficientBalanceAlert(message);
@@ -1418,6 +1504,7 @@ function bindActions() {
       if (response?.match) {
         state.match = response.match;
         renderMatch();
+        closeDrawConfirmModal();
       } else {
         await refreshMatch(state.match.id);
       }
@@ -1435,6 +1522,7 @@ function bindActions() {
       if (response?.match) {
         state.match = response.match;
         renderMatch();
+        closeDrawConfirmModal();
       } else {
         await refreshMatch(state.match.id);
       }
@@ -1486,6 +1574,53 @@ function bindActions() {
     const value = String(ui.amountInput?.value || '').trim();
     closeAmountModal();
     request?.resolve(value);
+  });
+  ui.drawConfirmAcceptBtn?.addEventListener('click', async () => {
+    if (!state.match || !state.user?.userId) return;
+    try {
+      const response = await postJson(`/api/xiangqi/matches/${state.match.id}/draw/respond`, {
+        userId: state.user.userId,
+        accept: true
+      });
+      closeDrawConfirmModal();
+      if (response?.match) {
+        state.match = response.match;
+        renderMatch();
+      } else {
+        await refreshMatch(state.match.id);
+      }
+    } catch (error) {
+      setStatus(error.message);
+    }
+  });
+  ui.drawConfirmRejectBtn?.addEventListener('click', async () => {
+    if (!state.match || !state.user?.userId) return;
+    try {
+      const response = await postJson(`/api/xiangqi/matches/${state.match.id}/draw/respond`, {
+        userId: state.user.userId,
+        accept: false
+      });
+      closeDrawConfirmModal();
+      if (response?.match) {
+        state.match = response.match;
+        renderMatch();
+      } else {
+        await refreshMatch(state.match.id);
+      }
+    } catch (error) {
+      setStatus(error.message);
+    }
+  });
+  ui.drawConfirmModal?.addEventListener('click', (event) => {
+    if (event.target.dataset.drawClose === 'true') {
+      closeDrawConfirmModal();
+    }
+  });
+  ui.ledgerCloseBtn?.addEventListener('click', () => closeLedgerModal());
+  ui.ledgerModal?.addEventListener('click', (event) => {
+    if (event.target.dataset.ledgerClose === 'true') {
+      closeLedgerModal();
+    }
   });
 }
 

@@ -171,12 +171,13 @@ select {
 }
 
 .xiangqi-wallet-card__chips span {
-  min-height: 36px;
-  padding: 0 16px;
-  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.12);
+  min-height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
   font-size: 15px;
   font-weight: 700;
 }
@@ -214,18 +215,8 @@ select {
   color: rgba(255, 255, 255, 0.96);
 }
 
-.xiangqi-wallet-card__frozen {
-  margin: 0;
-  text-align: right;
-  font-size: 14px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.xiangqi-wallet-card__frozen strong {
-  display: block;
-  font-size: 18px;
-  color: #fff;
+.xiangqi-wallet-action--ledger {
+  min-width: 96px;
 }
 
 .xiangqi-room-grid {
@@ -815,6 +806,86 @@ select {
   font-weight: 800;
 }
 
+.xiangqi-draw-confirm-sheet {
+  max-width: 420px;
+}
+
+.xiangqi-draw-confirm-copy {
+  margin: 8px 0 0;
+  color: var(--xiangqi-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.xiangqi-draw-confirm-actions {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.xiangqi-ledger-sheet {
+  max-width: 420px;
+}
+
+.xiangqi-ledger-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+}
+
+.xiangqi-ledger-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #f7f5f1;
+  border: 1px solid rgba(108, 75, 28, 0.12);
+}
+
+.xiangqi-ledger-item__meta {
+  display: grid;
+  gap: 4px;
+}
+
+.xiangqi-ledger-item__meta strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #241f1a;
+}
+
+.xiangqi-ledger-item__meta span {
+  font-size: 12px;
+  color: #887f74;
+}
+
+.xiangqi-ledger-item__amount {
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.xiangqi-ledger-item__amount.is-positive {
+  color: #159766;
+}
+
+.xiangqi-ledger-item__amount.is-negative {
+  color: #bf3b31;
+}
+
+.xiangqi-ledger-empty {
+  margin: 0;
+  padding: 22px 12px;
+  border-radius: 18px;
+  background: #f7f5f1;
+  text-align: center;
+  color: #887f74;
+  font-size: 14px;
+}
+
 .xiangqi-amount-input::placeholder {
   color: #a09a95;
 }
@@ -978,8 +1049,6 @@ select {
   }
 
   .xiangqi-wallet-card__chips span {
-    min-height: 30px;
-    padding: 0 12px;
     font-size: 13px;
   }
 
@@ -995,12 +1064,8 @@ select {
     font-size: 14px;
   }
 
-  .xiangqi-wallet-card__frozen {
-    font-size: 12px;
-  }
-
-  .xiangqi-wallet-card__frozen strong {
-    font-size: 16px;
+  .xiangqi-wallet-action--ledger {
+    min-width: 82px;
   }
 
   .xiangqi-room-grid {

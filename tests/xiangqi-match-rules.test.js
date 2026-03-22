@@ -248,7 +248,8 @@ test('legal moves update stored state', async () => {
     assert.equal(moveResponse.body.match.blackUserId, context.blackUserId);
     assert.equal(moveResponse.body.match.turnSide, 'BLACK');
     assert.equal(moveResponse.body.match.redTimeLeftMs > 0, true);
-    assert.equal(moveResponse.body.match.blackTimeLeftMs > 0, true);
+    assert.equal(moveResponse.body.match.blackTimeLeftMs <= 15 * 60 * 1000, true);
+    assert.equal(moveResponse.body.match.blackTimeLeftMs >= 15 * 60 * 1000 - 250, true);
     assert.equal(moveResponse.body.match.pendingDrawOfferSide, null);
     assert.equal(Array.isArray(moveResponse.body.match.pieces), true);
     assert.equal(matchResponse.statusCode, 200);

@@ -6,7 +6,7 @@
     <title>Claw800 中国象棋在线</title>
     <meta name="description" content="Claw800 中国象棋在线，支持真钱房间、USDT 充值提现与手机实时对战。" />
     <link rel="stylesheet" href="/game-tip.css?v=20260321-01" />
-    <link rel="stylesheet" href="/xiangqi/style.css?v=20260322-23" />
+    <link rel="stylesheet" href="/xiangqi/style.css?v=20260322-24" />
   </head>
   <body>
     <main class="xiangqi-page">
@@ -28,7 +28,7 @@
               <button id="xiangqiDepositBtn" class="xiangqi-wallet-action xiangqi-wallet-action--primary" type="button" aria-label="充值到游戏账户">充值</button>
               <button id="xiangqiWithdrawBtn" class="xiangqi-wallet-action xiangqi-wallet-action--ghost" type="button">提现</button>
             </div>
-            <p class="xiangqi-wallet-card__frozen">冻结中 <strong id="xiangqiWalletFrozen">0.00 USDT</strong></p>
+            <button id="xiangqiLedgerBtn" class="xiangqi-wallet-action xiangqi-wallet-action--ghost xiangqi-wallet-action--ledger" type="button">资金明细</button>
           </div>
         </section>
 
@@ -145,13 +145,41 @@
           <button id="xiangqiAmountConfirmBtn" class="xiangqi-room-cta" type="button">确认</button>
         </section>
       </div>
+
+      <div id="xiangqiDrawConfirmModal" class="xiangqi-amount-modal" hidden>
+        <div class="xiangqi-amount-modal__backdrop" data-draw-close="true"></div>
+        <section class="xiangqi-amount-sheet xiangqi-draw-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="xiangqiDrawConfirmTitle">
+          <div class="xiangqi-amount-sheet__head">
+            <strong id="xiangqiDrawConfirmTitle">对手发起求和</strong>
+            <button class="xiangqi-amount-sheet__close" type="button" data-draw-close="true" aria-label="关闭">取消</button>
+          </div>
+          <p class="xiangqi-draw-confirm-copy">是否同意本局求和？</p>
+          <div class="xiangqi-draw-confirm-actions">
+            <button id="xiangqiDrawConfirmRejectBtn" class="xiangqi-secondary-btn" type="button">拒绝</button>
+            <button id="xiangqiDrawConfirmAcceptBtn" class="xiangqi-room-cta" type="button">同意</button>
+          </div>
+        </section>
+      </div>
+
+      <div id="xiangqiLedgerModal" class="xiangqi-amount-modal" hidden>
+        <div class="xiangqi-amount-modal__backdrop" data-ledger-close="true"></div>
+        <section class="xiangqi-amount-sheet xiangqi-ledger-sheet" role="dialog" aria-modal="true" aria-labelledby="xiangqiLedgerTitle">
+          <div class="xiangqi-amount-sheet__head">
+            <strong id="xiangqiLedgerTitle">资金明细</strong>
+            <button id="xiangqiLedgerCloseBtn" class="xiangqi-amount-sheet__close" type="button" aria-label="关闭">关闭</button>
+          </div>
+          <div id="xiangqiLedgerList" class="xiangqi-ledger-list">
+            <p class="xiangqi-ledger-empty">暂无资金明细</p>
+          </div>
+        </section>
+      </div>
     </main>
 
     <script src="/games-config.js?v=20260322-01"></script>
     <script>
       window.ClawGamesConfig?.bootstrapGamePage?.('xiangqi');
     </script>
-    <script src="/xiangqi/script.js?v=20260322-24"></script>
+    <script src="/xiangqi/script.js?v=20260322-25"></script>
     <script src="/game-tip.js?v=20260321-01"></script>
   </body>
 </html>
