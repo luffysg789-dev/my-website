@@ -64,6 +64,47 @@ function createHarness() {
         req.emit('end');
       });
     },
+    async requestSse(routePath) {
+      return new Promise((resolve, reject) => {
+        const req = new EventEmitter();
+        req.method = 'GET';
+        req.url = routePath;
+        req.originalUrl = routePath;
+        req.headers = {};
+        req.connection = {};
+        req.socket = {};
+
+        const res = new EventEmitter();
+        res.statusCode = 200;
+        res.headers = {};
+        res.locals = {};
+        res.setHeader = function setHeader(name, value) {
+          this.headers[String(name).toLowerCase()] = value;
+        };
+        res.getHeader = function getHeader(name) {
+          return this.headers[String(name).toLowerCase()];
+        };
+        res.removeHeader = function removeHeader(name) {
+          delete this.headers[String(name).toLowerCase()];
+        };
+        res.flushHeaders = function flushHeaders() {};
+        res.write = function write(chunk) {
+          process.nextTick(() => {
+            req.emit('close');
+            res.emit('close');
+          });
+          resolve({
+            statusCode: this.statusCode,
+            headers: this.headers,
+            chunk: Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk || '')
+          });
+          return true;
+        };
+        res.end = function end() {};
+
+        app.handle(req, res, reject);
+      });
+    },
     cleanup() {
       db.close();
       delete require.cache[require.resolve(serverModulePath)];
@@ -128,6 +169,30 @@ test('create room rejects when balance is insufficient', async () => {
     assert.equal(getWallet(harness.db, userId).available_balance, '3.00');
     assert.equal(getWallet(harness.db, userId).frozen_balance, '0.00');
     assert.equal(harness.db.prepare('SELECT COUNT(*) AS count FROM xiangqi_rooms').get().count, 0);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('room events stream disables proxy buffering for realtime match sync', async () => {
+  const harness = createHarness();
+  const creatorUserId = seedUser(harness.db, { openid: 'events-creator', availableBalance: '20.00' });
+
+  try {
+    const createResponse = await harness.request('POST', '/api/xiangqi/rooms/create', {
+      userId: creatorUserId,
+      stakeAmount: '1.00',
+      timeControlMinutes: 15
+    });
+    const roomCode = createResponse.body.roomCode;
+
+    const response = await harness.requestSse(`/api/xiangqi/rooms/${roomCode}/events`);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers['content-type'], 'text/event-stream; charset=utf-8');
+    assert.equal(response.headers['cache-control'], 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    assert.equal(response.headers['x-accel-buffering'], 'no');
+    assert.match(response.chunk, /event: room\.snapshot/);
   } finally {
     harness.cleanup();
   }
@@ -216,7 +281,7 @@ test('join room rejects when balance is insufficient', async () => {
   }
 });
 
-test('join room freezes stake, marks room ready, and creates the match', async () => {
+test('join room freezes stake, marks room ready, and creates a ready match', async () => {
   const harness = createHarness();
   const creatorUserId = seedUser(harness.db, { openid: 'ready-creator', availableBalance: '20.00' });
   const joinerUserId = seedUser(harness.db, { openid: 'ready-joiner', availableBalance: '12.00' });
@@ -250,7 +315,7 @@ test('join room freezes stake, marks room ready, and creates the match', async (
       },
       {
         joiner_user_id: joinerUserId,
-        status: 'PLAYING'
+        status: 'READY'
       }
     );
 
@@ -274,7 +339,7 @@ test('join room freezes stake, marks room ready, and creates the match', async (
         turn_side: 'RED',
         red_time_left_ms: 1800000,
         black_time_left_ms: 1800000,
-        status: 'PLAYING'
+        status: 'READY'
       }
     );
 
@@ -300,6 +365,46 @@ test('join room freezes stake, marks room ready, and creates the match', async (
         remark: 'room join freeze'
       }
     ]);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('start room transitions a ready match into playing state', async () => {
+  const harness = createHarness();
+  const creatorUserId = seedUser(harness.db, { openid: 'start-creator', availableBalance: '20.00' });
+  const joinerUserId = seedUser(harness.db, { openid: 'start-joiner', availableBalance: '20.00' });
+
+  try {
+    const createResponse = await harness.request('POST', '/api/xiangqi/rooms/create', {
+      userId: creatorUserId,
+      stakeAmount: '5.00',
+      timeControlMinutes: 15
+    });
+    const roomCode = createResponse.body.roomCode;
+
+    const joinResponse = await harness.request('POST', '/api/xiangqi/rooms/join', {
+      userId: joinerUserId,
+      roomCode
+    });
+
+    const startResponse = await harness.request('POST', `/api/xiangqi/rooms/${roomCode}/start`, {
+      userId: creatorUserId
+    });
+
+    assert.equal(startResponse.statusCode, 200);
+    assert.deepEqual(startResponse.body, {
+      ok: true,
+      status: 'playing',
+      roomCode,
+      matchId: joinResponse.body.matchId
+    });
+
+    const room = getRoomByCode(harness.db, roomCode);
+    const match = getMatchByRoomId(harness.db, room.id);
+    assert.equal(room.status, 'PLAYING');
+    assert.equal(match.status, 'PLAYING');
+    assert.ok(room.started_at);
   } finally {
     harness.cleanup();
   }
@@ -434,7 +539,7 @@ test('cancel is rejected after a room has been joined', async () => {
       error: 'ROOM_NOT_CANCELABLE'
     });
     const room = getRoomByCode(harness.db, createResponse.body.roomCode);
-    assert.equal(room.status, 'PLAYING');
+    assert.equal(room.status, 'READY');
     assert.equal(getWallet(harness.db, creatorUserId).available_balance, '15.00');
     assert.equal(getWallet(harness.db, creatorUserId).frozen_balance, '5.00');
     assert.equal(getWallet(harness.db, joinerUserId).available_balance, '15.00');

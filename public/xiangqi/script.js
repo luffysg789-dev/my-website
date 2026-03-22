@@ -44,10 +44,17 @@ const ui = {
   roomBadge: document.getElementById('xiangqiRoomBadge'),
   matchStake: document.getElementById('xiangqiMatchStake'),
   matchStatus: document.getElementById('xiangqiMatchStatus'),
-  redPlayer: document.getElementById('xiangqiRedPlayer'),
-  blackPlayer: document.getElementById('xiangqiBlackPlayer'),
-  redTime: document.getElementById('xiangqiRedTime'),
-  blackTime: document.getElementById('xiangqiBlackTime'),
+  topCard: document.getElementById('xiangqiTopCard'),
+  topSide: document.getElementById('xiangqiTopSide'),
+  topPlayer: document.getElementById('xiangqiTopPlayer'),
+  topTime: document.getElementById('xiangqiTopTime'),
+  bottomCard: document.getElementById('xiangqiBottomCard'),
+  bottomSide: document.getElementById('xiangqiBottomSide'),
+  bottomPlayer: document.getElementById('xiangqiBottomPlayer'),
+  bottomTime: document.getElementById('xiangqiBottomTime'),
+  boardOverlay: document.getElementById('xiangqiBoardOverlay'),
+  boardOverlayMessage: document.getElementById('xiangqiBoardOverlayMessage'),
+  startMatchBtn: document.getElementById('xiangqiStartMatchBtn'),
   createStake: document.getElementById('xiangqiCreateStake'),
   createTimeControl: document.getElementById('xiangqiCreateTimeControl'),
   joinRoomCode: document.getElementById('xiangqiJoinRoomCode'),
@@ -337,6 +344,13 @@ function getFriendlyXiangqiErrorMessage(error, context = '') {
   return String(error?.message || '操作失败，请稍后再试。');
 }
 
+function showCreateRoomInsufficientBalanceAlert(message) {
+  if (message !== '余额不足，无法创建房间。') return;
+  if (typeof window.alert === 'function') {
+    window.alert('余额不足，无法创建房间。');
+  }
+}
+
 function sanitizeMoneyInput(value) {
   const raw = String(value || '');
   let next = raw.replace(/,/g, '.').replace(/[^\d.]/g, '');
@@ -436,18 +450,61 @@ function renderRoomSummary() {
   `;
 }
 
-function renderPlayers() {
-  if (!state.match) {
-    ui.redPlayer.textContent = '房主';
-    ui.blackPlayer.textContent = '挑战者';
-    ui.redTime.textContent = '15:00';
-    ui.blackTime.textContent = '15:00';
-    return;
+function getPlayerCardsViewModel() {
+  const room = state.room;
+  const match = state.match;
+  const currentUserId = Number(state.user?.userId || 0);
+  const creatorUserId = Number(room?.creatorUserId || match?.redUserId || 0);
+  const joinerUserId = Number(room?.joinerUserId || match?.blackUserId || 0);
+  const isBlackSeat = currentUserId > 0 && currentUserId === joinerUserId;
+  const isRedSeat = currentUserId > 0 && currentUserId === creatorUserId;
+
+  const topSeat = isBlackSeat
+    ? { side: 'RED', label: '红方', name: '房主', userId: creatorUserId }
+    : { side: 'BLACK', label: '黑方', name: joinerUserId ? '挑战者' : '挑战者', userId: joinerUserId || null };
+  const bottomSeat = isBlackSeat
+    ? { side: 'BLACK', label: '黑方', name: '你', userId: joinerUserId || currentUserId || null }
+    : { side: 'RED', label: '红方', name: isRedSeat ? '你' : '房主', userId: creatorUserId || null };
+
+  if (match) {
+    if (topSeat.side === 'RED') {
+      topSeat.name = Number(match.redUserId) === currentUserId ? '你' : '房主';
+      bottomSeat.name = Number(match.blackUserId) === currentUserId ? '你' : '挑战者';
+    } else {
+      topSeat.name = Number(match.blackUserId) === currentUserId ? '你' : '挑战者';
+      bottomSeat.name = Number(match.redUserId) === currentUserId ? '你' : '房主';
+    }
   }
-  ui.redPlayer.textContent = Number(state.user?.userId) === Number(state.match.redUserId) ? '你' : `红方 ${state.match.redUserId}`;
-  ui.blackPlayer.textContent = Number(state.user?.userId) === Number(state.match.blackUserId) ? '你' : `黑方 ${state.match.blackUserId}`;
-  ui.redTime.textContent = formatTime(state.match.redTimeLeftMs);
-  ui.blackTime.textContent = formatTime(state.match.blackTimeLeftMs);
+
+  return {
+    top: topSeat,
+    bottom: bottomSeat,
+    redTime: formatTime(match?.redTimeLeftMs || Number(room?.timeControlMinutes || 15) * 60 * 1000),
+    blackTime: formatTime(match?.blackTimeLeftMs || Number(room?.timeControlMinutes || 15) * 60 * 1000)
+  };
+}
+
+function applyPlayerCardTone(element, side) {
+  if (!element) return;
+  const normalizedSide = String(side || '').toUpperCase();
+  element.classList.toggle('xiangqi-player-card--red', normalizedSide === 'RED');
+  element.classList.toggle('xiangqi-player-card--black', normalizedSide === 'BLACK');
+}
+
+function renderPlayers() {
+  const viewModel = getPlayerCardsViewModel();
+  applyPlayerCardTone(ui.topCard, viewModel.top.side);
+  applyPlayerCardTone(ui.bottomCard, viewModel.bottom.side);
+  if (ui.topSide) ui.topSide.textContent = viewModel.top.label;
+  if (ui.topPlayer) ui.topPlayer.textContent = viewModel.top.name;
+  if (ui.topTime) {
+    ui.topTime.textContent = viewModel.top.side === 'RED' ? viewModel.redTime : viewModel.blackTime;
+  }
+  if (ui.bottomSide) ui.bottomSide.textContent = viewModel.bottom.label;
+  if (ui.bottomPlayer) ui.bottomPlayer.textContent = viewModel.bottom.name;
+  if (ui.bottomTime) {
+    ui.bottomTime.textContent = viewModel.bottom.side === 'RED' ? viewModel.redTime : viewModel.blackTime;
+  }
 }
 
 function syncStakePresetButtons() {
@@ -468,10 +525,30 @@ function getRenderablePieces() {
   if (Array.isArray(state.match?.pieces) && state.match.pieces.length > 0) {
     return state.match.pieces;
   }
-  if (state.room && !state.match) {
+  if (state.room) {
     return buildPreviewPieces();
   }
   return [];
+}
+
+function getRoomOverlayState() {
+  const roomStatus = String(state.room?.status || '').toUpperCase();
+  const matchStatus = String(state.match?.status || '').toUpperCase();
+  if (roomStatus === 'WAITING') {
+    return { visible: true, message: '等待对手加入', showStart: false };
+  }
+  if (roomStatus === 'READY' || matchStatus === 'READY') {
+    return { visible: true, message: '双方已到齐，点击开始', showStart: true };
+  }
+  return { visible: false, message: '', showStart: false };
+}
+
+function renderBoardOverlay() {
+  if (!ui.boardOverlay || !ui.boardOverlayMessage || !ui.startMatchBtn) return;
+  const overlayState = getRoomOverlayState();
+  ui.boardOverlay.hidden = !overlayState.visible;
+  ui.boardOverlayMessage.textContent = overlayState.message;
+  ui.startMatchBtn.hidden = !overlayState.showStart;
 }
 
 function buildBoardMarkup() {
@@ -563,6 +640,7 @@ function renderMatch() {
   renderRoomSummary();
   renderPlayers();
   buildBoardMarkup();
+  renderBoardOverlay();
   syncStakePresetButtons();
   syncTimePresetButtons();
   const isCancelableWaitingRoom = Boolean(
@@ -584,7 +662,9 @@ function renderMatch() {
     const side = getCurrentUserSide();
     const turnText = state.match.status === 'FINISHED'
       ? `本局结果 ${state.match.result || '已结束'}`
-      : `轮到 ${state.match.turnSide === 'RED' ? '红方' : '黑方'} 行棋${side ? `，你是${side === 'RED' ? '红方' : '黑方'}` : ''}`;
+      : String(state.match.status || '').toUpperCase() === 'READY'
+        ? '双方已进入房间，等待点击开始'
+        : `轮到 ${state.match.turnSide === 'RED' ? '红方' : '黑方'} 行棋${side ? `，你是${side === 'RED' ? '红方' : '黑方'}` : ''}`;
     setStatus(turnText);
   } else if (state.room) {
     setStatus('等待对手加入');
@@ -947,6 +1027,14 @@ async function joinRoom() {
   connectRoomEvents(roomCode);
 }
 
+async function startReadyMatch() {
+  if (!state.room?.roomCode || !state.user?.userId) return;
+  await postJson(`/api/xiangqi/rooms/${encodeURIComponent(state.room.roomCode)}/start`, {
+    userId: state.user.userId
+  });
+  await refreshRoom(state.room.roomCode);
+}
+
 async function cancelWaitingRoom() {
   if (!state.user?.userId || !state.room?.roomCode) return;
 
@@ -1029,8 +1117,13 @@ function bindActions() {
   primeMoveAudio();
   ui.depositBtn?.addEventListener('click', () => beginDepositFlow().catch((error) => setStatus(error.message)));
   ui.withdrawBtn?.addEventListener('click', () => beginWithdrawFlow().catch((error) => setStatus(error.message)));
-  ui.createRoomBtn?.addEventListener('click', () => createRoom().catch((error) => setStatus(getFriendlyXiangqiErrorMessage(error, 'create_room'))));
+  ui.createRoomBtn?.addEventListener('click', () => createRoom().catch((error) => {
+    const message = getFriendlyXiangqiErrorMessage(error, 'create_room');
+    showCreateRoomInsufficientBalanceAlert(message);
+    setStatus(message);
+  }));
   ui.joinRoomBtn?.addEventListener('click', () => joinRoom().catch((error) => setStatus(getFriendlyXiangqiErrorMessage(error, 'join_room'))));
+  ui.startMatchBtn?.addEventListener('click', () => startReadyMatch().catch((error) => setStatus(error.message)));
   ui.cancelRoomBtn?.addEventListener('click', () => cancelWaitingRoom().catch((error) => setStatus(error.message)));
   ui.stakePresetButtons.forEach((button) => {
     button.addEventListener('click', () => {

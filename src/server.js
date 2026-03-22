@@ -2170,7 +2170,12 @@ const insertXiangqiRoomStmt = db.prepare(`
 `);
 const updateXiangqiRoomReadyStmt = db.prepare(`
   UPDATE xiangqi_rooms
-  SET joiner_user_id = ?, status = 'PLAYING', started_at = datetime('now')
+  SET joiner_user_id = ?, status = 'READY'
+  WHERE id = ?
+`);
+const updateXiangqiRoomPlayingStmt = db.prepare(`
+  UPDATE xiangqi_rooms
+  SET status = 'PLAYING', started_at = datetime('now')
   WHERE id = ?
 `);
 const insertXiangqiMatchStmt = db.prepare(`
@@ -2184,11 +2189,17 @@ const insertXiangqiMatchStmt = db.prepare(`
     black_time_left_ms,
     status
   )
-  VALUES (?, ?, ?, ?, 'RED', ?, ?, 'PLAYING')
+  VALUES (?, ?, ?, ?, 'RED', ?, ?, 'READY')
 `);
 const selectXiangqiMatchByRoomIdStmt = db.prepare(
   'SELECT id, status FROM xiangqi_matches WHERE room_id = ?'
 );
+const updateXiangqiMatchPlayingStmt = db.prepare(`
+  UPDATE xiangqi_matches
+  SET status = 'PLAYING',
+      last_move_at = datetime('now')
+  WHERE id = ?
+`);
 const selectXiangqiMatchDetailStmt = db.prepare(`
   SELECT
     id,
@@ -2318,6 +2329,7 @@ function emitXiangqiRoomEvent(roomCode, event, payload = {}) {
   for (const res of listeners) {
     try {
       res.write(data);
+      if (typeof res.flush === 'function') res.flush();
     } catch {}
   }
 }
@@ -3093,6 +3105,34 @@ const joinXiangqiRoom = db.transaction((payload) => {
   };
 });
 
+const startXiangqiRoom = db.transaction((payload) => {
+  const room = selectXiangqiRoomByCodeStmt.get(payload.roomCode);
+  if (!room) return { kind: 'room_not_found' };
+  if (String(room.status || '') !== 'READY') return { kind: 'room_not_ready' };
+
+  const requesterUserId = Number(payload.userId);
+  if (
+    requesterUserId !== Number(room.creator_user_id) &&
+    requesterUserId !== Number(room.joiner_user_id)
+  ) {
+    return { kind: 'room_forbidden' };
+  }
+
+  const match = selectXiangqiMatchByRoomIdStmt.get(room.id);
+  if (!match) return { kind: 'match_not_found' };
+  if (String(match.status || '') !== 'READY') return { kind: 'match_not_ready' };
+
+  updateXiangqiRoomPlayingStmt.run(room.id);
+  updateXiangqiMatchPlayingStmt.run(match.id);
+
+  return {
+    kind: 'started',
+    roomCode: room.room_code,
+    roomId: Number(room.id),
+    matchId: Number(match.id)
+  };
+});
+
 const cancelXiangqiRoom = db.transaction((payload) => {
   const room = selectXiangqiRoomByCodeStmt.get(payload.roomCode);
   if (!room) return { kind: 'room_not_found' };
@@ -3864,6 +3904,53 @@ app.post('/api/xiangqi/rooms/join', (req, res) => {
   }
 });
 
+app.post('/api/xiangqi/rooms/:roomCode/start', (req, res) => {
+  if (!shouldHandleXiangqiRoomBody(req)) {
+    return respondXiangqiRoomNotImplemented(res);
+  }
+
+  const userId = Number(req.body.userId);
+  const roomCode = String(req.params.roomCode || '').trim().toUpperCase();
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+  }
+  if (!roomCode) {
+    return res.status(400).json({ ok: false, error: 'INVALID_ROOM_CODE' });
+  }
+
+  const result = startXiangqiRoom({ userId, roomCode });
+  if (result.kind === 'room_not_found') {
+    return res.status(404).json({ ok: false, error: 'ROOM_NOT_FOUND' });
+  }
+  if (result.kind === 'room_not_ready') {
+    return res.status(409).json({ ok: false, error: 'ROOM_NOT_READY' });
+  }
+  if (result.kind === 'room_forbidden') {
+    return res.status(403).json({ ok: false, error: 'ROOM_FORBIDDEN' });
+  }
+  if (result.kind === 'match_not_found') {
+    return res.status(404).json({ ok: false, error: 'MATCH_NOT_FOUND' });
+  }
+  if (result.kind === 'match_not_ready') {
+    return res.status(409).json({ ok: false, error: 'MATCH_NOT_READY' });
+  }
+
+  const room = selectXiangqiRoomByCodeStmt.get(result.roomCode);
+  const match = selectXiangqiMatchDetailStmt.get(result.matchId);
+  emitXiangqiRoomEvent(result.roomCode, 'room.updated', {
+    room: formatXiangqiRoomItem(room, match)
+  });
+  emitXiangqiRoomEvent(result.roomCode, 'match.updated', {
+    match: formatXiangqiMatchItem(match)
+  });
+  return res.json({
+    ok: true,
+    status: 'playing',
+    roomCode: result.roomCode,
+    matchId: result.matchId
+  });
+});
+
 app.post('/api/xiangqi/rooms/cancel', (req, res) => {
   if (!shouldHandleXiangqiRoomBody(req)) {
     return respondXiangqiRoomNotImplemented(res);
@@ -3965,8 +4052,9 @@ app.get('/api/xiangqi/rooms/:roomCode/events', (req, res) => {
 
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
   const listeners = getXiangqiRoomStreamSet(roomCode);

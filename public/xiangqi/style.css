@@ -410,6 +410,48 @@ select {
   padding: 0 10px;
 }
 
+.xiangqi-board-overlay {
+  position: absolute;
+  inset: 0 10px 0 10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.xiangqi-board-overlay[hidden] {
+  display: none;
+}
+
+.xiangqi-board-overlay__message {
+  margin: 0;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: rgba(32, 29, 25, 0.76);
+  color: #fff5de;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 10px 24px rgba(36, 25, 15, 0.18);
+}
+
+.xiangqi-board-overlay__start {
+  min-width: 136px;
+  min-height: 54px;
+  padding: 0 28px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #df4b33 0%, #bd2718 100%);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(137, 33, 22, 0.24);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 .xiangqi-board-head {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -429,6 +471,16 @@ select {
 
 .xiangqi-player-card {
   flex: 1 1 0;
+}
+
+.xiangqi-player-card--red {
+  border-color: rgba(145, 28, 33, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(196, 91, 96, 0.34);
+}
+
+.xiangqi-player-card--black {
+  border-color: rgba(35, 31, 28, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(89, 83, 78, 0.28);
 }
 
 .xiangqi-side {
@@ -809,6 +861,10 @@ select {
     padding: 0 8px;
   }
 
+  .xiangqi-board-overlay {
+    inset: 0 8px 0 8px;
+  }
+
   .xiangqi-board {
     border-radius: 20px;
   }
@@ -917,6 +973,23 @@ select {
   .xiangqi-board-stage {
     margin-bottom: 14px;
     padding: 0 6px;
+  }
+
+  .xiangqi-board-overlay {
+    inset: 0 6px 0 6px;
+    gap: 10px;
+  }
+
+  .xiangqi-board-overlay__message {
+    padding: 10px 16px;
+    font-size: 16px;
+  }
+
+  .xiangqi-board-overlay__start {
+    min-width: 108px;
+    min-height: 46px;
+    padding: 0 20px;
+    font-size: 18px;
   }
 
   .xiangqi-board-head {

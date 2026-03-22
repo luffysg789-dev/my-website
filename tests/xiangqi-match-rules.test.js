@@ -111,6 +111,9 @@ async function createPlayingMatch(harness) {
     userId: blackUserId,
     roomCode: createResponse.body.roomCode
   });
+  await harness.request('POST', `/api/xiangqi/rooms/${createResponse.body.roomCode}/start`, {
+    userId: redUserId
+  });
 
   return {
     redUserId,
@@ -119,6 +122,38 @@ async function createPlayingMatch(harness) {
     matchId: joinResponse.body.matchId
   };
 }
+
+test('moves are blocked until a ready room is explicitly started', async () => {
+  const harness = createHarness();
+
+  try {
+    const redUserId = seedUser(harness.db, { openid: 'rules-ready-red' });
+    const blackUserId = seedUser(harness.db, { openid: 'rules-ready-black' });
+    const createResponse = await harness.request('POST', '/api/xiangqi/rooms/create', {
+      userId: redUserId,
+      stakeAmount: '5.00',
+      timeControlMinutes: 15
+    });
+    const joinResponse = await harness.request('POST', '/api/xiangqi/rooms/join', {
+      userId: blackUserId,
+      roomCode: createResponse.body.roomCode
+    });
+
+    const response = await harness.request('POST', `/api/xiangqi/matches/${joinResponse.body.matchId}/move`, {
+      userId: redUserId,
+      from: { file: 0, rank: 6 },
+      to: { file: 0, rank: 5 }
+    });
+
+    assert.equal(response.statusCode, 409);
+    assert.deepEqual(response.body, {
+      ok: false,
+      error: 'MATCH_NOT_PLAYING'
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
 
 function getWallet(db, userId) {
   return db.prepare('SELECT available_balance, frozen_balance FROM game_wallets WHERE user_id = ?').get(userId);

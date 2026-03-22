@@ -66,7 +66,7 @@
               <span class="xiangqi-room-card__icon xiangqi-room-card__icon--blue">→</span>
               <h2>加入房间</h2>
             </div>
-            <input id="xiangqiJoinRoomCode" class="xiangqi-room-input" type="text" inputmode="text" maxlength="6" placeholder="输入 6 位房间号" />
+            <input id="xiangqiJoinRoomCode" class="xiangqi-room-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="输入 6 位房间号" />
             <div id="xiangqiRoomSummary" class="xiangqi-room-summary">
               <strong>等待房间</strong>
               <p>输入房间号后即可查看本局 stake 与局时。</p>
@@ -79,10 +79,10 @@
 
         <section class="xiangqi-board-wrap">
           <div class="xiangqi-board-head">
-            <div class="xiangqi-player-card xiangqi-player-card--black">
-              <span class="xiangqi-side">黑方</span>
-              <strong id="xiangqiBlackPlayer">挑战者</strong>
-              <p id="xiangqiBlackTime">15:00</p>
+            <div id="xiangqiTopCard" class="xiangqi-player-card xiangqi-player-card--black">
+              <span id="xiangqiTopSide" class="xiangqi-side">黑方</span>
+              <strong id="xiangqiTopPlayer">挑战者</strong>
+              <p id="xiangqiTopTime">15:00</p>
             </div>
             <div class="xiangqi-match-pill">
               <span id="xiangqiRoomBadge">房间号: <span class="xiangqi-room-badge__value">000000</span></span>
@@ -92,6 +92,10 @@
           </div>
 
           <div class="xiangqi-board-stage">
+            <div id="xiangqiBoardOverlay" class="xiangqi-board-overlay" hidden>
+              <p id="xiangqiBoardOverlayMessage" class="xiangqi-board-overlay__message">等待对手加入</p>
+              <button id="xiangqiStartMatchBtn" class="xiangqi-board-overlay__start" type="button" hidden>开始</button>
+            </div>
             <section id="xiangqiBoard" class="xiangqi-board" aria-label="中国象棋棋盘"></section>
           </div>
 
@@ -102,10 +106,10 @@
             <button id="xiangqiCancelRoomBtn" class="xiangqi-secondary-btn xiangqi-secondary-btn--cancel-room" type="button" disabled>解除房间</button>
           </div>
 
-          <div class="xiangqi-player-card xiangqi-player-card--footer xiangqi-player-card--red">
-            <span class="xiangqi-side">红方</span>
-            <strong id="xiangqiRedPlayer">房主</strong>
-            <p id="xiangqiRedTime">15:00</p>
+          <div id="xiangqiBottomCard" class="xiangqi-player-card xiangqi-player-card--footer xiangqi-player-card--red">
+            <span id="xiangqiBottomSide" class="xiangqi-side">红方</span>
+            <strong id="xiangqiBottomPlayer">房主</strong>
+            <p id="xiangqiBottomTime">15:00</p>
           </div>
         </section>
       </section>
@@ -141,7 +145,7 @@
     <script>
       window.ClawGamesConfig?.bootstrapGamePage?.('xiangqi');
     </script>
-    <script src="/xiangqi/script.js?v=20260322-21"></script>
+    <script src="/xiangqi/script.js?v=20260322-24"></script>
     <script src="/game-tip.js?v=20260321-01"></script>
   </body>
 </html>
