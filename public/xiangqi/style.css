@@ -152,7 +152,7 @@ select {
 }
 
 .xiangqi-wallet-card__amount strong {
-  font-size: clamp(44px, 8vw, 62px);
+  font-size: clamp(20px, 3.5vw, 28px);
   line-height: 0.9;
   font-weight: 900;
 }
@@ -810,7 +810,7 @@ select {
   }
 
   .xiangqi-wallet-card__amount strong {
-    font-size: clamp(42px, 15vw, 56px);
+    font-size: 18px;
   }
 
   .xiangqi-wallet-card__amount span {
