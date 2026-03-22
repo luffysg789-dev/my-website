@@ -317,7 +317,7 @@ select {
   border: none;
   background: #f7f7f7;
   color: var(--xiangqi-text);
-  box-shadow: inset 0 0 0 1px rgba(35, 31, 28, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(15, 152, 113, 0.42);
 }
 
 .xiangqi-room-input {
@@ -451,6 +451,35 @@ select {
   box-shadow: 0 12px 24px rgba(137, 33, 22, 0.24);
   cursor: pointer;
   pointer-events: auto;
+}
+
+.xiangqi-board-overlay__actions {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.xiangqi-board-overlay__actions[hidden] {
+  display: none;
+}
+
+.xiangqi-board-overlay__action {
+  min-width: 122px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #df4b33 0%, #bd2718 100%);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  box-shadow: 0 12px 24px rgba(137, 33, 22, 0.22);
+  cursor: pointer;
+}
+
+.xiangqi-board-overlay__action--ghost {
+  background: rgba(32, 29, 25, 0.82);
+  box-shadow: 0 10px 22px rgba(36, 25, 15, 0.18);
 }
 
 .xiangqi-board-head {
@@ -1105,6 +1134,17 @@ select {
     min-height: 46px;
     padding: 0 20px;
     font-size: 18px;
+  }
+
+  .xiangqi-board-overlay__actions {
+    gap: 8px;
+  }
+
+  .xiangqi-board-overlay__action {
+    min-width: 96px;
+    min-height: 42px;
+    padding: 0 14px;
+    font-size: 15px;
   }
 
   .xiangqi-board-head {

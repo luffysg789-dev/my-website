@@ -62,6 +62,8 @@ const ui = {
   boardOverlayMessage: document.getElementById('xiangqiBoardOverlayMessage'),
   boardOverlayDetail: document.getElementById('xiangqiBoardOverlayDetail'),
   startMatchBtn: document.getElementById('xiangqiStartMatchBtn'),
+  rematchBtn: document.getElementById('xiangqiRematchBtn'),
+  returnLobbyBtn: document.getElementById('xiangqiReturnLobbyBtn'),
   createStake: document.getElementById('xiangqiCreateStake'),
   createTimeControl: document.getElementById('xiangqiCreateTimeControl'),
   joinRoomCode: document.getElementById('xiangqiJoinRoomCode'),
@@ -72,7 +74,6 @@ const ui = {
   cancelRoomBtn: document.getElementById('xiangqiCancelRoomBtn'),
   actionCopyRoomBtn: document.getElementById('xiangqiActionCopyRoomBtn'),
   actionDrawBtn: document.getElementById('xiangqiActionDrawBtn'),
-  actionDrawRejectBtn: document.getElementById('xiangqiActionDrawRejectBtn'),
   actionResignBtn: document.getElementById('xiangqiActionResignBtn'),
   stakePresetButtons: Array.from(document.querySelectorAll('[data-stake-preset]')),
   timePresetButtons: Array.from(document.querySelectorAll('[data-time-preset]'))
@@ -536,6 +537,13 @@ function closeDrawConfirmModal() {
   }
 }
 
+function closeRoomEvents() {
+  if (state.roomEventSource) {
+    state.roomEventSource.close();
+    state.roomEventSource = null;
+  }
+}
+
 function openDrawConfirmModal() {
   if (!ui.drawConfirmModal) return;
   ui.drawConfirmModal.hidden = false;
@@ -741,15 +749,6 @@ function renderPlayers() {
   }
 }
 
-function renderDrawActionState() {
-  if (!ui.actionDrawBtn || !ui.actionDrawRejectBtn) return;
-  const currentSide = getCurrentUserSide();
-  const pendingSide = String(state.match?.pendingDrawOfferSide || '').toUpperCase();
-  const hasIncomingDrawOffer = Boolean(pendingSide && pendingSide !== currentSide);
-  ui.actionDrawBtn.textContent = hasIncomingDrawOffer ? '同意求和' : '求和';
-  ui.actionDrawRejectBtn.hidden = !hasIncomingDrawOffer;
-}
-
 function syncStakePresetButtons() {
   const currentStake = String(ui.createStake?.value || '').trim();
   ui.stakePresetButtons.forEach((button) => {
@@ -829,11 +828,12 @@ function getRoomOverlayState() {
       visible: true,
       message: finishedCopy.message,
       detail: finishedCopy.detail,
-      showStart: false
+      showStart: false,
+      showFinishedActions: true
     };
   }
   if (roomStatus === 'WAITING') {
-    return { visible: true, message: '等待对手加入', detail: '', showStart: false };
+    return { visible: true, message: '等待对手加入', detail: '', showStart: false, showFinishedActions: false };
   }
   if (roomStatus === 'READY' || matchStatus === 'READY') {
     const isCreator = Number(state.user?.userId || 0) === Number(state.room?.creatorUserId || state.match?.redUserId || 0);
@@ -841,10 +841,11 @@ function getRoomOverlayState() {
       visible: true,
       message: isCreator ? '双方已到齐，点击开始' : '等待房主开始',
       detail: '',
-      showStart: isCreator
+      showStart: isCreator,
+      showFinishedActions: false
     };
   }
-  return { visible: false, message: '', detail: '', showStart: false };
+  return { visible: false, message: '', detail: '', showStart: false, showFinishedActions: false };
 }
 
 function renderBoardOverlay() {
@@ -855,6 +856,12 @@ function renderBoardOverlay() {
   ui.boardOverlayDetail.textContent = overlayState.detail;
   ui.boardOverlayDetail.hidden = !overlayState.detail;
   ui.startMatchBtn.hidden = !overlayState.showStart;
+  if (ui.rematchBtn) ui.rematchBtn.hidden = !overlayState.showFinishedActions;
+  if (ui.returnLobbyBtn) ui.returnLobbyBtn.hidden = !overlayState.showFinishedActions;
+  const overlayActions = ui.rematchBtn?.parentElement;
+  if (overlayActions) {
+    overlayActions.hidden = !overlayState.showFinishedActions;
+  }
 }
 
 function buildBoardMarkup() {
@@ -953,7 +960,6 @@ function renderMatch() {
   syncCountdownStateFromMatch();
   renderRoomSummary();
   renderPlayers();
-  renderDrawActionState();
   buildBoardMarkup();
   renderBoardOverlay();
   syncStakePresetButtons();
@@ -1135,9 +1141,7 @@ async function restoreActiveRoom() {
 
 function connectRoomEvents(roomCode) {
   if (!roomCode) return;
-  if (state.roomEventSource) {
-    state.roomEventSource.close();
-  }
+  closeRoomEvents();
 
   const source = new EventSource(`/api/xiangqi/rooms/${encodeURIComponent(roomCode)}/events`);
   source.addEventListener('room.snapshot', (event) => {
@@ -1360,6 +1364,31 @@ async function startReadyMatch() {
   await refreshRoom(state.room.roomCode);
 }
 
+async function startRematch() {
+  if (!state.room?.stakeAmount || !state.user?.userId) return;
+  const response = await postJson('/api/xiangqi/rooms/create', {
+    userId: state.user.userId,
+    stakeAmount: String(state.room?.stakeAmount || '').trim(),
+    timeControlMinutes: Number(state.room?.timeControlMinutes || 15)
+  });
+
+  await refreshWallet();
+  await refreshRoom(response.roomCode);
+  syncRoomUrl(response.roomCode);
+  connectRoomEvents(response.roomCode);
+}
+
+async function returnToLobby() {
+  closeRoomEvents();
+  state.room = null;
+  state.match = null;
+  state.selected = null;
+  closeDrawConfirmModal();
+  syncRoomUrl(null);
+  await refreshWallet();
+  renderMatch();
+}
+
 async function cancelWaitingRoom() {
   if (!state.user?.userId || !state.room?.roomCode) return;
 
@@ -1368,10 +1397,7 @@ async function cancelWaitingRoom() {
     roomCode: state.room.roomCode
   });
 
-  if (state.roomEventSource) {
-    state.roomEventSource.close();
-    state.roomEventSource = null;
-  }
+  closeRoomEvents();
   state.room = null;
   state.match = null;
   state.selected = null;
@@ -1464,6 +1490,8 @@ function bindActions() {
     setStatus(message);
   }));
   ui.startMatchBtn?.addEventListener('click', () => startReadyMatch().catch((error) => setStatus(error.message)));
+  ui.rematchBtn?.addEventListener('click', () => startRematch().catch((error) => setStatus(error.message)));
+  ui.returnLobbyBtn?.addEventListener('click', () => returnToLobby().catch((error) => setStatus(error.message)));
   ui.cancelRoomBtn?.addEventListener('click', () => cancelWaitingRoom().catch((error) => setStatus(error.message)));
   ui.stakePresetButtons.forEach((button) => {
     button.addEventListener('click', () => {
@@ -1491,33 +1519,8 @@ function bindActions() {
     if (!state.match || !state.user?.userId) return;
     try {
       let response;
-      if (state.match.pendingDrawOfferSide && state.match.pendingDrawOfferSide !== getCurrentUserSide()) {
-        response = await postJson(`/api/xiangqi/matches/${state.match.id}/draw/respond`, {
-          userId: state.user.userId,
-          accept: true
-        });
-      } else {
-        response = await postJson(`/api/xiangqi/matches/${state.match.id}/draw/offer`, {
-          userId: state.user.userId
-        });
-      }
-      if (response?.match) {
-        state.match = response.match;
-        renderMatch();
-        closeDrawConfirmModal();
-      } else {
-        await refreshMatch(state.match.id);
-      }
-    } catch (error) {
-      setStatus(error.message);
-    }
-  });
-  ui.actionDrawRejectBtn?.addEventListener('click', async () => {
-    if (!state.match || !state.user?.userId || !state.match.pendingDrawOfferSide) return;
-    try {
-      const response = await postJson(`/api/xiangqi/matches/${state.match.id}/draw/respond`, {
-        userId: state.user.userId,
-        accept: false
+      response = await postJson(`/api/xiangqi/matches/${state.match.id}/draw/offer`, {
+        userId: state.user.userId
       });
       if (response?.match) {
         state.match = response.match;
@@ -1586,6 +1589,10 @@ function bindActions() {
       if (response?.match) {
         state.match = response.match;
         renderMatch();
+        if (String(response.status || '').toLowerCase() === 'finished') {
+          speakFinishedMatchResult(response.match);
+          await refreshWallet();
+        }
       } else {
         await refreshMatch(state.match.id);
       }
