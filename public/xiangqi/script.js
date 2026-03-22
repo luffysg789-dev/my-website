@@ -401,12 +401,12 @@ function applyShellMode() {
 function renderRoomSummary() {
   if (!ui.roomSummary) return;
   if (!state.room) {
-    ui.roomSummary.innerHTML = '<strong>等待房间</strong><p>输入房间号后即可查看本局 stake 与局时。</p>';
+    ui.roomSummary.innerHTML = '<strong>等待房间</strong><p>输入房间号后即可查看本局押金与局时。</p>';
     return;
   }
   ui.roomSummary.innerHTML = `
     <strong>房间号 ${state.room.roomCode}</strong>
-    <p>本局 stake ${state.room.stakeAmount} USDT，局时 ${state.room.timeControlMinutes} 分钟，状态 ${state.room.status}。</p>
+    <p>本局押金 ${state.room.stakeAmount} USDT，局时 ${state.room.timeControlMinutes} 分钟，状态 ${state.room.status}。</p>
   `;
 }
 
@@ -494,6 +494,7 @@ function buildBoardMarkup() {
           <line x1="55" y1="945" x2="845" y2="945"></line>
 
           <line x1="55" y1="55" x2="55" y2="455"></line>
+          <line x1="55" y1="455" x2="55" y2="545"></line>
           <line x1="55" y1="545" x2="55" y2="945"></line>
           <line x1="155" y1="55" x2="155" y2="455"></line>
           <line x1="155" y1="545" x2="155" y2="945"></line>
@@ -510,6 +511,7 @@ function buildBoardMarkup() {
           <line x1="755" y1="55" x2="755" y2="455"></line>
           <line x1="755" y1="545" x2="755" y2="945"></line>
           <line x1="845" y1="55" x2="845" y2="455"></line>
+          <line x1="845" y1="455" x2="845" y2="545"></line>
           <line x1="845" y1="545" x2="845" y2="945"></line>
         </g>
         <g class="xiangqi-board__palace-lines">
@@ -546,7 +548,7 @@ function renderMatch() {
     ui.roomBadge.textContent = state.room?.roomCode ? `房间号 ${state.room.roomCode}` : '房间号 ----';
   }
   if (ui.matchStake) {
-    ui.matchStake.textContent = `Stake ${state.room?.stakeAmount || '0.00'} USDT`;
+    ui.matchStake.textContent = `押金 ${state.room?.stakeAmount || '0.00'} USDT`;
   }
   if (ui.cancelRoomBtn) {
     ui.cancelRoomBtn.disabled = !isCancelableWaitingRoom;

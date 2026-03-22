@@ -447,6 +447,13 @@ select {
   font-weight: 700;
 }
 
+#xiangqiRoomBadge {
+  font-size: 24px;
+  font-weight: 900;
+  color: #2b62df;
+  letter-spacing: 0.02em;
+}
+
 .xiangqi-match-pill {
   min-width: 170px;
   text-align: center;
