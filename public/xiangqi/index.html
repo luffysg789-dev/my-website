@@ -78,23 +78,27 @@
         </section>
 
         <section class="xiangqi-board-wrap">
-          <section id="xiangqiBoard" class="xiangqi-board" aria-label="中国象棋棋盘"></section>
+          <div class="xiangqi-board-stage">
+            <div class="xiangqi-player-card xiangqi-player-card--black xiangqi-player-card--overlay xiangqi-player-card--top-left">
+              <span class="xiangqi-side">黑方</span>
+              <strong id="xiangqiBlackPlayer">挑战者</strong>
+              <p id="xiangqiBlackTime">15:00</p>
+            </div>
 
-          <div class="xiangqi-board-head">
-            <div class="xiangqi-player-card xiangqi-player-card--red">
+            <section id="xiangqiBoard" class="xiangqi-board" aria-label="中国象棋棋盘"></section>
+
+            <div class="xiangqi-player-card xiangqi-player-card--red xiangqi-player-card--overlay xiangqi-player-card--bottom-right">
               <span class="xiangqi-side">红方</span>
               <strong id="xiangqiRedPlayer">房主</strong>
               <p id="xiangqiRedTime">15:00</p>
             </div>
+          </div>
+
+          <div class="xiangqi-board-head">
             <div class="xiangqi-match-pill">
               <span id="xiangqiRoomBadge">房间号 ----</span>
               <span id="xiangqiMatchStake">押金 1.00 USDT</span>
               <strong id="xiangqiMatchStatus">等待对手加入</strong>
-            </div>
-            <div class="xiangqi-player-card xiangqi-player-card--black">
-              <span class="xiangqi-side">黑方</span>
-              <strong id="xiangqiBlackPlayer">挑战者</strong>
-              <p id="xiangqiBlackTime">15:00</p>
             </div>
           </div>
 
