@@ -187,16 +187,31 @@ select {
   gap: 18px;
 }
 
-.xiangqi-wallet-plus {
-  width: 80px;
-  height: 80px;
+.xiangqi-wallet-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.xiangqi-wallet-action {
+  min-width: 88px;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 18px;
   border: none;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  font-size: 54px;
-  line-height: 1;
+  font-size: 18px;
+  font-weight: 800;
   cursor: pointer;
+}
+
+.xiangqi-wallet-action--primary {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.xiangqi-wallet-action--ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.96);
 }
 
 .xiangqi-wallet-card__frozen {
@@ -222,7 +237,7 @@ select {
 .xiangqi-room-card {
   padding: 26px;
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .xiangqi-room-card__title {
@@ -253,37 +268,56 @@ select {
   color: var(--xiangqi-blue);
 }
 
-.xiangqi-stake-preset-row {
+.xiangqi-create-options {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.xiangqi-option-group {
+  display: grid;
+  gap: 8px;
+}
+
+.xiangqi-option-group__label {
+  color: var(--xiangqi-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.xiangqi-stake-preset-row,
+.xiangqi-time-preset-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .xiangqi-stake-preset,
+.xiangqi-time-preset,
 .xiangqi-room-input,
-.xiangqi-time-field select,
-.xiangqi-room-cta,
-.xiangqi-room-subtle {
-  border-radius: 22px;
+.xiangqi-room-cta {
+  border-radius: 18px;
 }
 
-.xiangqi-stake-preset {
-  min-height: 70px;
+.xiangqi-stake-preset,
+.xiangqi-time-preset {
+  min-height: 48px;
   border: none;
   background: #f1f1f1;
   color: #77706a;
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 800;
   cursor: pointer;
 }
 
-.xiangqi-stake-preset.is-active {
+.xiangqi-stake-preset.is-active,
+.xiangqi-time-preset.is-active {
   background: var(--xiangqi-red);
   color: #fff;
 }
 
 .xiangqi-room-input,
-.xiangqi-time-field select,
 .xiangqi-room-summary {
   min-height: 96px;
   border: none;
@@ -292,8 +326,7 @@ select {
   box-shadow: inset 0 0 0 1px rgba(35, 31, 28, 0.04);
 }
 
-.xiangqi-room-input,
-.xiangqi-time-field select {
+.xiangqi-room-input {
   width: 100%;
   padding: 0 24px;
   text-align: center;
@@ -303,17 +336,6 @@ select {
 
 .xiangqi-room-input::placeholder {
   color: #a09a95;
-  font-weight: 700;
-}
-
-.xiangqi-time-field {
-  display: grid;
-  gap: 10px;
-}
-
-.xiangqi-time-field span {
-  color: var(--xiangqi-muted);
-  font-size: 15px;
   font-weight: 700;
 }
 
@@ -340,8 +362,7 @@ select {
   gap: 12px;
 }
 
-.xiangqi-room-cta,
-.xiangqi-room-subtle {
+.xiangqi-room-cta {
   min-height: 80px;
   border: none;
   cursor: pointer;
@@ -356,14 +377,6 @@ select {
 
 .xiangqi-room-cta--light {
   background: linear-gradient(180deg, #1d1a17 0%, #25211d 100%);
-}
-
-.xiangqi-room-subtle {
-  min-height: 58px;
-  background: transparent;
-  color: #84807a;
-  font-size: 18px;
-  font-weight: 700;
 }
 
 .xiangqi-shell.is-room-mode {
@@ -393,6 +406,7 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  margin-top: 18px;
   margin-bottom: 18px;
 }
 
@@ -543,8 +557,12 @@ select {
 .xiangqi-action-bar {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+
+.xiangqi-room-cancel-wrap {
+  margin-top: 12px;
 }
 
 .xiangqi-danger-btn,
@@ -573,6 +591,12 @@ select {
   cursor: not-allowed;
 }
 
+.xiangqi-secondary-btn--cancel-room {
+  width: 100%;
+  min-height: 58px;
+  border-radius: 18px;
+}
+
 @media (max-width: 720px) {
   .xiangqi-shell {
     padding: 20px 14px 30px;
@@ -583,10 +607,15 @@ select {
     padding: 20px;
   }
 
-  .xiangqi-wallet-plus {
-    width: 58px;
-    height: 58px;
-    font-size: 38px;
+  .xiangqi-wallet-card__actions {
+    gap: 8px;
+  }
+
+  .xiangqi-wallet-action {
+    min-width: 72px;
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 16px;
   }
 
   .xiangqi-room-grid {
@@ -605,31 +634,30 @@ select {
     gap: 8px;
   }
 
-  .xiangqi-stake-preset {
-    min-height: 56px;
-    font-size: 20px;
+  .xiangqi-create-options {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .xiangqi-room-input,
-  .xiangqi-time-field select,
   .xiangqi-room-summary {
     min-height: 72px;
   }
 
-  .xiangqi-room-input,
-  .xiangqi-time-field select {
+  .xiangqi-room-input {
     padding: 0 18px;
     font-size: 19px;
+  }
+
+  .xiangqi-stake-preset,
+  .xiangqi-time-preset {
+    min-height: 42px;
+    font-size: 15px;
   }
 
   .xiangqi-room-cta {
     min-height: 64px;
     font-size: 20px;
-  }
-
-  .xiangqi-room-subtle {
-    min-height: 46px;
-    font-size: 16px;
   }
 
   .xiangqi-room-card {
@@ -657,5 +685,13 @@ select {
 
   .xiangqi-action-bar {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .xiangqi-room-cancel-wrap {
+    margin-top: 10px;
+  }
+
+  .xiangqi-secondary-btn--cancel-room {
+    min-height: 54px;
   }
 }

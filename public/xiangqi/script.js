@@ -7,8 +7,8 @@ const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
 const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';
 const XIANGQI_USER_STORAGE_KEY = 'claw800_xiangqi_user_v1';
 const XIANGQI_PENDING_DEPOSIT_KEY = 'claw800_xiangqi_pending_deposit_v1';
-const XIANGQI_DEMO_OPEN_ID = 'xiangqi-demo-local';
-
+const XIANGQI_PENDING_ACTION_KEY = 'claw800_xiangqi_pending_action_v1';
+const XIANGQI_BROWSER_LOCAL_OPEN_ID = 'xiangqi-browser-local';
 const PIECE_LABELS = {
   RED: {
     rook: '车',
@@ -33,7 +33,6 @@ const PIECE_LABELS = {
 const ui = {
   shell: document.querySelector('.xiangqi-shell'),
   board: document.getElementById('xiangqiBoard'),
-  welcomeName: document.getElementById('xiangqiWelcomeName'),
   walletAvailable: document.getElementById('xiangqiWalletAvailable'),
   walletFrozen: document.getElementById('xiangqiWalletFrozen'),
   roomSummary: document.getElementById('xiangqiRoomSummary'),
@@ -47,7 +46,6 @@ const ui = {
   createStake: document.getElementById('xiangqiCreateStake'),
   createTimeControl: document.getElementById('xiangqiCreateTimeControl'),
   joinRoomCode: document.getElementById('xiangqiJoinRoomCode'),
-  loginBtn: document.getElementById('xiangqiLoginBtn'),
   depositBtn: document.getElementById('xiangqiDepositBtn'),
   withdrawBtn: document.getElementById('xiangqiWithdrawBtn'),
   createRoomBtn: document.getElementById('xiangqiCreateRoomBtn'),
@@ -56,7 +54,8 @@ const ui = {
   actionCopyRoomBtn: document.getElementById('xiangqiActionCopyRoomBtn'),
   actionDrawBtn: document.getElementById('xiangqiActionDrawBtn'),
   actionResignBtn: document.getElementById('xiangqiActionResignBtn'),
-  stakePresetButtons: Array.from(document.querySelectorAll('[data-stake-preset]'))
+  stakePresetButtons: Array.from(document.querySelectorAll('[data-stake-preset]')),
+  timePresetButtons: Array.from(document.querySelectorAll('[data-time-preset]'))
 };
 
 const state = {
@@ -192,6 +191,27 @@ function clearPendingDeposit() {
   } catch {}
 }
 
+function savePendingAction(action) {
+  try {
+    getPersistentStorage().setItem(XIANGQI_PENDING_ACTION_KEY, JSON.stringify(action));
+  } catch {}
+}
+
+function loadPendingAction() {
+  try {
+    const raw = getPersistentStorage().getItem(XIANGQI_PENDING_ACTION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingAction() {
+  try {
+    getPersistentStorage().removeItem(XIANGQI_PENDING_ACTION_KEY);
+  } catch {}
+}
+
 function buildCleanReturnUrl() {
   const url = new URL(window.location.href);
   ['code', 'authCode', 'auth_code', 'state'].forEach((key) => url.searchParams.delete(key));
@@ -279,10 +299,7 @@ function setStatus(message) {
   }
 }
 
-function updateLoginButtonState() {
-  if (!ui.loginBtn) return;
-  ui.loginBtn.querySelector('span')?.replaceChildren(document.createTextNode(state.session?.openId ? '已登录' : '登录'));
-}
+function updateLoginButtonState() {}
 
 function getCurrentUserSide() {
   if (!state.user || !state.match) return '';
@@ -324,9 +341,6 @@ function renderRoomSummary() {
 }
 
 function renderPlayers() {
-  if (ui.welcomeName) {
-    ui.welcomeName.textContent = state.user?.nickname || 'Nexa 玩家';
-  }
   if (!state.match) {
     ui.redPlayer.textContent = '房主';
     ui.blackPlayer.textContent = '挑战者';
@@ -344,6 +358,13 @@ function syncStakePresetButtons() {
   const currentStake = String(ui.createStake?.value || '').trim();
   ui.stakePresetButtons.forEach((button) => {
     button.classList.toggle('is-active', String(button.dataset.stakePreset || '').trim() === currentStake);
+  });
+}
+
+function syncTimePresetButtons() {
+  const currentTime = String(ui.createTimeControl?.value || '').trim();
+  ui.timePresetButtons.forEach((button) => {
+    button.classList.toggle('is-active', String(button.dataset.timePreset || '').trim() === currentTime);
   });
 }
 
@@ -402,6 +423,7 @@ function renderMatch() {
   renderPlayers();
   buildBoardMarkup();
   syncStakePresetButtons();
+  syncTimePresetButtons();
   const isCancelableWaitingRoom = Boolean(
     state.room &&
     String(state.room.status || '').toUpperCase() === 'WAITING' &&
@@ -428,32 +450,13 @@ function renderMatch() {
 async function syncSessionAndWallet() {
   state.session = loadCachedNexaSession();
   updateLoginButtonState();
-  if (!state.session?.openId) {
-    if (isNexaAppEnvironment()) {
-      const cachedUser = loadCachedUser();
-      if (cachedUser) state.user = cachedUser;
-      renderWallet();
-      setStatus('请点击右上角登录按钮完成 Nexa 授权。');
-      return;
-    }
-
-    const response = await postJson('/api/xiangqi/session', {
-      openId: XIANGQI_DEMO_OPEN_ID,
-      nickname: '测试账号'
-    });
-
-    state.user = {
-      userId: Number(response.user.id),
-      openId: response.user.openId,
-      nickname: response.user.nickname
-    };
-    saveCachedUser(state.user);
+  if (!state.session?.openId || !state.session?.sessionKey) {
+    state.user = null;
     state.wallet = {
-      availableBalance: response.wallet.availableBalance,
-      frozenBalance: response.wallet.frozenBalance
+      availableBalance: '0.00',
+      frozenBalance: '0.00'
     };
     renderWallet();
-    setStatus('当前为网页测试账号，可直接创建房间开局。');
     return;
   }
 
@@ -507,6 +510,37 @@ async function exchangeSessionFromUrlCode() {
 
 function beginLoginFlow() {
   launchNexaUrl(buildNexaAuthorizeUrl());
+}
+
+async function ensureAuthorizedForRoomAction() {
+  if (state.session?.openId && state.session?.sessionKey && state.user?.userId) {
+    return true;
+  }
+  if (state.session?.openId && state.session?.sessionKey && !state.user?.userId) {
+    await syncSessionAndWallet();
+    return Boolean(state.user?.userId);
+  }
+  if (!isNexaAppEnvironment()) {
+    const response = await postJson('/api/xiangqi/session', {
+      openId: XIANGQI_BROWSER_LOCAL_OPEN_ID,
+      nickname: 'Nexa 玩家'
+    });
+    state.user = {
+      userId: Number(response.user.id),
+      openId: response.user.openId,
+      nickname: response.user.nickname
+    };
+    saveCachedUser(state.user);
+    state.wallet = {
+      availableBalance: response.wallet.availableBalance,
+      frozenBalance: response.wallet.frozenBalance
+    };
+    renderWallet();
+    return true;
+  }
+  setStatus('请先完成 Nexa 登录授权。');
+  beginLoginFlow();
+  return false;
 }
 
 async function refreshWallet() {
@@ -616,13 +650,39 @@ async function maybeSettlePendingDeposit() {
   } catch {}
 }
 
+async function resumePendingAction() {
+  const pendingAction = loadPendingAction();
+  if (!pendingAction?.type) return;
+  clearPendingAction();
+
+  if (String(pendingAction.type) === 'join') {
+    if (ui.joinRoomCode && pendingAction.roomCode) {
+      ui.joinRoomCode.value = String(pendingAction.roomCode || '').trim().toUpperCase();
+    }
+    await joinRoom();
+    return;
+  }
+
+  if (String(pendingAction.type) === 'create') {
+    if (ui.createStake && pendingAction.stakeAmount) {
+      ui.createStake.value = String(pendingAction.stakeAmount || '').trim();
+      syncStakePresetButtons();
+    }
+    if (ui.createTimeControl && pendingAction.timeControlMinutes) {
+      ui.createTimeControl.value = String(pendingAction.timeControlMinutes || 15);
+      syncTimePresetButtons();
+    }
+    await createRoom();
+  }
+}
+
 async function beginDepositFlow() {
   if (!state.user?.userId || !state.session?.openId || !state.session?.sessionKey) {
     setStatus('请先在 Nexa App 中完成登录后再充值。');
     return;
   }
 
-  const amount = String(window.prompt('输入要充值到游戏账户的 USDT 金额', '5.00') || '').trim();
+  const amount = String(window.prompt('输入要充值到游戏账户的 USDT 金额', '10.00') || '').trim();
   if (!amount) return;
 
   const response = await postJson('/api/xiangqi/deposit/create', {
@@ -637,7 +697,7 @@ async function beginDepositFlow() {
     partnerOrderNo: response.partnerOrderNo
   });
   setStatus('请在 Nexa 内完成余额支付。');
-  window.location.href = buildNexaPaymentUrl(response.payment);
+  launchNexaUrl(buildNexaPaymentUrl(response.payment));
 }
 
 async function beginWithdrawFlow() {
@@ -661,15 +721,21 @@ async function beginWithdrawFlow() {
 }
 
 async function createRoom() {
+  const stakeAmount = String(ui.createStake.value || '').trim() || '5.00';
+  const timeControlMinutes = Number(ui.createTimeControl.value || 15);
   if (!state.user?.userId) {
-    setStatus('请先在 Nexa App 内登录。');
-    return;
+    savePendingAction({
+      type: 'create',
+      stakeAmount,
+      timeControlMinutes
+    });
   }
+  if (!await ensureAuthorizedForRoomAction()) return;
 
   const response = await postJson('/api/xiangqi/rooms/create', {
     userId: state.user.userId,
-    stakeAmount: String(ui.createStake.value || '').trim() || '5.00',
-    timeControlMinutes: Number(ui.createTimeControl.value || 15)
+    stakeAmount,
+    timeControlMinutes
   });
 
   await refreshWallet();
@@ -679,13 +745,15 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  if (!state.user?.userId) {
-    setStatus('请先在 Nexa App 内登录。');
-    return;
-  }
-
   const roomCode = String(ui.joinRoomCode.value || '').trim().toUpperCase();
   if (!roomCode) return;
+  if (!state.user?.userId) {
+    savePendingAction({
+      type: 'join',
+      roomCode
+    });
+  }
+  if (!await ensureAuthorizedForRoomAction()) return;
 
   await postJson('/api/xiangqi/rooms/join', {
     userId: state.user.userId,
@@ -776,7 +844,6 @@ function startCountdownLoop() {
 }
 
 function bindActions() {
-  ui.loginBtn?.addEventListener('click', () => beginLoginFlow());
   ui.depositBtn?.addEventListener('click', () => beginDepositFlow().catch((error) => setStatus(error.message)));
   ui.withdrawBtn?.addEventListener('click', () => beginWithdrawFlow().catch((error) => setStatus(error.message)));
   ui.createRoomBtn?.addEventListener('click', () => createRoom().catch((error) => setStatus(error.message)));
@@ -790,7 +857,14 @@ function bindActions() {
       syncStakePresetButtons();
     });
   });
-  ui.createStake?.addEventListener('input', syncStakePresetButtons);
+  ui.timePresetButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const nextTime = String(button.dataset.timePreset || '').trim();
+      if (!nextTime || !ui.createTimeControl) return;
+      ui.createTimeControl.value = nextTime;
+      syncTimePresetButtons();
+    });
+  });
   ui.actionCopyRoomBtn?.addEventListener('click', async () => {
     const roomCode = String(state.room?.roomCode || '').trim();
     if (!roomCode) return;
@@ -859,6 +933,7 @@ async function init() {
   await exchangeSessionFromUrlCode().catch(() => {});
   await syncSessionAndWallet().catch(() => {});
   await maybeSettlePendingDeposit();
+  await resumePendingAction().catch(() => {});
 
   const roomCode = getRoomCodeFromUrl();
   if (roomCode) {
