@@ -1097,7 +1097,7 @@ async function maybeExpireRematchRequest() {
     await refreshRoom(state.room.roomCode);
   } catch (error) {
     if (String(error?.message || '').trim().toUpperCase() !== 'REMATCH_NOT_EXPIRED') {
-      setStatus(String(error?.message || '房间解散失败'));
+      setFriendlyStatusFromError(error);
     }
   }
   state.rematchExpireSubmitting = false;

@@ -285,6 +285,7 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /const actualRank = shouldFlip \? 9 - rank : rank;/);
   assert.match(js, /function getFriendlyXiangqiErrorMessage\(/);
   assert.match(js, /function setFriendlyStatusFromError\(error, context = ''\) \{/);
+  assert.match(js, /if \(String\(error\?\.message \|\| ''\)\.trim\(\)\.toUpperCase\(\) !== 'REMATCH_NOT_EXPIRED'\) \{\s*setFriendlyStatusFromError\(error\);\s*\}/);
   assert.match(js, /if \(code === 'INSUFFICIENT_BALANCE'\) \{\s*return context === 'create_room' \? '余额不足，无法创建房间。' : '余额不足，无法加入房间。';\s*\}/);
   assert.match(js, /if \(code === 'ROOM_NOT_FOUND'\) \{\s*return '房间号不存在';\s*\}/);
   assert.match(js, /if \(code === 'ILLEGAL_MOVE'\) \{\s*return '不能这么移动';\s*\}/);
