@@ -66,7 +66,10 @@
               <span class="xiangqi-room-card__icon xiangqi-room-card__icon--blue">→</span>
               <h2>加入房间</h2>
             </div>
-            <input id="xiangqiJoinRoomCode" class="xiangqi-room-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="输入 6 位房间号" />
+            <div class="xiangqi-room-input-wrap">
+              <input id="xiangqiJoinRoomCode" class="xiangqi-room-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="输入 6 位房间号" />
+              <button id="xiangqiJoinRoomClearBtn" class="xiangqi-room-input-clear" type="button" aria-label="清空房间号" hidden>x</button>
+            </div>
             <div id="xiangqiRoomSummary" class="xiangqi-room-summary">
               <strong>等待房间</strong>
               <p>输入房间号后即可查看本局押金与局时。</p>

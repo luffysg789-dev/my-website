@@ -184,17 +184,20 @@ select {
 
 .xiangqi-wallet-card__side {
   display: grid;
-  justify-items: end;
+  grid-template-columns: repeat(2, minmax(74px, 1fr));
+  grid-template-rows: repeat(2, minmax(44px, auto));
+  align-items: stretch;
+  justify-items: stretch;
   gap: 14px;
 }
 
 .xiangqi-wallet-card__actions {
-  display: flex;
-  align-items: center;
+  display: contents;
   gap: 8px;
 }
 
 .xiangqi-wallet-action {
+  width: 100%;
   min-width: 74px;
   min-height: 44px;
   padding: 0 14px;
@@ -203,6 +206,18 @@ select {
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
+  justify-self: stretch;
+}
+
+#xiangqiDepositBtn {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  min-height: 102px;
+}
+
+#xiangqiWithdrawBtn {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .xiangqi-wallet-action--primary {
@@ -216,7 +231,9 @@ select {
 }
 
 .xiangqi-wallet-action--ledger {
-  min-width: 96px;
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 74px;
 }
 
 .xiangqi-room-grid {
@@ -318,11 +335,15 @@ select {
   color: var(--xiangqi-text);
 }
 
+.xiangqi-room-input-wrap {
+  position: relative;
+}
+
 .xiangqi-room-input {
   width: 100%;
   background: #f7f7f7;
   box-shadow: inset 0 0 0 1px rgba(15, 152, 113, 0.42);
-  padding: 0 18px;
+  padding: 0 54px 0 18px;
   text-align: center;
   font-size: 24px;
   font-weight: 800;
@@ -331,6 +352,27 @@ select {
 .xiangqi-room-input::placeholder {
   color: #a09a95;
   font-weight: 700;
+}
+
+.xiangqi-room-input-clear {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(35, 31, 28, 0.08);
+  color: #8d867f;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.xiangqi-room-input-clear[hidden] {
+  display: none;
 }
 
 .xiangqi-room-summary {
@@ -961,7 +1003,7 @@ select {
   }
 
   .xiangqi-wallet-card__actions {
-    gap: 8px;
+    gap: 0;
   }
 
   .xiangqi-wallet-action {
@@ -1113,6 +1155,8 @@ select {
   }
 
   .xiangqi-wallet-card__side {
+    grid-template-columns: repeat(2, minmax(62px, 1fr));
+    grid-template-rows: repeat(2, minmax(38px, auto));
     gap: 10px;
   }
 
@@ -1125,7 +1169,11 @@ select {
   }
 
   .xiangqi-wallet-action--ledger {
-    min-width: 82px;
+    min-width: 62px;
+  }
+
+  #xiangqiDepositBtn {
+    min-height: 86px;
   }
 
   .xiangqi-room-grid {

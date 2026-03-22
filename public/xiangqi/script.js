@@ -68,6 +68,7 @@ const ui = {
   createStake: document.getElementById('xiangqiCreateStake'),
   createTimeControl: document.getElementById('xiangqiCreateTimeControl'),
   joinRoomCode: document.getElementById('xiangqiJoinRoomCode'),
+  joinRoomClearBtn: document.getElementById('xiangqiJoinRoomClearBtn'),
   depositBtn: document.getElementById('xiangqiDepositBtn'),
   withdrawBtn: document.getElementById('xiangqiWithdrawBtn'),
   createRoomBtn: document.getElementById('xiangqiCreateRoomBtn'),
@@ -250,6 +251,11 @@ function clearPendingAction() {
   try {
     getPersistentStorage().removeItem(XIANGQI_PENDING_ACTION_KEY);
   } catch {}
+}
+
+function syncJoinRoomClearButton() {
+  if (!ui.joinRoomClearBtn || !ui.joinRoomCode) return;
+  ui.joinRoomClearBtn.hidden = !String(ui.joinRoomCode.value || '').trim();
 }
 
 function buildCleanReturnUrl() {
@@ -1426,6 +1432,7 @@ async function resumePendingAction() {
   if (String(pendingAction.type) === 'join') {
     if (ui.joinRoomCode && pendingAction.roomCode) {
       ui.joinRoomCode.value = String(pendingAction.roomCode || '').trim().toUpperCase();
+      syncJoinRoomClearButton();
     }
     await joinRoom();
     return;
@@ -1584,11 +1591,13 @@ async function confirmRematch() {
 }
 
 async function returnToLobby() {
+  const previousRoomCode = String(state.room?.roomCode || '').trim().toUpperCase();
   closeRoomEvents();
   state.room = null;
   state.match = null;
   state.selected = null;
-  if (ui.joinRoomCode) ui.joinRoomCode.value = '';
+  if (ui.joinRoomCode) ui.joinRoomCode.value = previousRoomCode;
+  syncJoinRoomClearButton();
   closeDrawConfirmModal();
   syncRoomUrl(null);
   await refreshWallet();
@@ -1699,6 +1708,19 @@ function bindActions() {
     showJoinRoomAlert(message);
     setStatus(message);
   }));
+  ui.joinRoomCode?.addEventListener('input', () => {
+    const digitsOnly = String(ui.joinRoomCode.value || '').replace(/\D+/g, '').slice(0, 6);
+    if (ui.joinRoomCode.value !== digitsOnly) {
+      ui.joinRoomCode.value = digitsOnly;
+    }
+    syncJoinRoomClearButton();
+  });
+  ui.joinRoomClearBtn?.addEventListener('click', () => {
+    if (!ui.joinRoomCode) return;
+    ui.joinRoomCode.value = '';
+    syncJoinRoomClearButton();
+    ui.joinRoomCode.focus();
+  });
   ui.startMatchBtn?.addEventListener('click', () => startReadyMatch().catch((error) => setStatus(error.message)));
   ui.rematchBtn?.addEventListener('click', () => startRematch().catch((error) => setStatus(error.message)));
   ui.confirmRematchBtn?.addEventListener('click', () => confirmRematch().catch((error) => setStatus(error.message)));
@@ -1862,6 +1884,7 @@ async function init() {
   renderRoomSummary();
   buildBoardMarkup();
   bindActions();
+  syncJoinRoomClearButton();
   startCountdownLoop();
 
   await exchangeSessionFromUrlCode().catch(() => {});
