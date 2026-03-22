@@ -557,21 +557,17 @@ select {
 .xiangqi-action-bar {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-}
-
-.xiangqi-room-cancel-wrap {
-  margin-top: 12px;
 }
 
 .xiangqi-danger-btn,
 .xiangqi-secondary-btn {
-  min-height: 62px;
+  min-height: 58px;
   border: none;
-  border-radius: 20px;
+  border-radius: 18px;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
 }
 
@@ -592,9 +588,7 @@ select {
 }
 
 .xiangqi-secondary-btn--cancel-room {
-  width: 100%;
   min-height: 58px;
-  border-radius: 18px;
 }
 
 .xiangqi-amount-modal {
@@ -763,15 +757,12 @@ select {
   }
 
   .xiangqi-action-bar {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .xiangqi-room-cancel-wrap {
-    margin-top: 10px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .xiangqi-secondary-btn--cancel-room {
-    min-height: 54px;
+    min-height: 52px;
   }
 
   .xiangqi-amount-sheet {
@@ -940,5 +931,23 @@ select {
     padding: 0 14px;
     border-radius: 16px;
     font-size: 20px;
+  }
+
+  .xiangqi-action-bar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .xiangqi-danger-btn,
+  .xiangqi-secondary-btn {
+    min-height: 46px;
+    padding: 0 4px;
+    border-radius: 14px;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+
+  .xiangqi-secondary-btn--cancel-room {
+    min-height: 46px;
   }
 }
