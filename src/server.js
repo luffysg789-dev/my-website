@@ -2048,10 +2048,25 @@ const insertXiangqiWalletStmt = db.prepare(
   "INSERT INTO game_wallets (user_id, currency, available_balance, frozen_balance) VALUES (?, 'USDT', '0.00', '0.00')"
 );
 const selectRecentXiangqiLedgerStmt = db.prepare(`
-  SELECT id, type, amount, balance_after, related_type, related_id, remark, created_at
-  FROM game_wallet_ledger
-  WHERE user_id = ?
-  ORDER BY id DESC
+  SELECT
+    l.id,
+    l.type,
+    l.amount,
+    l.balance_after,
+    l.related_type,
+    l.related_id,
+    l.remark,
+    l.created_at,
+    CASE
+      WHEN l.related_type = 'withdraw' THEN COALESCE(w.status, '')
+      ELSE ''
+    END AS withdrawal_status
+  FROM game_wallet_ledger l
+  LEFT JOIN nexa_game_withdrawals w
+    ON l.related_type = 'withdraw'
+   AND l.related_id = w.partner_order_no
+  WHERE l.user_id = ?
+  ORDER BY l.id DESC
   LIMIT ?
 `);
 const updateXiangqiWalletBalanceStmt = db.prepare(
@@ -3702,6 +3717,7 @@ app.get('/api/xiangqi/wallet/ledger', (req, res) => {
       balanceAfter: String(row.balance_after || '0.00'),
       relatedType: String(row.related_type || '').trim(),
       relatedId: String(row.related_id || '').trim(),
+      withdrawalStatus: String(row.withdrawal_status || '').trim().toLowerCase(),
       remark: String(row.remark || '').trim(),
       createdAt: String(row.created_at || '').trim()
     }));

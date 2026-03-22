@@ -22,18 +22,22 @@ function createHarness() {
   return {
     db,
     async request(method, routePath, body) {
+      const [pathname, search = ''] = String(routePath || '').split('?');
       const layer = app._router.stack.find((entry) => {
         if (!entry.route) return false;
-        if (entry.route.path !== routePath) return false;
+        if (entry.route.path !== pathname) return false;
         return Boolean(entry.route.methods[String(method || '').toLowerCase()]);
       });
 
       assert.ok(layer, `missing route ${method} ${routePath}`);
 
+      const query = Object.fromEntries(new URLSearchParams(search));
+
       return new Promise((resolve, reject) => {
         const req = {
           method,
-          path: routePath,
+          path: pathname,
+          query,
           body
         };
         const res = {
@@ -223,6 +227,40 @@ test('withdraw create records a review-pending withdrawal and deducts from avail
         remark: 'withdraw review pending'
       }
     ]);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('wallet ledger exposes withdrawal status so client can show pending or credited copy', async () => {
+  const harness = createHarness();
+  const userId = seedUser(harness.db, { availableBalance: '20.00', openid: 'withdraw-ledger-status-user' });
+
+  try {
+    const createResponse = await harness.request('POST', '/api/xiangqi/withdraw/create', {
+      partnerOrderNo: 'wd-ledger-status-001',
+      userId,
+      amount: '5.00'
+    });
+
+    assert.equal(createResponse.statusCode, 200);
+
+    const pendingLedger = await harness.request('GET', `/api/xiangqi/wallet/ledger?userId=${userId}&limit=10`);
+    const pendingEntry = pendingLedger.body.items.find((item) => item.relatedId === 'wd-ledger-status-001');
+    assert.equal(pendingEntry.type, 'withdraw_debit');
+    assert.equal(pendingEntry.withdrawalStatus, 'review_pending');
+
+    harness.db.prepare(
+      `
+        UPDATE nexa_game_withdrawals
+        SET status = 'success', finished_at = datetime('now')
+        WHERE partner_order_no = ?
+      `
+    ).run('wd-ledger-status-001');
+
+    const successLedger = await harness.request('GET', `/api/xiangqi/wallet/ledger?userId=${userId}&limit=10`);
+    const successEntry = successLedger.body.items.find((item) => item.relatedId === 'wd-ledger-status-001');
+    assert.equal(successEntry.withdrawalStatus, 'success');
   } finally {
     harness.cleanup();
   }

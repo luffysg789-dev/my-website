@@ -501,6 +501,7 @@ function sanitizeMoneyInput(value) {
 
 function getLedgerEntryPresentation(item) {
   const type = String(item?.type || '').trim().toLowerCase();
+  const withdrawalStatus = String(item?.withdrawalStatus || '').trim().toLowerCase();
   const amount = String(item?.amount || '0.00').trim();
   const rawAmount = Number.parseFloat(amount || '0');
   const isPositive = rawAmount > 0 || ['deposit_credit', 'withdraw_refund', 'unfreeze_stake', 'match_win'].includes(type);
@@ -513,9 +514,20 @@ function getLedgerEntryPresentation(item) {
     match_win: '本局胜利结算',
     match_loss: '本局失败结算'
   };
+  let label = labelMap[type] || '资金变动';
+  let detailText = '';
+  if (type === 'withdraw_debit') {
+    if (withdrawalStatus === 'success') {
+      label = '已经到账';
+    } else if (withdrawalStatus === 'pending' || withdrawalStatus === 'review_pending') {
+      label = '提现中';
+      detailText = '24小时内审核到账';
+    }
+  }
 
   return {
-    label: labelMap[type] || '资金变动',
+    label,
+    detailText,
     amountText: `${isPositive ? '+' : '-'}${amount.replace(/^-/, '')} USDT`,
     toneClass: isPositive ? 'is-positive' : 'is-negative',
     timeText: String(item?.createdAt || '').trim().replace('T', ' ').replace(/\.\d+$/, '')
@@ -536,7 +548,7 @@ function renderLedgerList() {
         <article class="xiangqi-ledger-item">
           <div class="xiangqi-ledger-item__meta">
             <strong>${entry.label}</strong>
-            <span>${entry.timeText || '刚刚'}</span>
+            <span>${entry.detailText || entry.timeText || '刚刚'}</span>
           </div>
           <div class="xiangqi-ledger-item__amount ${entry.toneClass}">${entry.amountText}</div>
         </article>
@@ -1576,6 +1588,7 @@ async function returnToLobby() {
   state.room = null;
   state.match = null;
   state.selected = null;
+  if (ui.joinRoomCode) ui.joinRoomCode.value = '';
   closeDrawConfirmModal();
   syncRoomUrl(null);
   await refreshWallet();

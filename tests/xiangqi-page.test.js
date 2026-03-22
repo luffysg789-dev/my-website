@@ -43,6 +43,7 @@ test('xiangqi html includes mobile wallet, room, and board sections', () => {
   assert.match(html, /id="xiangqiWalletAvailable"/);
   assert.doesNotMatch(html, /id="xiangqiWalletFrozen"/);
   assert.match(html, /id="xiangqiLedgerBtn"/);
+  assert.match(html, /id="xiangqiLedgerBtn"[^>]*>明细</);
   assert.match(html, /id="xiangqiDepositBtn"/);
   assert.match(html, /id="xiangqiWithdrawBtn"/);
   assert.match(html, /id="xiangqiDepositBtn"[\s\S]*?id="xiangqiWithdrawBtn"/);
@@ -150,11 +151,16 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /function openAmountModal\(/);
   assert.match(js, /function closeAmountModal\(/);
   assert.match(js, /function getLedgerEntryPresentation\(/);
+  assert.match(js, /const withdrawalStatus = String\(item\?\.withdrawalStatus \|\| ''\)\.trim\(\)\.toLowerCase\(\);/);
+  assert.match(js, /if \(type === 'withdraw_debit'\) \{/);
+  assert.match(js, /label = '已经到账';/);
+  assert.match(js, /label = '提现中';[\s\S]*?detailText = '24小时内审核到账';/);
   assert.match(js, /async function openLedgerModal\(/);
   assert.match(js, /function closeLedgerModal\(/);
   assert.match(js, /async function startRematch\(/);
   assert.match(js, /async function confirmRematch\(/);
   assert.match(js, /async function returnToLobby\(/);
+  assert.match(js, /if \(ui\.joinRoomCode\) ui\.joinRoomCode\.value = '';/);
   assert.match(js, /\/api\/xiangqi\/wallet\/ledger\?userId=/);
   assert.match(js, /function openDrawConfirmModal\(/);
   assert.match(js, /function closeDrawConfirmModal\(/);
@@ -358,6 +364,8 @@ test('xiangqi css delivers a distinctive mobile-first room layout', () => {
   assert.match(css, /\.xiangqi-amount-sheet\s*\{/);
   assert.match(css, /\.xiangqi-amount-input\s*\{/);
   assert.match(css, /\.xiangqi-room-input,\s*[\s\S]*?box-shadow:\s*inset 0 0 0 1px rgba\(15,\s*152,\s*113,\s*0\.42\);/);
+  assert.match(css, /\.xiangqi-room-input\s*\{[\s\S]*?background:\s*#f7f7f7;[\s\S]*?box-shadow:\s*inset 0 0 0 1px rgba\(15,\s*152,\s*113,\s*0\.42\);/);
+  assert.match(css, /\.xiangqi-room-summary\s*\{[\s\S]*?background:\s*#fff;[\s\S]*?box-shadow:\s*none;/);
   assert.match(css, /\.xiangqi-create-options\s*\{/);
   assert.match(css, /\.xiangqi-option-group\s*\{/);
   assert.match(css, /\.xiangqi-time-preset\s*\{/);

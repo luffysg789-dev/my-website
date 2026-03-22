@@ -219,6 +219,7 @@ test('xiangqi wallet endpoints return summary and recent ledger items', async ()
     assert.equal(ledgerResponse.body.items.length, 1);
     assert.equal(ledgerResponse.body.items[0].type, 'deposit_credit');
     assert.equal(ledgerResponse.body.items[0].amount, '5.00');
+    assert.equal(ledgerResponse.body.items[0].withdrawalStatus, '');
   } finally {
     harness.cleanup();
   }

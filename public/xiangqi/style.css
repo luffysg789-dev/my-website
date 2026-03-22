@@ -315,13 +315,13 @@ select {
 .xiangqi-room-summary {
   min-height: 80px;
   border: none;
-  background: #f7f7f7;
   color: var(--xiangqi-text);
-  box-shadow: inset 0 0 0 1px rgba(15, 152, 113, 0.42);
 }
 
 .xiangqi-room-input {
   width: 100%;
+  background: #f7f7f7;
+  box-shadow: inset 0 0 0 1px rgba(15, 152, 113, 0.42);
   padding: 0 18px;
   text-align: center;
   font-size: 24px;
@@ -334,6 +334,8 @@ select {
 }
 
 .xiangqi-room-summary {
+  background: #fff;
+  box-shadow: none;
   padding: 16px 18px;
   display: grid;
   align-content: center;
