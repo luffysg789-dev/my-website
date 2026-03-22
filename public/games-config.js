@@ -32,6 +32,20 @@ const DEFAULT_GAMES = [
     actionText: '开始游戏'
   },
   {
+    slug: 'xiangqi',
+    name: '中国象棋在线',
+    description: '真钱房间中国象棋，支持充值、提现、开房下注与在线对战。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 45,
+    route: '/xiangqi/',
+    icon: '楚',
+    actionText: '进入房间'
+  },
+  {
     slug: 'gomoku',
     name: '五子棋',
     description: '15x15 棋盘，支持真人对战与人机对战。',
@@ -92,6 +106,7 @@ const DEFAULT_GAMES = [
 const GAME_ACTION_TEXT = {
   'zodiac-today': '开始游戏',
   'blast-balloons': '开始游戏',
+  xiangqi: '进入房间',
   gomoku: '开始游戏',
   minesweeper: '开始游戏',
   fortune: '开始游戏',
@@ -240,7 +255,10 @@ async function bootstrapGamesPage() {
   }
 
   const items = Array.from(mergedBySlug.values());
-  grid.innerHTML = items.filter((item) => item.is_enabled).map(gameCardMarkup).join('');
+  grid.innerHTML = items
+    .filter((item) => item.is_enabled && item.slug !== 'xiangqi')
+    .map(gameCardMarkup)
+    .join('');
 }
 
 async function bootstrapGamePage(slug) {

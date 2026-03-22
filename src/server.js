@@ -42,6 +42,7 @@ const TRUST_PROXY = String(process.env.TRUST_PROXY || 'loopback, linklocal, uniq
 const NEXA_TIP_AMOUNT = '0.10';
 const NEXA_TIP_CURRENCY = 'USDT';
 const nexaTipOrders = new Map();
+const xiangqiRoomEventStreams = new Map();
 let preferredNexaPaymentVariantName = 'github-doc-order-signed';
 
 app.set('trust proxy', TRUST_PROXY);
@@ -354,6 +355,7 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
 
   return {
     orderNo,
+    partnerOrderNo,
     payment: {
       timestamp: String(data.timestamp || '').trim(),
       nonce: String(data.nonce || '').trim(),
@@ -496,6 +498,7 @@ const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_EN = 'You are an OpenClaw skill install
 const GAME_ROUTE_MAP = {
   'zodiac-today': '/zodiac-today/',
   'blast-balloons': '/blast-balloons/',
+  xiangqi: '/xiangqi/',
   gomoku: '/gomoku/',
   minesweeper: '/minesweeper.html',
   fortune: '/fortune.html',
@@ -504,6 +507,7 @@ const GAME_ROUTE_MAP = {
 const GAME_ICON_MAP = {
   'zodiac-today': '✨',
   'blast-balloons': '🎈',
+  xiangqi: '楚',
   gomoku: '⚫',
   minesweeper: '💣',
   fortune: '🧧',
@@ -1901,6 +1905,1925 @@ app.post('/api/nexa/tip/notify', (req, res) => {
   }
   res.type('text/plain; charset=utf-8').send('success');
 });
+
+function respondXiangqiWalletNotImplemented(res) {
+  return res.status(501).json({ ok: false, error: 'Xiangqi wallet API not implemented yet' });
+}
+
+function respondXiangqiRoomNotImplemented(res) {
+  return res.status(501).json({ ok: false, error: 'Xiangqi room API not implemented yet' });
+}
+
+const XIANGQI_MIN_STAKE_CENTS = 10n;
+const XIANGQI_MAX_STAKE_CENTS = 100000n;
+const XIANGQI_ROOM_CODE_LENGTH = 6;
+const XIANGQI_ACTIVE_ROOM_STATUSES = ['WAITING', 'READY', 'PLAYING'];
+const XIANGQI_ALLOWED_TIME_CONTROLS = new Set([10, 15, 30]);
+const XIANGQI_SETTLEMENT_RESULTS = new Set(['RED_WIN', 'BLACK_WIN', 'DRAW', 'TIMEOUT_DRAW']);
+const XIANGQI_DEMO_OPEN_ID = 'xiangqi-demo-local';
+const XIANGQI_DEMO_STARTING_BALANCE = '1000.00';
+
+const selectXiangqiWalletStmt = db.prepare(
+  'SELECT user_id, available_balance, frozen_balance FROM game_wallets WHERE user_id = ?'
+);
+const selectXiangqiUserByOpenIdStmt = db.prepare(
+  'SELECT id, openid, nickname, avatar, created_at FROM game_users WHERE openid = ?'
+);
+const insertXiangqiUserStmt = db.prepare(
+  'INSERT INTO game_users (openid, nickname, avatar) VALUES (?, ?, ?)'
+);
+const insertXiangqiWalletStmt = db.prepare(
+  "INSERT INTO game_wallets (user_id, currency, available_balance, frozen_balance) VALUES (?, 'USDT', '1000.00', '0.00')"
+);
+const selectRecentXiangqiLedgerStmt = db.prepare(`
+  SELECT id, type, amount, balance_after, related_type, related_id, remark, created_at
+  FROM game_wallet_ledger
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT ?
+`);
+const updateXiangqiWalletBalanceStmt = db.prepare(
+  "UPDATE game_wallets SET available_balance = ?, updated_at = datetime('now') WHERE user_id = ?"
+);
+const updateXiangqiWalletBalancesStmt = db.prepare(
+  "UPDATE game_wallets SET available_balance = ?, frozen_balance = ?, updated_at = datetime('now') WHERE user_id = ?"
+);
+const insertXiangqiLedgerStmt = db.prepare(`
+  INSERT INTO game_wallet_ledger (user_id, type, amount, balance_after, related_type, related_id, remark)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+const selectXiangqiDepositByOrderStmt = db.prepare(
+  'SELECT partner_order_no, user_id, amount, status FROM nexa_game_deposits WHERE partner_order_no = ?'
+);
+const insertXiangqiDepositStmt = db.prepare(`
+  INSERT INTO nexa_game_deposits (partner_order_no, user_id, amount, currency, status, notify_payload)
+  VALUES (?, ?, ?, 'USDT', 'pending', '')
+`);
+const markXiangqiDepositPaidStmt = db.prepare(`
+  UPDATE nexa_game_deposits
+  SET status = 'paid', notify_payload = ?, paid_at = datetime('now')
+  WHERE partner_order_no = ?
+`);
+const selectLatestXiangqiDepositByUserStmt = db.prepare(`
+  SELECT partner_order_no, amount, status, paid_at, created_at
+  FROM nexa_game_deposits
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT 1
+`);
+const selectXiangqiWithdrawalByOrderStmt = db.prepare(
+  'SELECT partner_order_no, user_id, amount, status FROM nexa_game_withdrawals WHERE partner_order_no = ?'
+);
+const selectLatestXiangqiWithdrawalByUserStmt = db.prepare(`
+  SELECT partner_order_no, amount, status, finished_at, created_at
+  FROM nexa_game_withdrawals
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT 1
+`);
+const insertXiangqiWithdrawalStmt = db.prepare(`
+  INSERT INTO nexa_game_withdrawals (partner_order_no, user_id, amount, currency, status, notify_payload)
+  VALUES (?, ?, ?, 'USDT', 'pending', '')
+`);
+const markXiangqiWithdrawalFailedStmt = db.prepare(`
+  UPDATE nexa_game_withdrawals
+  SET status = 'failed', notify_payload = ?, finished_at = datetime('now')
+  WHERE partner_order_no = ?
+`);
+const selectXiangqiRoomByCodeStmt = db.prepare(`
+  SELECT id, room_code, creator_user_id, joiner_user_id, stake_amount, time_control_minutes, status, started_at
+  FROM xiangqi_rooms
+  WHERE room_code = ?
+`);
+const selectXiangqiRoomCodeByIdStmt = db.prepare(
+  'SELECT room_code FROM xiangqi_rooms WHERE id = ?'
+);
+const selectActiveXiangqiRoomByUserStmt = db.prepare(`
+  SELECT id
+  FROM xiangqi_rooms
+  WHERE status IN ('WAITING', 'READY', 'PLAYING')
+    AND (creator_user_id = ? OR joiner_user_id = ?)
+  LIMIT 1
+`);
+const selectActiveXiangqiMatchByUserStmt = db.prepare(`
+  SELECT id
+  FROM xiangqi_matches
+  WHERE status = 'PLAYING'
+    AND (red_user_id = ? OR black_user_id = ?)
+  LIMIT 1
+`);
+const insertXiangqiRoomStmt = db.prepare(`
+  INSERT INTO xiangqi_rooms (room_code, creator_user_id, stake_amount, time_control_minutes, status)
+  VALUES (?, ?, ?, ?, 'WAITING')
+`);
+const updateXiangqiRoomReadyStmt = db.prepare(`
+  UPDATE xiangqi_rooms
+  SET joiner_user_id = ?, status = 'PLAYING', started_at = datetime('now')
+  WHERE id = ?
+`);
+const insertXiangqiMatchStmt = db.prepare(`
+  INSERT INTO xiangqi_matches (
+    room_id,
+    red_user_id,
+    black_user_id,
+    current_fen,
+    turn_side,
+    red_time_left_ms,
+    black_time_left_ms,
+    status
+  )
+  VALUES (?, ?, ?, ?, 'RED', ?, ?, 'PLAYING')
+`);
+const selectXiangqiMatchByRoomIdStmt = db.prepare(
+  'SELECT id, status FROM xiangqi_matches WHERE room_id = ?'
+);
+const selectXiangqiMatchDetailStmt = db.prepare(`
+  SELECT
+    id,
+    room_id,
+    red_user_id,
+    black_user_id,
+    current_fen,
+    turn_side,
+    red_time_left_ms,
+    black_time_left_ms,
+    status,
+    result,
+    winner_user_id,
+    finished_at
+    ,
+    created_at
+  FROM xiangqi_matches
+  WHERE id = ?
+`);
+const updateXiangqiMatchStateStmt = db.prepare(`
+  UPDATE xiangqi_matches
+  SET current_fen = ?, turn_side = ?, red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = datetime('now')
+  WHERE id = ?
+`);
+const updateXiangqiMatchSnapshotStmt = db.prepare(`
+  UPDATE xiangqi_matches
+  SET current_fen = ?
+  WHERE id = ?
+`);
+const insertXiangqiMoveStmt = db.prepare(`
+  INSERT INTO xiangqi_moves (match_id, move_no, side, from_pos, to_pos, fen_after)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+const selectXiangqiMoveCountStmt = db.prepare(
+  'SELECT COUNT(*) AS count FROM xiangqi_moves WHERE match_id = ?'
+);
+const selectXiangqiMatchSettlementStmt = db.prepare(`
+  SELECT
+    m.id,
+    m.room_id,
+    m.red_user_id,
+    m.black_user_id,
+    m.status,
+    m.result,
+    m.winner_user_id,
+    r.stake_amount,
+    r.status AS room_status
+  FROM xiangqi_matches AS m
+  INNER JOIN xiangqi_rooms AS r ON r.id = m.room_id
+  WHERE m.id = ?
+`);
+const markXiangqiRoomCanceledStmt = db.prepare(`
+  UPDATE xiangqi_rooms
+  SET status = 'CANCELED', finished_at = datetime('now')
+  WHERE id = ?
+`);
+const markXiangqiMatchCanceledStmt = db.prepare(`
+  UPDATE xiangqi_matches
+  SET status = 'FINISHED', result = 'ROOM_CANCELED', finished_at = datetime('now')
+  WHERE room_id = ?
+`);
+const markXiangqiRoomFinishedStmt = db.prepare(`
+  UPDATE xiangqi_rooms
+  SET status = 'FINISHED', finished_at = datetime('now')
+  WHERE id = ?
+`);
+const markXiangqiMatchSettledStmt = db.prepare(`
+  UPDATE xiangqi_matches
+  SET status = 'FINISHED', result = ?, winner_user_id = ?, finished_at = datetime('now')
+  WHERE id = ?
+`);
+const updateXiangqiMatchTimeoutStateStmt = db.prepare(`
+  UPDATE xiangqi_matches
+  SET red_time_left_ms = ?, black_time_left_ms = ?, last_move_at = datetime('now')
+  WHERE id = ?
+`);
+
+function shouldHandleXiangqiWalletBody(req) {
+  return req && req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0;
+}
+
+function shouldHandleXiangqiRoomBody(req) {
+  return req && req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0;
+}
+
+function parseMoneyToCents(value) {
+  const normalized = String(value || '').trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+    throw new Error('INVALID_AMOUNT');
+  }
+
+  const [wholePart, fractionPart = ''] = normalized.split('.');
+  return BigInt(wholePart) * 100n + BigInt((fractionPart + '00').slice(0, 2));
+}
+
+function centsToMoneyString(value) {
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const wholePart = absolute / 100n;
+  const fractionPart = String(absolute % 100n).padStart(2, '0');
+  return `${negative ? '-' : ''}${wholePart}.${fractionPart}`;
+}
+
+function serializeNotifyPayload(payload) {
+  try {
+    return JSON.stringify(payload || {});
+  } catch {
+    return '';
+  }
+}
+
+function getXiangqiRoomStreamSet(roomCode) {
+  const key = String(roomCode || '').trim().toUpperCase();
+  if (!key) return null;
+  const existing = xiangqiRoomEventStreams.get(key);
+  if (existing) return existing;
+  const next = new Set();
+  xiangqiRoomEventStreams.set(key, next);
+  return next;
+}
+
+function emitXiangqiRoomEvent(roomCode, event, payload = {}) {
+  const listeners = getXiangqiRoomStreamSet(roomCode);
+  if (!listeners || !listeners.size) return;
+
+  const data = `event: ${String(event || 'message')}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const res of listeners) {
+    try {
+      res.write(data);
+    } catch {}
+  }
+}
+
+function ensureXiangqiUserWallet({ openId, nickname = 'Nexa 玩家', avatar = '' }) {
+  const normalizedOpenId = String(openId || '').trim();
+  if (!normalizedOpenId) {
+    const error = new Error('INVALID_OPEN_ID');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return db.transaction(() => {
+    let user = selectXiangqiUserByOpenIdStmt.get(normalizedOpenId);
+    if (!user) {
+      const result = insertXiangqiUserStmt.run(
+        normalizedOpenId,
+        String(nickname || 'Nexa 玩家').trim() || 'Nexa 玩家',
+        String(avatar || '').trim()
+      );
+      const userId = Number(result.lastInsertRowid);
+      insertXiangqiWalletStmt.run(userId);
+      user = selectXiangqiUserByOpenIdStmt.get(normalizedOpenId);
+    }
+    let wallet = selectXiangqiWalletStmt.get(user.id);
+    if (
+      wallet &&
+      normalizedOpenId === XIANGQI_DEMO_OPEN_ID &&
+      String(wallet.available_balance || '0.00') === '0.00' &&
+      String(wallet.frozen_balance || '0.00') === '0.00'
+    ) {
+      updateXiangqiWalletBalanceStmt.run(XIANGQI_DEMO_STARTING_BALANCE, user.id);
+      wallet = selectXiangqiWalletStmt.get(user.id);
+    }
+    return {
+      user: {
+        id: Number(user.id),
+        openId: String(user.openid || '').trim(),
+        nickname: String(user.nickname || '').trim(),
+        avatar: String(user.avatar || '').trim()
+      },
+      wallet: wallet
+        ? {
+            availableBalance: String(wallet.available_balance || '0.00'),
+            frozenBalance: String(wallet.frozen_balance || '0.00')
+          }
+        : {
+            availableBalance: '0.00',
+            frozenBalance: '0.00'
+          }
+    };
+  })();
+}
+
+function formatXiangqiWalletSummary(userId) {
+  const wallet = selectXiangqiWalletStmt.get(userId);
+  if (!wallet) return null;
+  const latestDeposit = selectLatestXiangqiDepositByUserStmt.get(userId);
+  const latestWithdrawal = selectLatestXiangqiWithdrawalByUserStmt.get(userId);
+  return {
+    userId: Number(userId),
+    currency: 'USDT',
+    availableBalance: String(wallet.available_balance || '0.00'),
+    frozenBalance: String(wallet.frozen_balance || '0.00'),
+    latestDeposit: latestDeposit
+      ? {
+          partnerOrderNo: String(latestDeposit.partner_order_no || '').trim(),
+          amount: String(latestDeposit.amount || '0.00'),
+          status: String(latestDeposit.status || '').trim(),
+          paidAt: String(latestDeposit.paid_at || '').trim(),
+          createdAt: String(latestDeposit.created_at || '').trim()
+        }
+      : null,
+    latestWithdrawal: latestWithdrawal
+      ? {
+          partnerOrderNo: String(latestWithdrawal.partner_order_no || '').trim(),
+          amount: String(latestWithdrawal.amount || '0.00'),
+          status: String(latestWithdrawal.status || '').trim(),
+          finishedAt: String(latestWithdrawal.finished_at || '').trim(),
+          createdAt: String(latestWithdrawal.created_at || '').trim()
+        }
+      : null
+  };
+}
+
+function parsePositiveInteger(value, errorCode) {
+  const nextValue = Number(value);
+  if (!Number.isInteger(nextValue) || nextValue <= 0) {
+    const error = new Error(errorCode);
+    error.code = errorCode;
+    throw error;
+  }
+  return nextValue;
+}
+
+function createInitialXiangqiState() {
+  return {
+    pendingDrawOfferSide: null,
+    pieces: [
+      { file: 0, rank: 0, side: 'BLACK', type: 'rook' },
+      { file: 1, rank: 0, side: 'BLACK', type: 'knight' },
+      { file: 2, rank: 0, side: 'BLACK', type: 'elephant' },
+      { file: 3, rank: 0, side: 'BLACK', type: 'advisor' },
+      { file: 4, rank: 0, side: 'BLACK', type: 'king' },
+      { file: 5, rank: 0, side: 'BLACK', type: 'advisor' },
+      { file: 6, rank: 0, side: 'BLACK', type: 'elephant' },
+      { file: 7, rank: 0, side: 'BLACK', type: 'knight' },
+      { file: 8, rank: 0, side: 'BLACK', type: 'rook' },
+      { file: 1, rank: 2, side: 'BLACK', type: 'cannon' },
+      { file: 7, rank: 2, side: 'BLACK', type: 'cannon' },
+      { file: 0, rank: 3, side: 'BLACK', type: 'pawn' },
+      { file: 2, rank: 3, side: 'BLACK', type: 'pawn' },
+      { file: 4, rank: 3, side: 'BLACK', type: 'pawn' },
+      { file: 6, rank: 3, side: 'BLACK', type: 'pawn' },
+      { file: 8, rank: 3, side: 'BLACK', type: 'pawn' },
+      { file: 0, rank: 9, side: 'RED', type: 'rook' },
+      { file: 1, rank: 9, side: 'RED', type: 'knight' },
+      { file: 2, rank: 9, side: 'RED', type: 'elephant' },
+      { file: 3, rank: 9, side: 'RED', type: 'advisor' },
+      { file: 4, rank: 9, side: 'RED', type: 'king' },
+      { file: 5, rank: 9, side: 'RED', type: 'advisor' },
+      { file: 6, rank: 9, side: 'RED', type: 'elephant' },
+      { file: 7, rank: 9, side: 'RED', type: 'knight' },
+      { file: 8, rank: 9, side: 'RED', type: 'rook' },
+      { file: 1, rank: 7, side: 'RED', type: 'cannon' },
+      { file: 7, rank: 7, side: 'RED', type: 'cannon' },
+      { file: 0, rank: 6, side: 'RED', type: 'pawn' },
+      { file: 2, rank: 6, side: 'RED', type: 'pawn' },
+      { file: 4, rank: 6, side: 'RED', type: 'pawn' },
+      { file: 6, rank: 6, side: 'RED', type: 'pawn' },
+      { file: 8, rank: 6, side: 'RED', type: 'pawn' }
+    ]
+  };
+}
+
+function serializeXiangqiState(state) {
+  return JSON.stringify({
+    pendingDrawOfferSide: state?.pendingDrawOfferSide || null,
+    pieces: Array.isArray(state?.pieces) ? state.pieces : []
+  });
+}
+
+function parseXiangqiState(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return createInitialXiangqiState();
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.pieces)) {
+      return createInitialXiangqiState();
+    }
+    return {
+      pendingDrawOfferSide:
+        parsed.pendingDrawOfferSide === 'RED' || parsed.pendingDrawOfferSide === 'BLACK'
+          ? parsed.pendingDrawOfferSide
+          : null,
+      pieces: parsed.pieces
+        .filter((piece) => piece && typeof piece === 'object')
+        .map((piece) => ({
+          file: Number(piece.file),
+          rank: Number(piece.rank),
+          side: String(piece.side || '').toUpperCase(),
+          type: String(piece.type || '').toLowerCase()
+        }))
+    };
+  } catch {
+    return createInitialXiangqiState();
+  }
+}
+
+function findXiangqiPiece(state, file, rank) {
+  return state.pieces.find((piece) => piece.file === file && piece.rank === rank) || null;
+}
+
+function isWithinXiangqiBoard(file, rank) {
+  return Number.isInteger(file) && Number.isInteger(rank) && file >= 0 && file <= 8 && rank >= 0 && rank <= 9;
+}
+
+function countPiecesBetween(state, from, to) {
+  let count = 0;
+  if (from.file === to.file) {
+    const start = Math.min(from.rank, to.rank) + 1;
+    const end = Math.max(from.rank, to.rank);
+    for (let rank = start; rank < end; rank += 1) {
+      if (findXiangqiPiece(state, from.file, rank)) count += 1;
+    }
+    return count;
+  }
+  if (from.rank === to.rank) {
+    const start = Math.min(from.file, to.file) + 1;
+    const end = Math.max(from.file, to.file);
+    for (let file = start; file < end; file += 1) {
+      if (findXiangqiPiece(state, file, from.rank)) count += 1;
+    }
+    return count;
+  }
+  return count;
+}
+
+function isInsidePalace(side, file, rank) {
+  if (file < 3 || file > 5) return false;
+  if (side === 'RED') return rank >= 7 && rank <= 9;
+  return rank >= 0 && rank <= 2;
+}
+
+function hasCrossedRiver(piece) {
+  return piece.side === 'RED' ? piece.rank <= 4 : piece.rank >= 5;
+}
+
+function validateXiangqiMove(state, piece, targetPiece, from, to) {
+  if (!isWithinXiangqiBoard(from.file, from.rank) || !isWithinXiangqiBoard(to.file, to.rank)) {
+    return false;
+  }
+  if (from.file === to.file && from.rank === to.rank) return false;
+  if (targetPiece && targetPiece.side === piece.side) return false;
+
+  const fileDiff = to.file - from.file;
+  const rankDiff = to.rank - from.rank;
+  const absFileDiff = Math.abs(fileDiff);
+  const absRankDiff = Math.abs(rankDiff);
+
+  switch (piece.type) {
+    case 'rook':
+      if (from.file !== to.file && from.rank !== to.rank) return false;
+      return countPiecesBetween(state, from, to) === 0;
+    case 'knight': {
+      const isLShape =
+        (absFileDiff === 1 && absRankDiff === 2) || (absFileDiff === 2 && absRankDiff === 1);
+      if (!isLShape) return false;
+      const blockFile = absFileDiff === 2 ? from.file + fileDiff / 2 : from.file;
+      const blockRank = absRankDiff === 2 ? from.rank + rankDiff / 2 : from.rank;
+      return !findXiangqiPiece(state, blockFile, blockRank);
+    }
+    case 'elephant': {
+      if (absFileDiff !== 2 || absRankDiff !== 2) return false;
+      if (piece.side === 'RED' && to.rank < 5) return false;
+      if (piece.side === 'BLACK' && to.rank > 4) return false;
+      return !findXiangqiPiece(state, from.file + fileDiff / 2, from.rank + rankDiff / 2);
+    }
+    case 'advisor':
+      return absFileDiff === 1 && absRankDiff === 1 && isInsidePalace(piece.side, to.file, to.rank);
+    case 'king':
+      return absFileDiff + absRankDiff === 1 && isInsidePalace(piece.side, to.file, to.rank);
+    case 'cannon': {
+      if (from.file !== to.file && from.rank !== to.rank) return false;
+      const blockers = countPiecesBetween(state, from, to);
+      if (targetPiece) return blockers === 1;
+      return blockers === 0;
+    }
+    case 'pawn': {
+      const forwardStep = piece.side === 'RED' ? -1 : 1;
+      if (fileDiff === 0 && rankDiff === forwardStep) return true;
+      if (!hasCrossedRiver(piece)) return false;
+      return absFileDiff === 1 && rankDiff === 0;
+    }
+    default:
+      return false;
+  }
+}
+
+function getXiangqiUserSide(match, userId) {
+  if (Number(match.red_user_id) === Number(userId)) return 'RED';
+  if (Number(match.black_user_id) === Number(userId)) return 'BLACK';
+  return '';
+}
+
+function formatXiangqiMatchItem(match) {
+  const state = parseXiangqiState(match.current_fen);
+  const timers = getXiangqiRemainingTimers(match);
+  return {
+    id: Number(match.id),
+    roomId: Number(match.room_id),
+    redUserId: Number(match.red_user_id),
+    blackUserId: Number(match.black_user_id),
+    turnSide: String(match.turn_side || 'RED').toUpperCase(),
+    status: String(match.status || '').toUpperCase(),
+    result: String(match.result || '').toUpperCase(),
+    winnerUserId: match.winner_user_id == null ? null : Number(match.winner_user_id),
+    pendingDrawOfferSide: state.pendingDrawOfferSide,
+    pieces: state.pieces,
+    redTimeLeftMs: timers.redTimeLeftMs,
+    blackTimeLeftMs: timers.blackTimeLeftMs,
+    finishedAt: String(match.finished_at || '')
+  };
+}
+
+function formatXiangqiRoomItem(room, match = null) {
+  return {
+    id: Number(room.id),
+    roomCode: String(room.room_code || '').trim(),
+    creatorUserId: Number(room.creator_user_id),
+    joinerUserId: room.joiner_user_id == null ? null : Number(room.joiner_user_id),
+    stakeAmount: String(room.stake_amount || '0.00'),
+    timeControlMinutes: Number(room.time_control_minutes || 0),
+    status: String(room.status || '').toUpperCase(),
+    startedAt: String(room.started_at || '').trim(),
+    match: match ? formatXiangqiMatchItem(match) : null
+  };
+}
+
+function getXiangqiRemainingTimers(match) {
+  const lastMoveAtValue = String(match.last_move_at || '').trim() || String(match.created_at || '').trim();
+  const baseTime = lastMoveAtValue ? Date.parse(lastMoveAtValue.replace(' ', 'T') + 'Z') : Date.now();
+  const now = Date.now();
+  const elapsedMs = Number.isFinite(baseTime) ? Math.max(0, now - baseTime) : 0;
+  const turnSide = String(match.turn_side || 'RED').toUpperCase();
+  let redTimeLeftMs = Number(match.red_time_left_ms || 0);
+  let blackTimeLeftMs = Number(match.black_time_left_ms || 0);
+
+  if (String(match.status || '').toUpperCase() === 'PLAYING') {
+    if (turnSide === 'RED') {
+      redTimeLeftMs = Math.max(0, redTimeLeftMs - elapsedMs);
+    } else {
+      blackTimeLeftMs = Math.max(0, blackTimeLeftMs - elapsedMs);
+    }
+  }
+
+  return { redTimeLeftMs, blackTimeLeftMs };
+}
+
+function validateXiangqiStakeAmount(amount) {
+  const amountCents = parseMoneyToCents(amount);
+  if (amountCents < XIANGQI_MIN_STAKE_CENTS || amountCents > XIANGQI_MAX_STAKE_CENTS) {
+    throw new Error('INVALID_STAKE_LIMIT');
+  }
+  return amountCents;
+}
+
+function validateXiangqiTimeControlMinutes(value) {
+  const minutes = Number(value);
+  if (!Number.isInteger(minutes) || !XIANGQI_ALLOWED_TIME_CONTROLS.has(minutes)) {
+    throw new Error('INVALID_TIME_CONTROL');
+  }
+  return minutes;
+}
+
+function ensureUserHasNoActiveXiangqiSeat(userId) {
+  if (selectActiveXiangqiRoomByUserStmt.get(userId, userId)) {
+    return false;
+  }
+  if (selectActiveXiangqiMatchByUserStmt.get(userId, userId)) {
+    return false;
+  }
+  return true;
+}
+
+function updateWalletFrozenStake({ userId, amountCents, direction, relatedId, remark }) {
+  const wallet = selectXiangqiWalletStmt.get(userId);
+  if (!wallet) {
+    const error = new Error('WALLET_NOT_FOUND');
+    error.code = 'WALLET_NOT_FOUND';
+    throw error;
+  }
+
+  const availableBalanceCents = parseMoneyToCents(wallet.available_balance);
+  const frozenBalanceCents = parseMoneyToCents(wallet.frozen_balance);
+
+  let nextAvailableBalanceCents = availableBalanceCents;
+  let nextFrozenBalanceCents = frozenBalanceCents;
+  let ledgerAmountCents = amountCents;
+  let ledgerType = 'unfreeze_stake';
+
+  if (direction === 'freeze') {
+    if (availableBalanceCents < amountCents) {
+      const error = new Error('INSUFFICIENT_BALANCE');
+      error.code = 'INSUFFICIENT_BALANCE';
+      throw error;
+    }
+    nextAvailableBalanceCents -= amountCents;
+    nextFrozenBalanceCents += amountCents;
+    ledgerAmountCents = -amountCents;
+    ledgerType = 'freeze_stake';
+  } else {
+    if (frozenBalanceCents < amountCents) {
+      const error = new Error('INSUFFICIENT_FROZEN_BALANCE');
+      error.code = 'INSUFFICIENT_FROZEN_BALANCE';
+      throw error;
+    }
+    nextAvailableBalanceCents += amountCents;
+    nextFrozenBalanceCents -= amountCents;
+  }
+
+  updateXiangqiWalletBalancesStmt.run(
+    centsToMoneyString(nextAvailableBalanceCents),
+    centsToMoneyString(nextFrozenBalanceCents),
+    userId
+  );
+  insertXiangqiLedgerStmt.run(
+    userId,
+    ledgerType,
+    centsToMoneyString(ledgerAmountCents),
+    centsToMoneyString(nextAvailableBalanceCents),
+    'xiangqi_room',
+    String(relatedId),
+    remark
+  );
+
+}
+
+function applyWalletMatchSettlement({
+  userId,
+  availableDeltaCents,
+  frozenDeltaCents,
+  ledgerType,
+  ledgerAmountCents,
+  relatedId,
+  remark
+}) {
+  const wallet = selectXiangqiWalletStmt.get(userId);
+  if (!wallet) {
+    const error = new Error('WALLET_NOT_FOUND');
+    error.code = 'WALLET_NOT_FOUND';
+    throw error;
+  }
+
+  const nextAvailableBalanceCents = parseMoneyToCents(wallet.available_balance) + availableDeltaCents;
+  const nextFrozenBalanceCents = parseMoneyToCents(wallet.frozen_balance) + frozenDeltaCents;
+  if (nextAvailableBalanceCents < 0n) {
+    const error = new Error('INSUFFICIENT_BALANCE');
+    error.code = 'INSUFFICIENT_BALANCE';
+    throw error;
+  }
+  if (nextFrozenBalanceCents < 0n) {
+    const error = new Error('INSUFFICIENT_FROZEN_BALANCE');
+    error.code = 'INSUFFICIENT_FROZEN_BALANCE';
+    throw error;
+  }
+
+  updateXiangqiWalletBalancesStmt.run(
+    centsToMoneyString(nextAvailableBalanceCents),
+    centsToMoneyString(nextFrozenBalanceCents),
+    userId
+  );
+  insertXiangqiLedgerStmt.run(
+    userId,
+    ledgerType,
+    centsToMoneyString(ledgerAmountCents),
+    centsToMoneyString(nextAvailableBalanceCents),
+    'xiangqi_match',
+    String(relatedId),
+    remark
+  );
+}
+
+function generateUniqueXiangqiRoomCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const bytes = crypto.randomBytes(XIANGQI_ROOM_CODE_LENGTH);
+    let roomCode = '';
+    for (let index = 0; index < XIANGQI_ROOM_CODE_LENGTH; index += 1) {
+      roomCode += alphabet[bytes[index] % alphabet.length];
+    }
+    if (!selectXiangqiRoomByCodeStmt.get(roomCode)) {
+      return roomCode;
+    }
+  }
+
+  throw new Error('ROOM_CODE_GENERATION_FAILED');
+}
+
+const applySuccessfulDepositNotify = db.transaction((payload) => {
+  const deposit = selectXiangqiDepositByOrderStmt.get(payload.partnerOrderNo);
+  if (!deposit) return { kind: 'not_found' };
+  if (String(deposit.status || '').toLowerCase() === 'paid') {
+    return { kind: 'already_processed' };
+  }
+
+  const wallet = selectXiangqiWalletStmt.get(deposit.user_id);
+  if (!wallet) return { kind: 'wallet_not_found' };
+
+  const nextBalanceCents =
+    parseMoneyToCents(wallet.available_balance) + parseMoneyToCents(deposit.amount);
+  const nextBalance = centsToMoneyString(nextBalanceCents);
+
+  updateXiangqiWalletBalanceStmt.run(nextBalance, deposit.user_id);
+  insertXiangqiLedgerStmt.run(
+    deposit.user_id,
+    'deposit_credit',
+    centsToMoneyString(parseMoneyToCents(deposit.amount)),
+    nextBalance,
+    'deposit',
+    deposit.partner_order_no,
+    'deposit notify success'
+  );
+  markXiangqiDepositPaidStmt.run(serializeNotifyPayload(payload.rawBody), deposit.partner_order_no);
+
+  return { kind: 'credited' };
+});
+
+const createPendingWithdrawal = db.transaction((payload) => {
+  const existing = selectXiangqiWithdrawalByOrderStmt.get(payload.partnerOrderNo);
+  if (existing) {
+    const sameUser = Number(existing.user_id) === Number(payload.userId);
+    const sameAmount = parseMoneyToCents(existing.amount) === parseMoneyToCents(payload.amount);
+    if (!sameUser || !sameAmount) {
+      return { kind: 'idempotency_mismatch' };
+    }
+    return { kind: String(existing.status || '').toLowerCase() === 'pending' ? 'already_pending' : 'duplicate' };
+  }
+
+  const wallet = selectXiangqiWalletStmt.get(payload.userId);
+  if (!wallet) return { kind: 'wallet_not_found' };
+
+  const availableBalanceCents = parseMoneyToCents(wallet.available_balance);
+  const amountCents = parseMoneyToCents(payload.amount);
+  if (availableBalanceCents < amountCents) {
+    return { kind: 'insufficient_balance' };
+  }
+
+  const nextBalanceCents = availableBalanceCents - amountCents;
+  const nextBalance = centsToMoneyString(nextBalanceCents);
+
+  updateXiangqiWalletBalanceStmt.run(nextBalance, payload.userId);
+  insertXiangqiWithdrawalStmt.run(payload.partnerOrderNo, payload.userId, centsToMoneyString(amountCents));
+  insertXiangqiLedgerStmt.run(
+    payload.userId,
+    'withdraw_debit',
+    centsToMoneyString(-amountCents),
+    nextBalance,
+    'withdraw',
+    payload.partnerOrderNo,
+    'withdraw created'
+  );
+
+  return { kind: 'pending' };
+});
+
+const applyFailedWithdrawalNotify = db.transaction((payload) => {
+  const withdrawal = selectXiangqiWithdrawalByOrderStmt.get(payload.partnerOrderNo);
+  if (!withdrawal) return { kind: 'not_found' };
+  const currentStatus = String(withdrawal.status || '').toLowerCase();
+  if (currentStatus === 'failed') {
+    return { kind: 'already_processed' };
+  }
+  if (currentStatus !== 'pending') {
+    return { kind: 'not_pending' };
+  }
+
+  const wallet = selectXiangqiWalletStmt.get(withdrawal.user_id);
+  if (!wallet) return { kind: 'wallet_not_found' };
+
+  const nextBalanceCents =
+    parseMoneyToCents(wallet.available_balance) + parseMoneyToCents(withdrawal.amount);
+  const nextBalance = centsToMoneyString(nextBalanceCents);
+
+  updateXiangqiWalletBalanceStmt.run(nextBalance, withdrawal.user_id);
+  insertXiangqiLedgerStmt.run(
+    withdrawal.user_id,
+    'withdraw_refund',
+    centsToMoneyString(parseMoneyToCents(withdrawal.amount)),
+    nextBalance,
+    'withdraw',
+    withdrawal.partner_order_no,
+    'withdraw failed refund'
+  );
+  markXiangqiWithdrawalFailedStmt.run(serializeNotifyPayload(payload.rawBody), withdrawal.partner_order_no);
+
+  return { kind: 'refunded' };
+});
+
+const createXiangqiRoom = db.transaction((payload) => {
+  if (!ensureUserHasNoActiveXiangqiSeat(payload.userId)) {
+    return { kind: 'user_already_active' };
+  }
+
+  const wallet = selectXiangqiWalletStmt.get(payload.userId);
+  if (!wallet) return { kind: 'wallet_not_found' };
+  if (parseMoneyToCents(wallet.available_balance) < payload.stakeAmountCents) {
+    return { kind: 'insufficient_balance' };
+  }
+
+  const roomCode = generateUniqueXiangqiRoomCode();
+  const stakeAmount = centsToMoneyString(payload.stakeAmountCents);
+  const roomResult = insertXiangqiRoomStmt.run(
+    roomCode,
+    payload.userId,
+    stakeAmount,
+    payload.timeControlMinutes
+  );
+  const roomId = Number(roomResult.lastInsertRowid);
+  updateWalletFrozenStake({
+    userId: payload.userId,
+    amountCents: payload.stakeAmountCents,
+    direction: 'freeze',
+    relatedId: roomId,
+    remark: 'room create freeze'
+  });
+
+  return { kind: 'created', roomCode, roomId };
+});
+
+const joinXiangqiRoom = db.transaction((payload) => {
+  if (!ensureUserHasNoActiveXiangqiSeat(payload.userId)) {
+    return { kind: 'user_already_active' };
+  }
+
+  const room = selectXiangqiRoomByCodeStmt.get(payload.roomCode);
+  if (!room) return { kind: 'room_not_found' };
+  if (String(room.status || '') !== 'WAITING') return { kind: 'room_not_joinable' };
+  if (Number(room.creator_user_id) === Number(payload.userId)) {
+    return { kind: 'user_already_active' };
+  }
+
+  const stakeAmountCents = parseMoneyToCents(room.stake_amount);
+  updateWalletFrozenStake({
+    userId: payload.userId,
+    amountCents: stakeAmountCents,
+    direction: 'freeze',
+    relatedId: room.id,
+    remark: 'room join freeze'
+  });
+
+  updateXiangqiRoomReadyStmt.run(payload.userId, room.id);
+  const timeLeftMs = Number(room.time_control_minutes) * 60 * 1000;
+  const initialState = serializeXiangqiState(createInitialXiangqiState());
+  const matchResult = insertXiangqiMatchStmt.run(
+    room.id,
+    room.creator_user_id,
+    payload.userId,
+    initialState,
+    timeLeftMs,
+    timeLeftMs
+  );
+
+  return {
+    kind: 'joined',
+    roomCode: room.room_code,
+    roomId: Number(room.id),
+    matchId: Number(matchResult.lastInsertRowid)
+  };
+});
+
+const cancelXiangqiRoom = db.transaction((payload) => {
+  const room = selectXiangqiRoomByCodeStmt.get(payload.roomCode);
+  if (!room) return { kind: 'room_not_found' };
+  if (String(room.status || '') !== 'WAITING') {
+    return { kind: 'room_not_cancelable' };
+  }
+  const requesterUserId = Number(payload.userId);
+  const creatorUserId = Number(room.creator_user_id);
+  if (requesterUserId !== creatorUserId) {
+    return { kind: 'room_forbidden' };
+  }
+
+  const stakeAmountCents = parseMoneyToCents(room.stake_amount);
+  updateWalletFrozenStake({
+    userId: creatorUserId,
+    amountCents: stakeAmountCents,
+    direction: 'unfreeze',
+    relatedId: room.id,
+    remark: 'room cancel unfreeze'
+  });
+
+  markXiangqiRoomCanceledStmt.run(room.id);
+  const match = selectXiangqiMatchByRoomIdStmt.get(room.id);
+  if (match) {
+    markXiangqiMatchCanceledStmt.run(room.id);
+  }
+
+  return { kind: 'canceled', roomCode: room.room_code, roomId: Number(room.id) };
+});
+
+const settleXiangqiMatch = db.transaction((payload) => {
+  const result = String(payload.result || '').trim().toUpperCase();
+  if (!XIANGQI_SETTLEMENT_RESULTS.has(result)) {
+    throw new Error('INVALID_SETTLEMENT_RESULT');
+  }
+
+  const match = selectXiangqiMatchSettlementStmt.get(payload.matchId);
+  if (!match) return { kind: 'match_not_found' };
+
+  const currentStatus = String(match.status || '').toUpperCase();
+  if (currentStatus === 'FINISHED') {
+    if (String(match.result || '').toUpperCase() === result) {
+      return { kind: 'already_processed', result };
+    }
+    return { kind: 'result_conflict', existingResult: String(match.result || '').toUpperCase() };
+  }
+
+  if (currentStatus !== 'PLAYING' || String(match.room_status || '').toUpperCase() !== 'PLAYING') {
+    return { kind: 'match_not_settleable' };
+  }
+
+  const stakeAmountCents = parseMoneyToCents(match.stake_amount);
+  let winnerUserId = null;
+
+  if (result === 'RED_WIN') {
+    winnerUserId = Number(match.red_user_id);
+    applyWalletMatchSettlement({
+      userId: Number(match.red_user_id),
+      availableDeltaCents: stakeAmountCents * 2n,
+      frozenDeltaCents: -stakeAmountCents,
+      ledgerType: 'match_win',
+      ledgerAmountCents: stakeAmountCents * 2n,
+      relatedId: match.id,
+      remark: 'match settled win'
+    });
+    applyWalletMatchSettlement({
+      userId: Number(match.black_user_id),
+      availableDeltaCents: 0n,
+      frozenDeltaCents: -stakeAmountCents,
+      ledgerType: 'match_loss',
+      ledgerAmountCents: -stakeAmountCents,
+      relatedId: match.id,
+      remark: 'match settled loss'
+    });
+  } else if (result === 'BLACK_WIN') {
+    winnerUserId = Number(match.black_user_id);
+    applyWalletMatchSettlement({
+      userId: Number(match.red_user_id),
+      availableDeltaCents: 0n,
+      frozenDeltaCents: -stakeAmountCents,
+      ledgerType: 'match_loss',
+      ledgerAmountCents: -stakeAmountCents,
+      relatedId: match.id,
+      remark: 'match settled loss'
+    });
+    applyWalletMatchSettlement({
+      userId: Number(match.black_user_id),
+      availableDeltaCents: stakeAmountCents * 2n,
+      frozenDeltaCents: -stakeAmountCents,
+      ledgerType: 'match_win',
+      ledgerAmountCents: stakeAmountCents * 2n,
+      relatedId: match.id,
+      remark: 'match settled win'
+    });
+  } else {
+    const remark = result === 'TIMEOUT_DRAW' ? 'match timeout draw unfreeze' : 'match draw unfreeze';
+    applyWalletMatchSettlement({
+      userId: Number(match.red_user_id),
+      availableDeltaCents: stakeAmountCents,
+      frozenDeltaCents: -stakeAmountCents,
+      ledgerType: 'unfreeze_stake',
+      ledgerAmountCents: stakeAmountCents,
+      relatedId: match.id,
+      remark
+    });
+    applyWalletMatchSettlement({
+      userId: Number(match.black_user_id),
+      availableDeltaCents: stakeAmountCents,
+      frozenDeltaCents: -stakeAmountCents,
+      ledgerType: 'unfreeze_stake',
+      ledgerAmountCents: stakeAmountCents,
+      relatedId: match.id,
+      remark
+    });
+  }
+
+  markXiangqiMatchSettledStmt.run(result, winnerUserId, match.id);
+  markXiangqiRoomFinishedStmt.run(match.room_id);
+
+  return { kind: 'settled', result, roomId: Number(match.room_id), matchId: Number(match.id) };
+});
+
+const moveXiangqiMatch = db.transaction((payload) => {
+  const match = selectXiangqiMatchDetailStmt.get(payload.matchId);
+  if (!match) return { kind: 'match_not_found' };
+  if (String(match.status || '').toUpperCase() !== 'PLAYING') return { kind: 'match_not_playing' };
+
+  const side = getXiangqiUserSide(match, payload.userId);
+  if (!side) return { kind: 'match_forbidden' };
+  if (String(match.turn_side || 'RED').toUpperCase() !== side) return { kind: 'not_your_turn' };
+
+  const from = {
+    file: Number(payload.from?.file),
+    rank: Number(payload.from?.rank)
+  };
+  const to = {
+    file: Number(payload.to?.file),
+    rank: Number(payload.to?.rank)
+  };
+  if (!isWithinXiangqiBoard(from.file, from.rank) || !isWithinXiangqiBoard(to.file, to.rank)) {
+    return { kind: 'invalid_position' };
+  }
+
+  const state = parseXiangqiState(match.current_fen);
+  const movingPiece = findXiangqiPiece(state, from.file, from.rank);
+  const targetPiece = findXiangqiPiece(state, to.file, to.rank);
+  if (!movingPiece || movingPiece.side !== side) return { kind: 'piece_not_found' };
+  if (!validateXiangqiMove(state, movingPiece, targetPiece, from, to)) return { kind: 'illegal_move' };
+  const timers = getXiangqiRemainingTimers(match);
+  if ((side === 'RED' && timers.redTimeLeftMs <= 0) || (side === 'BLACK' && timers.blackTimeLeftMs <= 0)) {
+    return settleXiangqiMatch({ matchId: match.id, result: 'TIMEOUT_DRAW' });
+  }
+
+  const nextPieces = state.pieces
+    .filter((piece) => !(piece.file === from.file && piece.rank === from.rank))
+    .filter((piece) => !(piece.file === to.file && piece.rank === to.rank))
+    .concat({ ...movingPiece, file: to.file, rank: to.rank });
+  const nextState = {
+    pendingDrawOfferSide: null,
+    pieces: nextPieces
+  };
+  const nextTurnSide = side === 'RED' ? 'BLACK' : 'RED';
+  const serializedState = serializeXiangqiState(nextState);
+  const moveNo = Number(selectXiangqiMoveCountStmt.get(match.id)?.count || 0) + 1;
+
+  insertXiangqiMoveStmt.run(
+    match.id,
+    moveNo,
+    side,
+    `${from.file},${from.rank}`,
+    `${to.file},${to.rank}`,
+    serializedState
+  );
+  updateXiangqiMatchStateStmt.run(
+    serializedState,
+    nextTurnSide,
+    timers.redTimeLeftMs,
+    timers.blackTimeLeftMs,
+    match.id
+  );
+
+  const updated = selectXiangqiMatchDetailStmt.get(match.id);
+  return { kind: 'moved', moveNo, turnSide: nextTurnSide, match: updated };
+});
+
+const offerXiangqiDraw = db.transaction((payload) => {
+  const match = selectXiangqiMatchDetailStmt.get(payload.matchId);
+  if (!match) return { kind: 'match_not_found' };
+  if (String(match.status || '').toUpperCase() !== 'PLAYING') return { kind: 'match_not_playing' };
+
+  const side = getXiangqiUserSide(match, payload.userId);
+  if (!side) return { kind: 'match_forbidden' };
+
+  const state = parseXiangqiState(match.current_fen);
+  if (state.pendingDrawOfferSide === side) return { kind: 'already_pending', offerSide: side };
+
+  state.pendingDrawOfferSide = side;
+  updateXiangqiMatchSnapshotStmt.run(serializeXiangqiState(state), match.id);
+  return { kind: 'pending', offerSide: side, roomId: Number(match.room_id), matchId: Number(match.id) };
+});
+
+const respondXiangqiDraw = db.transaction((payload) => {
+  const match = selectXiangqiMatchDetailStmt.get(payload.matchId);
+  if (!match) return { kind: 'match_not_found' };
+  if (String(match.status || '').toUpperCase() !== 'PLAYING') return { kind: 'match_not_playing' };
+
+  const side = getXiangqiUserSide(match, payload.userId);
+  if (!side) return { kind: 'match_forbidden' };
+
+  const state = parseXiangqiState(match.current_fen);
+  if (!state.pendingDrawOfferSide) return { kind: 'draw_not_pending' };
+  if (state.pendingDrawOfferSide === side) return { kind: 'draw_same_side' };
+
+  if (payload.accept) {
+    return settleXiangqiMatch({ matchId: match.id, result: 'DRAW' });
+  }
+
+  state.pendingDrawOfferSide = null;
+  updateXiangqiMatchSnapshotStmt.run(serializeXiangqiState(state), match.id);
+  return { kind: 'declined', roomId: Number(match.room_id), matchId: Number(match.id) };
+});
+
+function resignXiangqiMatch(payload) {
+  const match = selectXiangqiMatchDetailStmt.get(payload.matchId);
+  if (!match) return { kind: 'match_not_found' };
+  if (String(match.status || '').toUpperCase() !== 'PLAYING') return { kind: 'match_not_playing' };
+
+  const side = getXiangqiUserSide(match, payload.userId);
+  if (!side) return { kind: 'match_forbidden' };
+
+  return settleXiangqiMatch({
+    matchId: match.id,
+    result: side === 'RED' ? 'BLACK_WIN' : 'RED_WIN'
+  });
+}
+
+function settleXiangqiTimeoutDraw(payload) {
+  const match = selectXiangqiMatchDetailStmt.get(payload.matchId);
+  if (!match) return { kind: 'match_not_found' };
+  if (String(match.status || '').toUpperCase() !== 'PLAYING') return { kind: 'match_not_playing' };
+
+  const { redTimeLeftMs, blackTimeLeftMs } = getXiangqiRemainingTimers(match);
+  updateXiangqiMatchTimeoutStateStmt.run(redTimeLeftMs, blackTimeLeftMs, match.id);
+  if (redTimeLeftMs > 0 && blackTimeLeftMs > 0) {
+    return { kind: 'timeout_not_reached', redTimeLeftMs, blackTimeLeftMs };
+  }
+
+  return settleXiangqiMatch({
+    matchId: match.id,
+    result: 'TIMEOUT_DRAW'
+  });
+}
+
+app.post('/api/xiangqi/session', (req, res) => {
+  try {
+    const session = ensureXiangqiUserWallet({
+      openId: String(req.body?.openId || '').trim(),
+      nickname: String(req.body?.nickname || 'Nexa 玩家').trim(),
+      avatar: String(req.body?.avatar || '').trim()
+    });
+    return res.json({ ok: true, ...session });
+  } catch (error) {
+    if (error?.message === 'INVALID_OPEN_ID') {
+      return res.status(400).json({ ok: false, error: 'INVALID_OPEN_ID' });
+    }
+    throw error;
+  }
+});
+
+app.get('/api/xiangqi/wallet', (req, res) => {
+  try {
+    const userId = parsePositiveInteger(req.query?.userId, 'INVALID_USER_ID');
+    const wallet = formatXiangqiWalletSummary(userId);
+    if (!wallet) {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    return res.json({ ok: true, item: wallet });
+  } catch (error) {
+    if (error?.message === 'INVALID_USER_ID') {
+      return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+    }
+    return respondXiangqiWalletNotImplemented(res);
+  }
+});
+
+app.get('/api/xiangqi/wallet/ledger', (req, res) => {
+  try {
+    const userId = parsePositiveInteger(req.query?.userId, 'INVALID_USER_ID');
+    const limit = Math.min(50, Math.max(1, Number(req.query?.limit || 20) || 20));
+    const wallet = selectXiangqiWalletStmt.get(userId);
+    if (!wallet) {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    const items = selectRecentXiangqiLedgerStmt.all(userId, limit).map((row) => ({
+      id: Number(row.id),
+      type: String(row.type || '').trim(),
+      amount: String(row.amount || '0.00'),
+      balanceAfter: String(row.balance_after || '0.00'),
+      relatedType: String(row.related_type || '').trim(),
+      relatedId: String(row.related_id || '').trim(),
+      remark: String(row.remark || '').trim(),
+      createdAt: String(row.created_at || '').trim()
+    }));
+    return res.json({ ok: true, items });
+  } catch (error) {
+    if (error?.message === 'INVALID_USER_ID') {
+      return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+    }
+    return respondXiangqiWalletNotImplemented(res);
+  }
+});
+
+app.post('/api/xiangqi/deposit/create', async (req, res) => {
+  if (!shouldHandleXiangqiWalletBody(req)) {
+    return respondXiangqiWalletNotImplemented(res);
+  }
+
+  try {
+    const userId = parsePositiveInteger(req.body?.userId, 'INVALID_USER_ID');
+    const openId = String(req.body?.openId || '').trim();
+    const sessionKey = String(req.body?.sessionKey || '').trim();
+    const amount = String(req.body?.amount || '').trim();
+    if (!openId || !sessionKey) {
+      return res.status(400).json({ ok: false, error: 'INVALID_SESSION' });
+    }
+    parseMoneyToCents(amount);
+    const wallet = selectXiangqiWalletStmt.get(userId);
+    if (!wallet) {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+
+    const order = await createNexaTipOrder({
+      req,
+      gameSlug: 'xiangqi',
+      openId,
+      sessionKey,
+      amount
+    });
+    insertXiangqiDepositStmt.run(order.partnerOrderNo, userId, amount);
+
+    return res.json({
+      ok: true,
+      status: 'pending',
+      partnerOrderNo: order.partnerOrderNo,
+      orderNo: order.orderNo,
+      amount,
+      currency: NEXA_TIP_CURRENCY,
+      payment: order.payment
+    });
+  } catch (error) {
+    if (error?.message === 'INVALID_USER_ID') {
+      return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+    }
+    if (error?.message === 'INVALID_AMOUNT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_AMOUNT' });
+    }
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'Nexa 下单失败') });
+  }
+});
+
+app.post('/api/xiangqi/deposit/query', async (req, res) => {
+  if (!shouldHandleXiangqiWalletBody(req)) {
+    return respondXiangqiWalletNotImplemented(res);
+  }
+
+  try {
+    const orderNo = String(req.body?.orderNo || '').trim();
+    const partnerOrderNo = String(req.body?.partnerOrderNo || '').trim();
+    if (!orderNo) {
+      return res.status(400).json({ ok: false, error: 'INVALID_ORDER_NO' });
+    }
+
+    const order = await queryNexaTipOrder(orderNo);
+    if (String(order.status || '').toUpperCase() === 'SUCCESS' && partnerOrderNo) {
+      applySuccessfulDepositNotify({
+        partnerOrderNo,
+        rawBody: {
+          partnerOrderNo,
+          orderNo,
+          status: 'SUCCESS'
+        }
+      });
+    }
+
+    return res.json({
+      ok: true,
+      orderNo: String(order.orderNo || '').trim(),
+      partnerOrderNo: partnerOrderNo || String(order.partnerOrderNo || '').trim(),
+      status: String(order.status || 'PENDING').trim().toUpperCase(),
+      amount: String(order.amount || '0.00'),
+      currency: String(order.currency || NEXA_TIP_CURRENCY).trim()
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'Nexa 查询失败') });
+  }
+});
+
+app.post('/api/xiangqi/deposit/notify', (_req, res) => {
+  const req = _req;
+  if (!shouldHandleXiangqiWalletBody(req)) {
+    return respondXiangqiWalletNotImplemented(res);
+  }
+
+  try {
+    const partnerOrderNo = String(req.body.partnerOrderNo || '').trim();
+    const status = String(req.body.status || '').trim().toUpperCase();
+    if (!partnerOrderNo) {
+      return res.status(400).json({ ok: false, error: 'INVALID_PARTNER_ORDER_NO' });
+    }
+    if (status !== 'SUCCESS') {
+      return res.status(400).json({ ok: false, error: 'UNSUPPORTED_DEPOSIT_STATUS' });
+    }
+
+    const result = applySuccessfulDepositNotify({
+      partnerOrderNo,
+      rawBody: req.body
+    });
+
+    if (result.kind === 'not_found') {
+      return res.status(404).json({ ok: false, error: 'DEPOSIT_NOT_FOUND' });
+    }
+    if (result.kind === 'wallet_not_found') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (result.kind === 'already_processed') {
+      return res.json({ ok: true, status: 'already_processed' });
+    }
+    return res.json({ ok: true, status: 'credited' });
+  } catch (error) {
+    if (error && error.message === 'INVALID_AMOUNT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_AMOUNT' });
+    }
+    throw error;
+  }
+});
+
+app.post('/api/xiangqi/withdraw/create', (req, res) => {
+  if (!shouldHandleXiangqiWalletBody(req)) {
+    return respondXiangqiWalletNotImplemented(res);
+  }
+
+  try {
+    const partnerOrderNo = String(req.body.partnerOrderNo || '').trim();
+    const userId = Number(req.body.userId);
+    const amount = String(req.body.amount || '').trim();
+    if (!partnerOrderNo) {
+      return res.status(400).json({ ok: false, error: 'INVALID_PARTNER_ORDER_NO' });
+    }
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+    }
+    parseMoneyToCents(amount);
+
+    const result = createPendingWithdrawal({
+      partnerOrderNo,
+      userId,
+      amount
+    });
+
+    if (result.kind === 'wallet_not_found') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (result.kind === 'insufficient_balance') {
+      return res.status(409).json({ ok: false, error: 'INSUFFICIENT_BALANCE' });
+    }
+    if (result.kind === 'already_pending') {
+      return res.json({ ok: true, status: 'pending' });
+    }
+    if (result.kind === 'idempotency_mismatch') {
+      return res.status(409).json({ ok: false, error: 'WITHDRAWAL_IDEMPOTENCY_MISMATCH' });
+    }
+    if (result.kind === 'duplicate') {
+      return res.status(409).json({ ok: false, error: 'WITHDRAWAL_ALREADY_EXISTS' });
+    }
+    return res.json({ ok: true, status: 'pending' });
+  } catch (error) {
+    if (error && error.message === 'INVALID_AMOUNT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_AMOUNT' });
+    }
+    throw error;
+  }
+});
+
+app.post('/api/xiangqi/withdraw/query', (req, res) => {
+  if (!shouldHandleXiangqiWalletBody(req)) {
+    return respondXiangqiWalletNotImplemented(res);
+  }
+
+  const partnerOrderNo = String(req.body?.partnerOrderNo || '').trim();
+  if (!partnerOrderNo) {
+    return res.status(400).json({ ok: false, error: 'INVALID_PARTNER_ORDER_NO' });
+  }
+
+  const row = selectXiangqiWithdrawalByOrderStmt.get(partnerOrderNo);
+  if (!row) {
+    return res.status(404).json({ ok: false, error: 'WITHDRAWAL_NOT_FOUND' });
+  }
+
+  return res.json({
+    ok: true,
+    item: {
+      partnerOrderNo: String(row.partner_order_no || '').trim(),
+      userId: Number(row.user_id),
+      amount: String(row.amount || '0.00'),
+      status: String(row.status || '').trim()
+    }
+  });
+});
+
+app.post('/api/xiangqi/withdraw/notify', (req, res) => {
+  if (!shouldHandleXiangqiWalletBody(req)) {
+    return respondXiangqiWalletNotImplemented(res);
+  }
+
+  const partnerOrderNo = String(req.body.partnerOrderNo || '').trim();
+  const status = String(req.body.status || '').trim().toUpperCase();
+  if (!partnerOrderNo) {
+    return res.status(400).json({ ok: false, error: 'INVALID_PARTNER_ORDER_NO' });
+  }
+  if (status !== 'FAILED') {
+    return res.status(400).json({ ok: false, error: 'UNSUPPORTED_WITHDRAW_STATUS' });
+  }
+
+  try {
+    const result = applyFailedWithdrawalNotify({
+      partnerOrderNo,
+      rawBody: req.body
+    });
+
+    if (result.kind === 'not_found') {
+      return res.status(404).json({ ok: false, error: 'WITHDRAWAL_NOT_FOUND' });
+    }
+    if (result.kind === 'wallet_not_found') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (result.kind === 'not_pending') {
+      return res.status(409).json({ ok: false, error: 'WITHDRAWAL_NOT_PENDING' });
+    }
+    if (result.kind === 'already_processed') {
+      return res.json({ ok: true, status: 'already_processed' });
+    }
+    return res.json({ ok: true, status: 'refunded' });
+  } catch (error) {
+    if (error && error.message === 'INVALID_AMOUNT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_AMOUNT' });
+    }
+    throw error;
+  }
+});
+
+app.post('/api/xiangqi/rooms/create', (req, res) => {
+  if (!shouldHandleXiangqiRoomBody(req)) {
+    return respondXiangqiRoomNotImplemented(res);
+  }
+
+  try {
+    const userId = Number(req.body.userId);
+    const stakeAmount = String(req.body.stakeAmount || '').trim();
+    const timeControlMinutes = validateXiangqiTimeControlMinutes(req.body.timeControlMinutes);
+    const stakeAmountCents = validateXiangqiStakeAmount(stakeAmount);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+    }
+
+    const result = createXiangqiRoom({
+      userId,
+      stakeAmountCents,
+      timeControlMinutes
+    });
+
+    if (result.kind === 'wallet_not_found') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (result.kind === 'insufficient_balance') {
+      return res.status(409).json({ ok: false, error: 'INSUFFICIENT_BALANCE' });
+    }
+    if (result.kind === 'user_already_active') {
+      return res.status(409).json({ ok: false, error: 'USER_ALREADY_IN_ACTIVE_ROOM' });
+    }
+
+    const room = selectXiangqiRoomByCodeStmt.get(result.roomCode);
+    emitXiangqiRoomEvent(result.roomCode, 'room.updated', {
+      room: formatXiangqiRoomItem(room, null)
+    });
+    return res.json({ ok: true, status: 'waiting', roomCode: result.roomCode });
+  } catch (error) {
+    if (error?.code === 'WALLET_NOT_FOUND') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (error?.code === 'INSUFFICIENT_BALANCE') {
+      return res.status(409).json({ ok: false, error: 'INSUFFICIENT_BALANCE' });
+    }
+    if (error && error.message === 'INVALID_AMOUNT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_STAKE_AMOUNT' });
+    }
+    if (error && error.message === 'INVALID_STAKE_LIMIT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_STAKE_AMOUNT' });
+    }
+    if (error && error.message === 'INVALID_TIME_CONTROL') {
+      return res.status(400).json({ ok: false, error: 'INVALID_TIME_CONTROL' });
+    }
+    throw error;
+  }
+});
+
+app.post('/api/xiangqi/rooms/join', (req, res) => {
+  if (!shouldHandleXiangqiRoomBody(req)) {
+    return respondXiangqiRoomNotImplemented(res);
+  }
+
+  const userId = Number(req.body.userId);
+  const roomCode = String(req.body.roomCode || '').trim().toUpperCase();
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+  }
+  if (!roomCode) {
+    return res.status(400).json({ ok: false, error: 'INVALID_ROOM_CODE' });
+  }
+
+  try {
+    const result = joinXiangqiRoom({ userId, roomCode });
+
+    if (result.kind === 'room_not_found') {
+      return res.status(404).json({ ok: false, error: 'ROOM_NOT_FOUND' });
+    }
+    if (result.kind === 'user_already_active') {
+      return res.status(409).json({ ok: false, error: 'USER_ALREADY_IN_ACTIVE_ROOM' });
+    }
+    if (result.kind === 'room_not_joinable') {
+      return res.status(409).json({ ok: false, error: 'ROOM_NOT_JOINABLE' });
+    }
+
+    const room = selectXiangqiRoomByCodeStmt.get(result.roomCode);
+    const match = selectXiangqiMatchDetailStmt.get(result.matchId);
+    emitXiangqiRoomEvent(result.roomCode, 'room.updated', {
+      room: formatXiangqiRoomItem(room, match)
+    });
+    return res.json({
+      ok: true,
+      status: 'ready',
+      roomCode: result.roomCode,
+      matchId: result.matchId
+    });
+  } catch (error) {
+    if (error?.code === 'WALLET_NOT_FOUND') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (error?.code === 'INSUFFICIENT_BALANCE') {
+      return res.status(409).json({ ok: false, error: 'INSUFFICIENT_BALANCE' });
+    }
+    if (error && error.message === 'INVALID_AMOUNT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_STAKE_AMOUNT' });
+    }
+    throw error;
+  }
+});
+
+app.post('/api/xiangqi/rooms/cancel', (req, res) => {
+  if (!shouldHandleXiangqiRoomBody(req)) {
+    return respondXiangqiRoomNotImplemented(res);
+  }
+
+  const userId = Number(req.body.userId);
+  const roomCode = String(req.body.roomCode || '').trim().toUpperCase();
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+  }
+  if (!roomCode) {
+    return res.status(400).json({ ok: false, error: 'INVALID_ROOM_CODE' });
+  }
+
+  try {
+    const result = cancelXiangqiRoom({ userId, roomCode });
+
+    if (result.kind === 'room_not_found') {
+      return res.status(404).json({ ok: false, error: 'ROOM_NOT_FOUND' });
+    }
+    if (result.kind === 'room_forbidden') {
+      return res.status(403).json({ ok: false, error: 'ROOM_CANCEL_FORBIDDEN' });
+    }
+    if (result.kind === 'room_not_cancelable') {
+      return res.status(409).json({ ok: false, error: 'ROOM_NOT_CANCELABLE' });
+    }
+    const room = selectXiangqiRoomByCodeStmt.get(result.roomCode);
+    emitXiangqiRoomEvent(result.roomCode, 'room.updated', {
+      room: formatXiangqiRoomItem(room, null)
+    });
+    return res.json({ ok: true, status: 'canceled', roomCode: result.roomCode });
+  } catch (error) {
+    if (error?.code === 'WALLET_NOT_FOUND') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (error?.code === 'INSUFFICIENT_FROZEN_BALANCE') {
+      return res.status(409).json({ ok: false, error: 'ROOM_CANCEL_BALANCE_CONFLICT' });
+    }
+    if (error && error.message === 'INVALID_AMOUNT') {
+      return res.status(400).json({ ok: false, error: 'INVALID_STAKE_AMOUNT' });
+    }
+    throw error;
+  }
+});
+
+app.get('/api/xiangqi/rooms/active', (req, res) => {
+  try {
+    const userId = parsePositiveInteger(req.query?.userId, 'INVALID_USER_ID');
+    const activeRoom = selectActiveXiangqiRoomByUserStmt.get(userId, userId);
+    if (!activeRoom?.id) {
+      return res.status(404).json({ ok: false, error: 'ROOM_NOT_FOUND' });
+    }
+    const roomCodeRow = selectXiangqiRoomCodeByIdStmt.get(activeRoom.id);
+    if (!roomCodeRow?.room_code) {
+      return res.status(404).json({ ok: false, error: 'ROOM_NOT_FOUND' });
+    }
+    const roomCode = String(roomCodeRow.room_code || '').trim().toUpperCase();
+    const room = selectXiangqiRoomByCodeStmt.get(roomCode);
+    const match = selectXiangqiMatchByRoomIdStmt.get(room.id)
+      ? selectXiangqiMatchDetailStmt.get(selectXiangqiMatchByRoomIdStmt.get(room.id).id)
+      : null;
+
+    return res.json({ ok: true, item: formatXiangqiRoomItem(room, match) });
+  } catch (error) {
+    if (error?.message === 'INVALID_USER_ID') {
+      return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+    }
+    throw error;
+  }
+});
+
+app.get('/api/xiangqi/rooms/:roomCode', (req, res) => {
+  const roomCode = String(req.params.roomCode || '').trim().toUpperCase();
+  if (!roomCode) {
+    return res.status(400).json({ ok: false, error: 'INVALID_ROOM_CODE' });
+  }
+
+  const room = selectXiangqiRoomByCodeStmt.get(roomCode);
+  if (!room) {
+    return res.status(404).json({ ok: false, error: 'ROOM_NOT_FOUND' });
+  }
+  const match = selectXiangqiMatchByRoomIdStmt.get(room.id)
+    ? selectXiangqiMatchDetailStmt.get(selectXiangqiMatchByRoomIdStmt.get(room.id).id)
+    : null;
+
+  return res.json({ ok: true, item: formatXiangqiRoomItem(room, match) });
+});
+
+app.get('/api/xiangqi/rooms/:roomCode/events', (req, res) => {
+  const roomCode = String(req.params.roomCode || '').trim().toUpperCase();
+  if (!roomCode) {
+    return res.status(400).json({ ok: false, error: 'INVALID_ROOM_CODE' });
+  }
+
+  const room = selectXiangqiRoomByCodeStmt.get(roomCode);
+  if (!room) {
+    return res.status(404).json({ ok: false, error: 'ROOM_NOT_FOUND' });
+  }
+
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Connection', 'keep-alive');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  const listeners = getXiangqiRoomStreamSet(roomCode);
+  listeners.add(res);
+
+  const match = selectXiangqiMatchByRoomIdStmt.get(room.id)
+    ? selectXiangqiMatchDetailStmt.get(selectXiangqiMatchByRoomIdStmt.get(room.id).id)
+    : null;
+  res.write(`event: room.snapshot\ndata: ${JSON.stringify({ room: formatXiangqiRoomItem(room, match) })}\n\n`);
+
+  const heartbeat = setInterval(() => {
+    try {
+      res.write('event: ping\ndata: {}\n\n');
+    } catch {}
+  }, 15000);
+
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    listeners.delete(res);
+    if (!listeners.size) {
+      xiangqiRoomEventStreams.delete(roomCode);
+    }
+  };
+
+  req.on('close', cleanup);
+  req.on('end', cleanup);
+});
+
+app.get('/api/xiangqi/matches/:id', (req, res) => {
+  const matchId = Number(req.params.id);
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_MATCH_ID' });
+  }
+
+  const match = selectXiangqiMatchDetailStmt.get(matchId);
+  if (!match) {
+    return res.status(404).json({ ok: false, error: 'MATCH_NOT_FOUND' });
+  }
+
+  return res.json({ ok: true, item: formatXiangqiMatchItem(match) });
+});
+
+app.post('/api/xiangqi/matches/:id/move', (req, res) => {
+  const matchId = Number(req.params.id);
+  const userId = Number(req.body?.userId);
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_MATCH_ID' });
+  }
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+  }
+
+  const result = moveXiangqiMatch({
+    matchId,
+    userId,
+    from: req.body?.from,
+    to: req.body?.to
+  });
+
+  if (result.kind === 'match_not_found') {
+    return res.status(404).json({ ok: false, error: 'MATCH_NOT_FOUND' });
+  }
+  if (result.kind === 'match_not_playing') {
+    return res.status(409).json({ ok: false, error: 'MATCH_NOT_PLAYING' });
+  }
+  if (result.kind === 'match_forbidden') {
+    return res.status(403).json({ ok: false, error: 'MATCH_FORBIDDEN' });
+  }
+  if (result.kind === 'not_your_turn') {
+    return res.status(409).json({ ok: false, error: 'NOT_YOUR_TURN' });
+  }
+  if (result.kind === 'invalid_position') {
+    return res.status(400).json({ ok: false, error: 'INVALID_POSITION' });
+  }
+  if (result.kind === 'piece_not_found' || result.kind === 'illegal_move') {
+    return res.status(422).json({ ok: false, error: 'ILLEGAL_MOVE' });
+  }
+  if (result.kind === 'settled') {
+    const match = selectXiangqiMatchDetailStmt.get(matchId);
+    const room = match ? selectXiangqiRoomCodeByIdStmt.get(match.room_id) : null;
+    if (room?.room_code) {
+      emitXiangqiRoomEvent(room.room_code, 'match.finished', {
+        match: formatXiangqiMatchItem(match)
+      });
+    }
+    return res.json({ ok: true, status: 'finished', result: result.result });
+  }
+
+  const room = selectXiangqiRoomCodeByIdStmt.get(result.match.room_id);
+  if (room?.room_code) {
+    emitXiangqiRoomEvent(room.room_code, 'match.updated', {
+      match: formatXiangqiMatchItem(result.match)
+    });
+  }
+  return res.json({
+    ok: true,
+    status: 'playing',
+    turnSide: result.turnSide,
+    moveNo: result.moveNo
+  });
+});
+
+app.post('/api/xiangqi/matches/:id/resign', (req, res) => {
+  const matchId = Number(req.params.id);
+  const userId = Number(req.body?.userId);
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_MATCH_ID' });
+  }
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+  }
+
+  const result = resignXiangqiMatch({ matchId, userId });
+  if (result.kind === 'match_not_found') {
+    return res.status(404).json({ ok: false, error: 'MATCH_NOT_FOUND' });
+  }
+  if (result.kind === 'match_not_playing') {
+    return res.status(409).json({ ok: false, error: 'MATCH_NOT_PLAYING' });
+  }
+  if (result.kind === 'match_forbidden') {
+    return res.status(403).json({ ok: false, error: 'MATCH_FORBIDDEN' });
+  }
+  if (result.kind === 'already_processed') {
+    return res.json({ ok: true, status: 'finished', result: result.result });
+  }
+  if (result.kind === 'result_conflict') {
+    return res.status(409).json({ ok: false, error: 'MATCH_RESULT_CONFLICT' });
+  }
+
+  const match = selectXiangqiMatchDetailStmt.get(matchId);
+  const room = match ? db.prepare('SELECT room_code FROM xiangqi_rooms WHERE id = ?').get(match.room_id) : null;
+  if (room?.room_code) {
+    emitXiangqiRoomEvent(room.room_code, 'match.finished', {
+      match: formatXiangqiMatchItem(match)
+    });
+  }
+
+  return res.json({ ok: true, status: 'finished', result: result.result });
+});
+
+app.post('/api/xiangqi/matches/:id/draw/offer', (req, res) => {
+  const matchId = Number(req.params.id);
+  const userId = Number(req.body?.userId);
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_MATCH_ID' });
+  }
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+  }
+
+  const result = offerXiangqiDraw({ matchId, userId });
+  if (result.kind === 'match_not_found') {
+    return res.status(404).json({ ok: false, error: 'MATCH_NOT_FOUND' });
+  }
+  if (result.kind === 'match_not_playing') {
+    return res.status(409).json({ ok: false, error: 'MATCH_NOT_PLAYING' });
+  }
+  if (result.kind === 'match_forbidden') {
+    return res.status(403).json({ ok: false, error: 'MATCH_FORBIDDEN' });
+  }
+  if (result.roomId) {
+    const room = db.prepare('SELECT room_code FROM xiangqi_rooms WHERE id = ?').get(result.roomId);
+    const match = selectXiangqiMatchDetailStmt.get(result.matchId);
+    if (room?.room_code) {
+      emitXiangqiRoomEvent(room.room_code, 'match.draw-offer', {
+        match: formatXiangqiMatchItem(match)
+      });
+    }
+  }
+  return res.json({ ok: true, status: 'pending', offerSide: result.offerSide });
+});
+
+app.post('/api/xiangqi/matches/:id/draw/respond', (req, res) => {
+  const matchId = Number(req.params.id);
+  const userId = Number(req.body?.userId);
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_MATCH_ID' });
+  }
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_USER_ID' });
+  }
+
+  const result = respondXiangqiDraw({
+    matchId,
+    userId,
+    accept: Boolean(req.body?.accept)
+  });
+  if (result.kind === 'match_not_found') {
+    return res.status(404).json({ ok: false, error: 'MATCH_NOT_FOUND' });
+  }
+  if (result.kind === 'match_not_playing') {
+    return res.status(409).json({ ok: false, error: 'MATCH_NOT_PLAYING' });
+  }
+  if (result.kind === 'match_forbidden') {
+    return res.status(403).json({ ok: false, error: 'MATCH_FORBIDDEN' });
+  }
+  if (result.kind === 'draw_not_pending') {
+    return res.status(409).json({ ok: false, error: 'DRAW_NOT_PENDING' });
+  }
+  if (result.kind === 'draw_same_side') {
+    return res.status(409).json({ ok: false, error: 'DRAW_RESPONSE_FORBIDDEN' });
+  }
+  if (result.kind === 'declined') {
+    return res.json({ ok: true, status: 'declined' });
+  }
+  if (result.kind === 'already_processed') {
+    return res.json({ ok: true, status: 'finished', result: result.result });
+  }
+  if (result.kind === 'result_conflict') {
+    return res.status(409).json({ ok: false, error: 'MATCH_RESULT_CONFLICT' });
+  }
+  const match = selectXiangqiMatchDetailStmt.get(matchId);
+  if (match) {
+    const room = db.prepare('SELECT room_code FROM xiangqi_rooms WHERE id = ?').get(match.room_id);
+    if (room?.room_code) {
+      emitXiangqiRoomEvent(room.room_code, 'match.updated', {
+        match: formatXiangqiMatchItem(match)
+      });
+    }
+  }
+
+  return res.json({ ok: true, status: 'finished', result: result.result });
+});
+
+app.post('/api/xiangqi/matches/:id/timeout', (req, res) => {
+  const matchId = Number(req.params.id);
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    return res.status(400).json({ ok: false, error: 'INVALID_MATCH_ID' });
+  }
+
+  const result = settleXiangqiTimeoutDraw({ matchId });
+  if (result.kind === 'match_not_found') {
+    return res.status(404).json({ ok: false, error: 'MATCH_NOT_FOUND' });
+  }
+  if (result.kind === 'match_not_playing') {
+    return res.status(409).json({ ok: false, error: 'MATCH_NOT_PLAYING' });
+  }
+  if (result.kind === 'timeout_not_reached') {
+    return res.status(409).json({
+      ok: false,
+      error: 'TIMEOUT_NOT_REACHED',
+      redTimeLeftMs: result.redTimeLeftMs,
+      blackTimeLeftMs: result.blackTimeLeftMs
+    });
+  }
+
+  const match = selectXiangqiMatchDetailStmt.get(matchId);
+  if (match) {
+    const room = db.prepare('SELECT room_code FROM xiangqi_rooms WHERE id = ?').get(match.room_id);
+    if (room?.room_code) {
+      emitXiangqiRoomEvent(room.room_code, 'match.finished', {
+        match: formatXiangqiMatchItem(match)
+      });
+    }
+  }
+
+  return res.json({ ok: true, status: 'finished', result: result.result });
+});
+
+app.locals.xiangqi = {
+  settleMatchForTesting: settleXiangqiMatch
+};
 
 app.get('/api/admin/games', requireAdmin, (_req, res) => {
   if (typeof db.ensureDefaultGamesCatalog === 'function') {
@@ -3526,6 +5449,10 @@ app.use((err, _req, res, next) => {
   return next(err);
 });
 
-app.listen(PORT, HOST, () => {
-  console.log(`claw800 server running at http://${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, HOST, () => {
+    console.log(`claw800 server running at http://${HOST}:${PORT}`);
+  });
+}
+
+module.exports = app;

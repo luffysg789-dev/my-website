@@ -1,0 +1,661 @@
+:root {
+  --xiangqi-page-bg: #f6f5f3;
+  --xiangqi-card-bg: #ffffff;
+  --xiangqi-card-line: rgba(28, 24, 22, 0.06);
+  --xiangqi-text: #231f1c;
+  --xiangqi-muted: #8b837d;
+  --xiangqi-green: #0f9871;
+  --xiangqi-green-soft: #36b18d;
+  --xiangqi-red: #f40009;
+  --xiangqi-blue: #2d66ff;
+  --xiangqi-black: #1f1b18;
+  --xiangqi-board-bg: #9f7f4d;
+  --xiangqi-board-line: rgba(82, 58, 30, 0.64);
+  --xiangqi-shadow: 0 18px 38px rgba(35, 31, 28, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(15, 152, 113, 0.08), transparent 24%), var(--xiangqi-page-bg);
+  color: var(--xiangqi-text);
+  font-family: "SF Pro Display", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.xiangqi-page {
+  min-height: 100vh;
+}
+
+.xiangqi-shell {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 28px 22px 40px;
+  display: grid;
+  gap: 22px;
+}
+
+.xiangqi-hero {
+  padding: 8px 0 0;
+}
+
+.xiangqi-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.xiangqi-welcome__profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.xiangqi-welcome__avatar,
+.xiangqi-exit {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.xiangqi-welcome__avatar {
+  background: #2b2524;
+  color: #fff;
+}
+
+.xiangqi-welcome__avatar svg,
+.xiangqi-exit svg {
+  width: 24px;
+  height: 24px;
+}
+
+.xiangqi-welcome__copy p {
+  margin: 0;
+  color: #a39c96;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.xiangqi-welcome__copy strong {
+  display: block;
+  margin-top: 2px;
+  font-size: clamp(28px, 5vw, 38px);
+  line-height: 1.02;
+  font-weight: 800;
+}
+
+.xiangqi-exit {
+  color: #a39c96;
+  background: transparent;
+  border: none;
+}
+
+.xiangqi-login-btn {
+  width: auto;
+  min-width: 92px;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.xiangqi-login-btn span {
+  line-height: 1;
+}
+
+.xiangqi-panel,
+.xiangqi-board-wrap {
+  border-radius: 30px;
+  border: 1px solid var(--xiangqi-card-line);
+  background: var(--xiangqi-card-bg);
+  box-shadow: var(--xiangqi-shadow);
+}
+
+.xiangqi-wallet-card {
+  padding: 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  background: linear-gradient(180deg, #0f9d74 0%, #0a8b75 100%);
+  color: #fff;
+  border: none;
+}
+
+.xiangqi-wallet-card__label {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.xiangqi-wallet-card__amount {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.xiangqi-wallet-card__amount strong {
+  font-size: clamp(52px, 10vw, 72px);
+  line-height: 0.9;
+  font-weight: 900;
+}
+
+.xiangqi-wallet-card__amount span {
+  font-size: clamp(24px, 4.2vw, 34px);
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.xiangqi-wallet-card__chips {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.xiangqi-wallet-card__chips span {
+  min-height: 42px;
+  padding: 0 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.xiangqi-wallet-card__side {
+  display: grid;
+  justify-items: end;
+  gap: 18px;
+}
+
+.xiangqi-wallet-plus {
+  width: 80px;
+  height: 80px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 54px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.xiangqi-wallet-card__frozen {
+  margin: 0;
+  text-align: right;
+  font-size: 15px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.xiangqi-wallet-card__frozen strong {
+  display: block;
+  font-size: 20px;
+  color: #fff;
+}
+
+.xiangqi-room-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.xiangqi-room-card {
+  padding: 26px;
+  display: grid;
+  gap: 18px;
+}
+
+.xiangqi-room-card__title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.xiangqi-room-card__title h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.xiangqi-room-card__icon {
+  width: 34px;
+  text-align: center;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.xiangqi-room-card__icon--red {
+  color: var(--xiangqi-red);
+}
+
+.xiangqi-room-card__icon--blue {
+  color: var(--xiangqi-blue);
+}
+
+.xiangqi-stake-preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.xiangqi-stake-preset,
+.xiangqi-room-input,
+.xiangqi-time-field select,
+.xiangqi-room-cta,
+.xiangqi-room-subtle {
+  border-radius: 22px;
+}
+
+.xiangqi-stake-preset {
+  min-height: 70px;
+  border: none;
+  background: #f1f1f1;
+  color: #77706a;
+  font-size: 28px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.xiangqi-stake-preset.is-active {
+  background: var(--xiangqi-red);
+  color: #fff;
+}
+
+.xiangqi-room-input,
+.xiangqi-time-field select,
+.xiangqi-room-summary {
+  min-height: 96px;
+  border: none;
+  background: #f7f7f7;
+  color: var(--xiangqi-text);
+  box-shadow: inset 0 0 0 1px rgba(35, 31, 28, 0.04);
+}
+
+.xiangqi-room-input,
+.xiangqi-time-field select {
+  width: 100%;
+  padding: 0 24px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.xiangqi-room-input::placeholder {
+  color: #a09a95;
+  font-weight: 700;
+}
+
+.xiangqi-time-field {
+  display: grid;
+  gap: 10px;
+}
+
+.xiangqi-time-field span {
+  color: var(--xiangqi-muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.xiangqi-room-summary {
+  padding: 20px 22px;
+  display: grid;
+  align-content: center;
+}
+
+.xiangqi-room-summary strong {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.xiangqi-room-summary p {
+  margin: 6px 0 0;
+  color: var(--xiangqi-muted);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.xiangqi-join-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.xiangqi-room-cta,
+.xiangqi-room-subtle {
+  min-height: 80px;
+  border: none;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.xiangqi-room-cta {
+  background: var(--xiangqi-black);
+  color: #fff;
+}
+
+.xiangqi-room-cta--light {
+  background: linear-gradient(180deg, #1d1a17 0%, #25211d 100%);
+}
+
+.xiangqi-room-subtle {
+  min-height: 58px;
+  background: transparent;
+  color: #84807a;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.xiangqi-shell.is-room-mode {
+  max-width: 760px;
+}
+
+.xiangqi-shell.is-room-mode .xiangqi-wallet-card,
+.xiangqi-shell.is-room-mode .xiangqi-room-grid {
+  display: none;
+}
+
+.xiangqi-shell.is-room-mode .xiangqi-board-wrap {
+  display: block;
+}
+
+.xiangqi-shell.is-room-mode .xiangqi-hero {
+  padding: 0;
+}
+
+.xiangqi-board-wrap {
+  display: none;
+  padding: 22px;
+}
+
+.xiangqi-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.xiangqi-player-card,
+.xiangqi-match-pill {
+  border-radius: 24px;
+  padding: 16px 18px;
+  background: #faf7f3;
+}
+
+.xiangqi-player-card {
+  flex: 1 1 0;
+}
+
+.xiangqi-side {
+  margin: 0 0 6px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9e948c;
+}
+
+.xiangqi-player-card strong,
+.xiangqi-match-pill strong {
+  display: block;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.xiangqi-player-card p,
+.xiangqi-match-pill span {
+  margin: 6px 0 0;
+  font-size: 16px;
+  color: var(--xiangqi-muted);
+  font-weight: 700;
+}
+
+.xiangqi-match-pill {
+  min-width: 170px;
+  text-align: center;
+}
+
+.xiangqi-match-pill span:first-child {
+  margin-top: 0;
+  font-size: 14px;
+}
+
+.xiangqi-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-rows: repeat(10, minmax(0, 1fr));
+  width: 100%;
+  aspect-ratio: 9 / 10;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+    var(--xiangqi-board-bg);
+  box-shadow:
+    inset 0 0 0 5px #c4873e,
+    inset 0 0 0 11px #8a4c18,
+    0 20px 34px rgba(66, 41, 18, 0.2);
+}
+
+.xiangqi-board__cell {
+  position: relative;
+}
+
+.xiangqi-board__cell::before,
+.xiangqi-board__cell::after {
+  content: "";
+  position: absolute;
+  background: var(--xiangqi-board-line);
+}
+
+.xiangqi-board__cell::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  transform: translateY(-50%);
+}
+
+.xiangqi-board__cell::after {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  transform: translateX(-50%);
+}
+
+.xiangqi-board__piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(58px, 82%);
+  height: min(58px, 82%);
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid rgba(83, 52, 24, 0.34);
+  background: radial-gradient(circle at 32% 28%, #f0e8dc 0%, #cbc0b1 100%);
+  font-size: clamp(18px, 3vw, 25px);
+  font-weight: 900;
+  box-shadow: 0 6px 12px rgba(38, 26, 17, 0.18);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.xiangqi-board__piece--red {
+  color: #7d0d13;
+  border-color: rgba(125, 13, 19, 0.74);
+}
+
+.xiangqi-board__piece--black {
+  color: #262220;
+  border-color: rgba(38, 34, 32, 0.82);
+}
+
+.xiangqi-board__piece.is-selected {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 0 0 5px rgba(244, 0, 9, 0.13), 0 8px 16px rgba(38, 26, 17, 0.22);
+}
+
+.xiangqi-board__coord {
+  position: absolute;
+  font-size: 11px;
+  color: rgba(67, 48, 29, 0.42);
+}
+
+.xiangqi-board__river {
+  margin-top: -50%;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 21%;
+  pointer-events: none;
+  color: rgba(46, 34, 23, 0.9);
+  font-family: "STKaiti", "Kaiti SC", serif;
+  font-size: clamp(30px, 4vw, 42px);
+  letter-spacing: 0.08em;
+}
+
+.xiangqi-action-bar {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.xiangqi-danger-btn,
+.xiangqi-secondary-btn {
+  min-height: 62px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.xiangqi-danger-btn {
+  background: #201d19;
+  color: #fff;
+}
+
+.xiangqi-secondary-btn {
+  background: #f3f1ee;
+  color: #5f5852;
+}
+
+.xiangqi-danger-btn:disabled,
+.xiangqi-secondary-btn:disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .xiangqi-shell {
+    padding: 20px 14px 30px;
+    gap: 16px;
+  }
+
+  .xiangqi-wallet-card {
+    padding: 20px;
+  }
+
+  .xiangqi-wallet-plus {
+    width: 58px;
+    height: 58px;
+    font-size: 38px;
+  }
+
+  .xiangqi-room-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .xiangqi-login-btn {
+    min-width: 82px;
+    height: 44px;
+    padding: 0 12px;
+    font-size: 15px;
+  }
+
+  .xiangqi-stake-preset-row {
+    gap: 8px;
+  }
+
+  .xiangqi-stake-preset {
+    min-height: 56px;
+    font-size: 20px;
+  }
+
+  .xiangqi-room-input,
+  .xiangqi-time-field select,
+  .xiangqi-room-summary {
+    min-height: 72px;
+  }
+
+  .xiangqi-room-input,
+  .xiangqi-time-field select {
+    padding: 0 18px;
+    font-size: 19px;
+  }
+
+  .xiangqi-room-cta {
+    min-height: 64px;
+    font-size: 20px;
+  }
+
+  .xiangqi-room-subtle {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .xiangqi-room-card {
+    padding: 20px;
+    gap: 14px;
+  }
+
+  .xiangqi-room-card__title h2 {
+    font-size: 22px;
+  }
+
+  .xiangqi-board-head {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .xiangqi-board {
+    padding: 14px;
+  }
+
+  .xiangqi-board__river {
+    padding: 0 19%;
+    font-size: 32px;
+  }
+
+  .xiangqi-action-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+}

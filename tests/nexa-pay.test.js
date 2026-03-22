@@ -9,7 +9,9 @@ const {
   isNexaSignatureError,
   isNexaRateLimitError,
   buildNexaAccessTokenPayload,
-  buildNexaUserInfoPayload
+  buildNexaUserInfoPayload,
+  buildNexaWithdrawalCreatePayload,
+  buildNexaWithdrawalQueryPayload
 } = require('../src/nexa-pay');
 
 test('buildNexaSignature sorts params and appends secret before sha256 hashing', () => {
@@ -76,6 +78,73 @@ test('buildNexaUserInfoPayload signs apiKey sessionKey nonce and timestamp', () 
   );
 });
 
+test('buildNexaWithdrawalCreatePayload exposes the Nexa withdrawal create payload shape', () => {
+  const payload = buildNexaWithdrawalCreatePayload({
+    apiKey: 'testAppKey',
+    appSecret: 'testAppSecret',
+    orderNo: 'withdraw-001',
+    amount: '12.34',
+    currency: 'USDT',
+    openId: 'open-id-123',
+    notifyUrl: 'https://claw800.com/api/xiangqi/withdraw/notify',
+    remark: 'withdraw test',
+    nonce: 'nonce-4',
+    timestamp: '1615887873123'
+  });
+
+  assert.deepEqual(payload, {
+    apiKey: 'testAppKey',
+    orderNo: 'withdraw-001',
+    amount: '12.34',
+    currency: 'USDT',
+    openid: 'open-id-123',
+    notifyUrl: 'https://claw800.com/api/xiangqi/withdraw/notify',
+    remark: 'withdraw test',
+    nonce: 'nonce-4',
+    timestamp: '1615887873123',
+    signature: buildNexaSignature(
+      {
+        orderNo: 'withdraw-001',
+        apiKey: 'testAppKey',
+        amount: '12.34',
+        currency: 'USDT',
+        openid: 'open-id-123',
+        notifyUrl: 'https://claw800.com/api/xiangqi/withdraw/notify',
+        remark: 'withdraw test',
+        nonce: 'nonce-4',
+        timestamp: '1615887873123'
+      },
+      'testAppSecret'
+    )
+  });
+});
+
+test('buildNexaWithdrawalQueryPayload exposes the Nexa withdrawal query payload shape', () => {
+  const payload = buildNexaWithdrawalQueryPayload({
+    apiKey: 'testAppKey',
+    appSecret: 'testAppSecret',
+    orderNo: 'withdraw-001',
+    nonce: 'nonce-5',
+    timestamp: '1615887873123'
+  });
+
+  assert.deepEqual(payload, {
+    apiKey: 'testAppKey',
+    orderNo: 'withdraw-001',
+    nonce: 'nonce-5',
+    timestamp: '1615887873123',
+    signature: buildNexaSignature(
+      {
+        apiKey: 'testAppKey',
+        orderNo: 'withdraw-001',
+        nonce: 'nonce-5',
+        timestamp: '1615887873123'
+      },
+      'testAppSecret'
+    )
+  });
+});
+
 test('buildNexaPaymentCreatePayload uses official payment fields for a 0.10 USDT tip order', () => {
   const payload = buildNexaPaymentCreatePayload({
     apiKey: 'testAppKey',
@@ -111,6 +180,7 @@ test('buildNexaPaymentCreatePayload uses official payment fields for a 0.10 USDT
     signature: buildNexaSignature(
       {
         apiKey: 'testAppKey',
+        orderNo: 'partner-order-001',
         amount: '0.10',
         sessionKey: 'session-123',
         currency: 'USDT',
@@ -167,7 +237,6 @@ test('buildNexaPaymentCreatePayloadVariants covers both documented payment paylo
   assert.equal(variants[3].payload.sessionKey, undefined);
   assert.equal(variants[3].payload.orderNo, 'partner-order-001');
 
-  assert.notEqual(variants[0].payload.signature, variants[1].payload.signature);
   assert.notEqual(variants[1].payload.signature, variants[2].payload.signature);
 });
 

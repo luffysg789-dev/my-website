@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Claw800 中国象棋在线</title>
+    <meta name="description" content="Claw800 中国象棋在线，支持真钱房间、USDT 充值提现与手机实时对战。" />
+    <link rel="stylesheet" href="/game-tip.css?v=20260321-01" />
+    <link rel="stylesheet" href="/xiangqi/style.css?v=20260322-08" />
+  </head>
+  <body>
+    <main class="xiangqi-page">
+      <section class="xiangqi-shell">
+        <header class="xiangqi-hero">
+          <div class="xiangqi-welcome">
+            <div class="xiangqi-welcome__profile">
+              <div class="xiangqi-welcome__avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4 0-7 2.2-7 5v1h2v-1c0-1.6 2.3-3 5-3s5 1.4 5 3v1h2v-1c0-2.8-3-5-7-5Z" fill="currentColor" />
+                </svg>
+              </div>
+              <div class="xiangqi-welcome__copy">
+                <p>欢迎回来</p>
+                <strong id="xiangqiWelcomeName">Nexa 玩家</strong>
+              </div>
+            </div>
+            <button id="xiangqiLoginBtn" class="xiangqi-exit xiangqi-login-btn" type="button" aria-label="Nexa 登录" title="Nexa 登录">
+              <span>登录</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 17 15 12 10 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+                <path d="M15 12H4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+                <path d="M20 19V5a1 1 0 0 0-1-1h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="xiangqi-panel xiangqi-wallet-card">
+          <div class="xiangqi-wallet-card__main">
+            <p class="xiangqi-wallet-card__label">我的余额</p>
+            <div class="xiangqi-wallet-card__amount">
+              <strong id="xiangqiWalletAvailable">0.00</strong>
+              <span>USDT</span>
+            </div>
+            <div class="xiangqi-wallet-card__chips">
+              <span>实时结算</span>
+              <span>安全保障</span>
+            </div>
+          </div>
+          <div class="xiangqi-wallet-card__side">
+            <button id="xiangqiDepositBtn" class="xiangqi-wallet-plus" type="button" aria-label="充值到游戏账户">+</button>
+            <p class="xiangqi-wallet-card__frozen">冻结中 <strong id="xiangqiWalletFrozen">0.00 USDT</strong></p>
+          </div>
+        </section>
+
+        <section class="xiangqi-room-grid">
+          <article class="xiangqi-panel xiangqi-room-card">
+            <div class="xiangqi-room-card__title">
+              <span class="xiangqi-room-card__icon xiangqi-room-card__icon--red">+</span>
+              <h2>创建房间</h2>
+            </div>
+            <div class="xiangqi-stake-preset-row">
+              <button class="xiangqi-stake-preset is-active" type="button" data-stake-preset="1">1</button>
+              <button class="xiangqi-stake-preset" type="button" data-stake-preset="5">5</button>
+              <button class="xiangqi-stake-preset" type="button" data-stake-preset="10">10</button>
+            </div>
+            <input id="xiangqiCreateStake" class="xiangqi-room-input" type="text" inputmode="decimal" placeholder="例如 1" value="1" />
+            <label class="xiangqi-time-field">
+              <span>局时</span>
+              <select id="xiangqiCreateTimeControl">
+                <option value="10">10 分钟</option>
+                <option value="15" selected>15 分钟</option>
+                <option value="30">30 分钟</option>
+              </select>
+            </label>
+            <button id="xiangqiCreateRoomBtn" class="xiangqi-room-cta" type="button">立即开局</button>
+          </article>
+
+          <article class="xiangqi-panel xiangqi-room-card">
+            <div class="xiangqi-room-card__title">
+              <span class="xiangqi-room-card__icon xiangqi-room-card__icon--blue">→</span>
+              <h2>加入房间</h2>
+            </div>
+            <input id="xiangqiJoinRoomCode" class="xiangqi-room-input" type="text" inputmode="text" maxlength="6" placeholder="输入 6 位房间号" />
+            <div id="xiangqiRoomSummary" class="xiangqi-room-summary">
+              <strong>等待房间</strong>
+              <p>输入房间号后即可查看本局 stake 与局时。</p>
+            </div>
+            <div class="xiangqi-join-actions">
+              <button id="xiangqiJoinRoomBtn" class="xiangqi-room-cta xiangqi-room-cta--light" type="button">加入房间</button>
+              <button id="xiangqiWithdrawBtn" class="xiangqi-room-subtle" type="button">提现回 Nexa</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="xiangqi-board-wrap">
+          <div class="xiangqi-board-head">
+            <div class="xiangqi-player-card xiangqi-player-card--red">
+              <span class="xiangqi-side">红方</span>
+              <strong id="xiangqiRedPlayer">房主</strong>
+              <p id="xiangqiRedTime">15:00</p>
+            </div>
+            <div class="xiangqi-match-pill">
+              <span id="xiangqiRoomBadge">房间号 ----</span>
+              <span id="xiangqiMatchStake">Stake 0.00 USDT</span>
+              <strong id="xiangqiMatchStatus">等待对手加入</strong>
+            </div>
+            <div class="xiangqi-player-card xiangqi-player-card--black">
+              <span class="xiangqi-side">黑方</span>
+              <strong id="xiangqiBlackPlayer">挑战者</strong>
+              <p id="xiangqiBlackTime">15:00</p>
+            </div>
+          </div>
+
+          <section id="xiangqiBoard" class="xiangqi-board" aria-label="中国象棋棋盘"></section>
+
+          <div class="xiangqi-board__river">
+            <span>楚河</span>
+            <span>汉界</span>
+          </div>
+
+          <div class="xiangqi-action-bar">
+            <button id="xiangqiActionResignBtn" class="xiangqi-danger-btn" type="button">认输</button>
+            <button id="xiangqiActionDrawBtn" class="xiangqi-secondary-btn" type="button">求和</button>
+            <button id="xiangqiActionCopyRoomBtn" class="xiangqi-secondary-btn" type="button">复制房间号</button>
+            <button id="xiangqiCancelRoomBtn" class="xiangqi-secondary-btn" type="button" disabled>解除房间</button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/games-config.js?v=20260322-01"></script>
+    <script>
+      window.ClawGamesConfig?.bootstrapGamePage?.('xiangqi');
+    </script>
+    <script src="/xiangqi/script.js?v=20260322-08"></script>
+    <script src="/game-tip.js?v=20260321-01"></script>
+  </body>
+</html>

@@ -55,6 +55,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const db = new Database(dbPath);
+db.pragma('foreign_keys = ON');
 const DEFAULT_CATEGORIES = [
   'AI 与大语言模型',
   '开发与编码',
@@ -202,6 +203,138 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    openid TEXT NOT NULL UNIQUE,
+    nickname TEXT NOT NULL DEFAULT '',
+    avatar TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_wallets (
+    user_id INTEGER PRIMARY KEY,
+    currency TEXT NOT NULL DEFAULT 'USDT',
+    available_balance TEXT NOT NULL DEFAULT '0',
+    frozen_balance TEXT NOT NULL DEFAULT '0',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS game_wallet_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    balance_after TEXT NOT NULL,
+    related_type TEXT NOT NULL DEFAULT '',
+    related_id TEXT NOT NULL DEFAULT '',
+    remark TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS nexa_game_deposits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    partner_order_no TEXT NOT NULL UNIQUE,
+    user_id INTEGER NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USDT',
+    status TEXT NOT NULL DEFAULT 'pending',
+    nexa_order_no TEXT NOT NULL DEFAULT '',
+    notify_payload TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    paid_at TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS nexa_game_withdrawals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    partner_order_no TEXT NOT NULL UNIQUE,
+    user_id INTEGER NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USDT',
+    status TEXT NOT NULL DEFAULT 'pending',
+    notify_payload TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS xiangqi_rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_code TEXT NOT NULL UNIQUE,
+    creator_user_id INTEGER NOT NULL,
+    joiner_user_id INTEGER DEFAULT NULL,
+    stake_amount TEXT NOT NULL,
+    time_control_minutes INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'WAITING',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    started_at TEXT NOT NULL DEFAULT '',
+    finished_at TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY(creator_user_id) REFERENCES game_users(id),
+    FOREIGN KEY(joiner_user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS xiangqi_matches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id INTEGER NOT NULL,
+    red_user_id INTEGER NOT NULL,
+    black_user_id INTEGER NOT NULL,
+    current_fen TEXT NOT NULL DEFAULT '',
+    turn_side TEXT NOT NULL DEFAULT 'RED',
+    red_time_left_ms INTEGER NOT NULL DEFAULT 0,
+    black_time_left_ms INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'PLAYING',
+    result TEXT NOT NULL DEFAULT '',
+    winner_user_id INTEGER DEFAULT NULL,
+    last_move_at TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY(room_id) REFERENCES xiangqi_rooms(id),
+    FOREIGN KEY(red_user_id) REFERENCES game_users(id),
+    FOREIGN KEY(black_user_id) REFERENCES game_users(id),
+    FOREIGN KEY(winner_user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS xiangqi_moves (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL,
+    move_no INTEGER NOT NULL,
+    side TEXT NOT NULL,
+    from_pos TEXT NOT NULL,
+    to_pos TEXT NOT NULL,
+    fen_after TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(match_id) REFERENCES xiangqi_matches(id)
+  );
+`);
+
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_xiangqi_matches_room_unique
+  ON xiangqi_matches(room_id);
+`);
+
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_xiangqi_moves_match_move_no_unique
+  ON xiangqi_moves(match_id, move_no);
+`);
+
 const DEFAULT_GAMES_CATALOG = [
   {
     slug: 'zodiac-today',
@@ -224,6 +357,17 @@ const DEFAULT_GAMES_CATALOG = [
     background_music_file: '',
     is_enabled: 1,
     sort_order: 50
+  },
+  {
+    slug: 'xiangqi',
+    name: '中国象棋在线',
+    description: '真钱房间中国象棋，支持充值、提现、开房下注与在线对战。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 45
   },
   {
     slug: 'gomoku',

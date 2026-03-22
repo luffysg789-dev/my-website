@@ -80,9 +80,10 @@ function buildNexaPaymentCreatePayload({
   nonce,
   timestamp
 }) {
-  const payload = withSignature(
+  return withSignature(
     {
       apiKey: String(apiKey || '').trim(),
+      orderNo: String(orderNo || '').trim(),
       amount: String(amount || '').trim(),
       sessionKey: String(sessionKey || '').trim(),
       currency: String(currency || DEFAULT_NEXA_CURRENCY).trim(),
@@ -97,10 +98,6 @@ function buildNexaPaymentCreatePayload({
     },
     appSecret
   );
-  if (orderNo) {
-    payload.orderNo = String(orderNo).trim();
-  }
-  return payload;
 }
 
 function buildNexaPaymentCreatePayloadVariants(options = {}) {
@@ -124,29 +121,17 @@ function buildNexaPaymentCreatePayloadVariants(options = {}) {
   const strictGithubPayload = withSignature(
     {
       ...common,
+      orderNo,
       openid: openId
     },
     appSecret
   );
-  if (orderNo) {
-    strictGithubPayload.orderNo = orderNo;
-  }
 
   const orderSignedPayload = withSignature(
     {
       ...common,
+      orderNo,
       openid: openId
-    },
-    appSecret
-  );
-  if (orderNo) {
-    orderSignedPayload.orderNo = orderNo;
-  }
-  orderSignedPayload.signature = buildNexaSignature(
-    {
-      ...common,
-      openid: openId,
-      orderNo
     },
     appSecret
   );
@@ -154,6 +139,7 @@ function buildNexaPaymentCreatePayloadVariants(options = {}) {
   const javaSamplePayload = withSignature(
     {
       apiKey: common.apiKey,
+      orderNo,
       sessionKey: common.sessionKey,
       amount: common.amount,
       currency: common.currency,
@@ -167,9 +153,6 @@ function buildNexaPaymentCreatePayloadVariants(options = {}) {
     },
     appSecret
   );
-  if (orderNo) {
-    javaSamplePayload.orderNo = orderNo;
-  }
 
   const phpSamplePayload = withSignature(
     {
@@ -237,6 +220,52 @@ function isNexaRateLimitError(value = {}) {
 }
 
 function buildNexaPaymentQueryPayload({ apiKey = DEFAULT_NEXA_API_KEY, appSecret = DEFAULT_NEXA_APP_SECRET, orderNo, nonce, timestamp }) {
+  return withSignature(
+    {
+      apiKey: String(apiKey || '').trim(),
+      orderNo: String(orderNo || '').trim(),
+      timestamp: String(timestamp || Date.now()).trim(),
+      nonce: String(nonce || createNonce()).trim()
+    },
+    appSecret
+  );
+}
+
+function buildNexaWithdrawalCreatePayload({
+  apiKey = DEFAULT_NEXA_API_KEY,
+  appSecret = DEFAULT_NEXA_APP_SECRET,
+  orderNo,
+  amount,
+  currency = DEFAULT_NEXA_CURRENCY,
+  openId,
+  notifyUrl,
+  remark,
+  nonce,
+  timestamp
+}) {
+  return withSignature(
+    {
+      orderNo: String(orderNo || '').trim(),
+      apiKey: String(apiKey || '').trim(),
+      amount: String(amount || '').trim(),
+      currency: String(currency || DEFAULT_NEXA_CURRENCY).trim(),
+      openid: String(openId || '').trim(),
+      notifyUrl: String(notifyUrl || '').trim(),
+      remark: String(remark || '').trim(),
+      timestamp: String(timestamp || Date.now()).trim(),
+      nonce: String(nonce || createNonce()).trim()
+    },
+    appSecret
+  );
+}
+
+function buildNexaWithdrawalQueryPayload({
+  apiKey = DEFAULT_NEXA_API_KEY,
+  appSecret = DEFAULT_NEXA_APP_SECRET,
+  orderNo,
+  nonce,
+  timestamp
+}) {
   return withSignature(
     {
       apiKey: String(apiKey || '').trim(),
@@ -324,6 +353,8 @@ module.exports = {
   buildNexaPaymentCreatePayloadVariants,
   prioritizeNexaPaymentCreateVariants,
   buildNexaPaymentQueryPayload,
+  buildNexaWithdrawalCreatePayload,
+  buildNexaWithdrawalQueryPayload,
   postNexaJson,
   unwrapNexaResult,
   isNexaSignatureError,

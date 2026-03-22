@@ -1,0 +1,108 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const rootDir = path.join(__dirname, '..');
+const htmlPath = path.join(rootDir, 'public', 'xiangqi', 'index.html');
+const cssPath = path.join(rootDir, 'public', 'xiangqi', 'style.css');
+const jsPath = path.join(rootDir, 'public', 'xiangqi', 'script.js');
+const configPath = path.join(rootDir, 'public', 'games-config.js');
+const dbPath = path.join(rootDir, 'src', 'db.js');
+const serverPath = path.join(rootDir, 'src', 'server.js');
+
+test('xiangqi game files exist', () => {
+  assert.equal(fs.existsSync(htmlPath), true);
+  assert.equal(fs.existsSync(cssPath), true);
+  assert.equal(fs.existsSync(jsPath), true);
+});
+
+test('xiangqi game is listed in games config and backend defaults', () => {
+  const config = fs.readFileSync(configPath, 'utf8');
+  const db = fs.readFileSync(dbPath, 'utf8');
+  const server = fs.readFileSync(serverPath, 'utf8');
+
+  assert.match(config, /slug:\s*'xiangqi'/);
+  assert.match(config, /name:\s*'中国象棋在线'/);
+  assert.match(config, /route:\s*'\/xiangqi\/'/);
+  assert.match(config, /item\.is_enabled && item\.slug !== 'xiangqi'/);
+  assert.match(db, /slug:\s*'xiangqi'/);
+  assert.match(server, /xiangqi:\s*'\/xiangqi\/'/);
+});
+
+test('xiangqi html includes mobile wallet, room, and board sections', () => {
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  assert.match(html, /game-tip\.css\?v=/);
+  assert.match(html, /game-tip\.js\?v=/);
+  assert.match(html, /games-config\.js\?v=/);
+  assert.match(html, /id="xiangqiLoginBtn"/);
+  assert.match(html, /id="xiangqiWalletAvailable"/);
+  assert.match(html, /id="xiangqiWalletFrozen"/);
+  assert.match(html, /id="xiangqiDepositBtn"/);
+  assert.match(html, /id="xiangqiWithdrawBtn"/);
+  assert.match(html, /id="xiangqiCreateStake"/);
+  assert.match(html, /data-stake-preset="1"/);
+  assert.match(html, /data-stake-preset="5"/);
+  assert.match(html, /data-stake-preset="10"/);
+  assert.doesNotMatch(html, /data-stake-preset="50"/);
+  assert.doesNotMatch(html, /data-stake-preset="100"/);
+  assert.doesNotMatch(html, /data-stake-preset="500"/);
+  assert.match(html, /id="xiangqiCreateTimeControl"/);
+  assert.match(html, /id="xiangqiCreateRoomBtn"/);
+  assert.match(html, /id="xiangqiJoinRoomCode"/);
+  assert.match(html, /id="xiangqiJoinRoomBtn"/);
+  assert.match(html, /id="xiangqiBoard"/);
+  assert.doesNotMatch(html, /id="xiangqiActiveRoomCard"/);
+  assert.doesNotMatch(html, /id="xiangqiMyRoomBtn"/);
+  assert.match(html, /id="xiangqiCancelRoomBtn"/);
+  assert.match(html, /id="xiangqiActionResignBtn"/);
+  assert.match(html, /id="xiangqiActionDrawBtn"/);
+});
+
+test('xiangqi script bootstraps page state and board coordinates', () => {
+  const js = fs.readFileSync(jsPath, 'utf8');
+
+  assert.match(js, /const GAME_SLUG = 'xiangqi';/);
+  assert.match(js, /const FILE_LABELS = \['9', '8', '7', '6', '5', '4', '3', '2', '1'\];/);
+  assert.match(js, /const RANK_LABELS = \['9', '8', '7', '6', '5', '4', '3', '2', '1', '0'\];/);
+  assert.match(js, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
+  assert.match(js, /const XIANGQI_DEMO_OPEN_ID = 'xiangqi-demo-local';/);
+  assert.match(js, /function buildNexaAuthorizeUrl\(/);
+  assert.match(js, /function exchangeSessionFromUrlCode\(/);
+  assert.match(js, /function beginLoginFlow\(/);
+  assert.match(js, /function restoreActiveRoom\(/);
+  assert.match(js, /function updateLoginButtonState\(/);
+  assert.match(js, /launchNexaUrl\(buildNexaAuthorizeUrl\(\)\)/);
+  assert.match(js, /function buildPreviewPieces\(/);
+  assert.match(js, /function syncRoomUrl\(/);
+  assert.match(js, /function cancelWaitingRoom\(/);
+  assert.match(js, /syncRoomUrl\(null\)/);
+  assert.match(js, /function buildBoardMarkup\(/);
+  assert.match(js, /function renderRoomSummary\(/);
+  assert.match(js, /function applyShellMode\(/);
+  assert.match(js, /classList\.toggle\('is-room-mode'/);
+  assert.match(js, /openId:\s*XIANGQI_DEMO_OPEN_ID/);
+  assert.match(js, /state\.session = loadCachedNexaSession\(\);/);
+  assert.match(js, /\/api\/xiangqi\/rooms\/active\?userId=/);
+  assert.match(js, /state\.room && !state\.match/);
+  assert.doesNotMatch(js, /function renderActiveRoomCard\(/);
+  assert.match(js, /function bindActions\(/);
+});
+
+test('xiangqi css delivers a distinctive mobile-first room layout', () => {
+  const css = fs.readFileSync(cssPath, 'utf8');
+
+  assert.match(css, /--xiangqi-page-bg:\s*#f6f5f3;/);
+  assert.match(css, /\.xiangqi-shell\s*\{[\s\S]*?display:\s*grid;/);
+  assert.match(css, /\.xiangqi-room-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
+  assert.match(css, /\.xiangqi-board\s*\{[\s\S]*?aspect-ratio:\s*9 \/ 10;/);
+  assert.match(css, /\.xiangqi-board__river\s*\{/);
+  assert.doesNotMatch(css, /\.xiangqi-active-room-card\s*\{/);
+  assert.match(css, /\.xiangqi-board-wrap\s*\{[\s\S]*?display:\s*none;/);
+  assert.match(css, /\.xiangqi-shell\.is-room-mode\s+\.xiangqi-wallet-card,\s*[\s\S]*?display:\s*none;/);
+  assert.match(css, /\.xiangqi-shell\.is-room-mode\s+\.xiangqi-room-grid\s*\{[\s\S]*?display:\s*none;/);
+  assert.match(css, /\.xiangqi-shell\.is-room-mode\s+\.xiangqi-board-wrap\s*\{[\s\S]*?display:\s*block;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.xiangqi-shell\s*\{[\s\S]*?padding:\s*20px 14px 30px;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.xiangqi-room-cta\s*\{[\s\S]*?min-height:\s*64px;/);
+});
