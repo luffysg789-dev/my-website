@@ -136,8 +136,10 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /syncRoomUrl\(null\)/);
   assert.match(js, /function buildBoardMarkup\(/);
   assert.doesNotMatch(js, /xiangqi-board__coord/);
-  assert.match(js, /xiangqi-board__palace/);
-  assert.match(js, /xiangqi-board__river-mark/);
+  assert.match(js, /xiangqi-board__svg-wrap/);
+  assert.match(js, /xiangqi-board__grid-lines/);
+  assert.match(js, /xiangqi-board__palace-lines/);
+  assert.match(js, /xiangqi-board__river-text/);
   assert.match(js, /function renderRoomSummary\(/);
   assert.match(js, /function getFriendlyXiangqiErrorMessage\(/);
   assert.match(js, /if \(code === 'INSUFFICIENT_BALANCE'\) \{\s*return context === 'create_room' \? '余额不足，无法创建房间。' : '余额不足，无法加入房间。';\s*\}/);
@@ -167,8 +169,9 @@ test('xiangqi css delivers a distinctive mobile-first room layout', () => {
   assert.match(css, /\.xiangqi-room-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
   assert.match(css, /\.xiangqi-board\s*\{[\s\S]*?aspect-ratio:\s*9 \/ 10;/);
   assert.match(css, /\.xiangqi-board\s*\{[\s\S]*?overflow:\s*hidden;/);
-  assert.match(css, /\.xiangqi-board__river-mark\s*\{/);
-  assert.match(css, /\.xiangqi-board__palace\s*\{/);
+  assert.match(css, /\.xiangqi-board__svg-wrap,\s*[\s\S]*?\.xiangqi-board__hit-area\s*\{/);
+  assert.match(css, /\.xiangqi-board__grid-lines line,\s*[\s\S]*?\.xiangqi-board__palace-lines line\s*\{/);
+  assert.match(css, /\.xiangqi-board__river-text text\s*\{/);
   assert.doesNotMatch(css, /\.xiangqi-board__coord\s*\{/);
   assert.match(css, /\.xiangqi-action-bar\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/);
   assert.match(css, /\.xiangqi-wallet-card__actions\s*\{/);

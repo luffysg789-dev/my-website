@@ -470,25 +470,62 @@ function buildBoardMarkup() {
         : '';
 
       cells.push(`
-        <div class="xiangqi-board__cell${rank === 4 ? ' is-river-top' : ''}${rank === 5 ? ' is-river-bottom' : ''}" data-file="${file}" data-rank="${rank}">
+        <div class="xiangqi-board__cell" data-file="${file}" data-rank="${rank}">
           ${pieceMarkup}
         </div>
       `);
     }
   }
   ui.board.innerHTML = `
-    ${cells.join('')}
-    <div class="xiangqi-board__palace xiangqi-board__palace--top" aria-hidden="true">
-      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--lt"></span>
-      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--rt"></span>
+    <div class="xiangqi-board__svg-wrap" aria-hidden="true">
+      <svg class="xiangqi-board__svg" viewBox="0 0 900 1000" preserveAspectRatio="none" role="presentation">
+        <rect class="xiangqi-board__frame-outer" x="10" y="10" width="880" height="980" rx="26" ry="26"></rect>
+        <rect class="xiangqi-board__frame-inner" x="28" y="28" width="844" height="944" rx="10" ry="10"></rect>
+        <g class="xiangqi-board__grid-lines">
+          <line x1="55" y1="55" x2="845" y2="55"></line>
+          <line x1="55" y1="155" x2="845" y2="155"></line>
+          <line x1="55" y1="255" x2="845" y2="255"></line>
+          <line x1="55" y1="355" x2="845" y2="355"></line>
+          <line x1="55" y1="455" x2="845" y2="455"></line>
+          <line x1="55" y1="545" x2="845" y2="545"></line>
+          <line x1="55" y1="645" x2="845" y2="645"></line>
+          <line x1="55" y1="745" x2="845" y2="745"></line>
+          <line x1="55" y1="845" x2="845" y2="845"></line>
+          <line x1="55" y1="945" x2="845" y2="945"></line>
+
+          <line x1="55" y1="55" x2="55" y2="455"></line>
+          <line x1="55" y1="545" x2="55" y2="945"></line>
+          <line x1="155" y1="55" x2="155" y2="455"></line>
+          <line x1="155" y1="545" x2="155" y2="945"></line>
+          <line x1="255" y1="55" x2="255" y2="455"></line>
+          <line x1="255" y1="545" x2="255" y2="945"></line>
+          <line x1="355" y1="55" x2="355" y2="455"></line>
+          <line x1="355" y1="545" x2="355" y2="945"></line>
+          <line x1="455" y1="55" x2="455" y2="455"></line>
+          <line x1="455" y1="545" x2="455" y2="945"></line>
+          <line x1="555" y1="55" x2="555" y2="455"></line>
+          <line x1="555" y1="545" x2="555" y2="945"></line>
+          <line x1="655" y1="55" x2="655" y2="455"></line>
+          <line x1="655" y1="545" x2="655" y2="945"></line>
+          <line x1="755" y1="55" x2="755" y2="455"></line>
+          <line x1="755" y1="545" x2="755" y2="945"></line>
+          <line x1="845" y1="55" x2="845" y2="455"></line>
+          <line x1="845" y1="545" x2="845" y2="945"></line>
+        </g>
+        <g class="xiangqi-board__palace-lines">
+          <line x1="355" y1="55" x2="555" y2="255"></line>
+          <line x1="555" y1="55" x2="355" y2="255"></line>
+          <line x1="355" y1="745" x2="555" y2="945"></line>
+          <line x1="555" y1="745" x2="355" y2="945"></line>
+        </g>
+        <g class="xiangqi-board__river-text">
+          <text x="255" y="500">楚河</text>
+          <text x="655" y="500">汉界</text>
+        </g>
+      </svg>
     </div>
-    <div class="xiangqi-board__palace xiangqi-board__palace--bottom" aria-hidden="true">
-      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--lb"></span>
-      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--rb"></span>
-    </div>
-    <div class="xiangqi-board__river-mark" aria-hidden="true">
-      <span>楚河</span>
-      <span>汉界</span>
+    <div class="xiangqi-board__hit-area">
+      ${cells.join('')}
     </div>
   `;
 }
