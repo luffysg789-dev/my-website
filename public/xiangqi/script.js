@@ -470,13 +470,27 @@ function buildBoardMarkup() {
         : '';
 
       cells.push(`
-        <div class="xiangqi-board__cell" data-file="${file}" data-rank="${rank}">
+        <div class="xiangqi-board__cell${rank === 4 ? ' is-river-top' : ''}${rank === 5 ? ' is-river-bottom' : ''}" data-file="${file}" data-rank="${rank}">
           ${pieceMarkup}
         </div>
       `);
     }
   }
-  ui.board.innerHTML = cells.join('');
+  ui.board.innerHTML = `
+    ${cells.join('')}
+    <div class="xiangqi-board__palace xiangqi-board__palace--top" aria-hidden="true">
+      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--lt"></span>
+      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--rt"></span>
+    </div>
+    <div class="xiangqi-board__palace xiangqi-board__palace--bottom" aria-hidden="true">
+      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--lb"></span>
+      <span class="xiangqi-board__palace-line xiangqi-board__palace-line--rb"></span>
+    </div>
+    <div class="xiangqi-board__river-mark" aria-hidden="true">
+      <span>楚河</span>
+      <span>汉界</span>
+    </div>
+  `;
 }
 
 function renderMatch() {

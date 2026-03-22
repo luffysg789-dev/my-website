@@ -462,15 +462,15 @@ select {
   width: 100%;
   aspect-ratio: 9 / 10;
   overflow: hidden;
-  padding: 10px;
+  padding: 4px;
   border-radius: 22px;
   background:
-    radial-gradient(circle at 28% 18%, rgba(255, 247, 218, 0.26), transparent 34%),
+    radial-gradient(circle at 28% 18%, rgba(255, 247, 218, 0.24), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
-    linear-gradient(180deg, #b48d57 0%, #9b7747 100%);
+    linear-gradient(180deg, #c69b60 0%, #ab814b 100%);
   box-shadow:
-    inset 0 0 0 4px #cc944a,
-    inset 0 0 0 10px #91531c,
+    inset 0 0 0 3px #d49b4f,
+    inset 0 0 0 8px #93561f,
     0 20px 34px rgba(66, 41, 18, 0.2);
 }
 
@@ -487,10 +487,20 @@ select {
 
 .xiangqi-board__cell::before {
   top: 50%;
-  left: 0;
-  right: 0;
+  left: 50%;
+  right: -50%;
   height: 1.5px;
   transform: translateY(-50%);
+}
+
+.xiangqi-board__cell[data-file="0"]::before {
+  left: 50%;
+  right: 0;
+}
+
+.xiangqi-board__cell[data-file="8"]::before {
+  left: 0;
+  right: 50%;
 }
 
 .xiangqi-board__cell::after {
@@ -501,12 +511,20 @@ select {
   transform: translateX(-50%);
 }
 
+.xiangqi-board__cell.is-river-top::after {
+  bottom: 50%;
+}
+
+.xiangqi-board__cell.is-river-bottom::after {
+  top: 50%;
+}
+
 .xiangqi-board__piece {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(66px, 94%);
-  height: min(66px, 94%);
+  width: min(74px, 98%);
+  height: min(74px, 98%);
   transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
@@ -515,7 +533,7 @@ select {
   border: 2px solid rgba(131, 88, 38, 0.48);
   background:
     radial-gradient(circle at 32% 28%, #fff6dc 0%, #e8c784 40%, #cd9855 100%);
-  font-size: clamp(24px, 4.4vw, 32px);
+  font-size: clamp(26px, 4.8vw, 34px);
   font-weight: 900;
   box-shadow:
     inset 0 2px 2px rgba(255, 255, 255, 0.36),
@@ -539,18 +557,58 @@ select {
   box-shadow: 0 0 0 5px rgba(244, 0, 9, 0.13), 0 8px 16px rgba(38, 26, 17, 0.22);
 }
 
-.xiangqi-board__river {
-  margin-top: -50.5%;
+.xiangqi-board__river-mark {
+  position: absolute;
+  inset: 44% 12% auto 12%;
+  height: 12%;
   position: relative;
   z-index: 1;
   display: flex;
   justify-content: space-between;
-  padding: 0 20%;
   pointer-events: none;
   color: rgba(70, 46, 23, 0.72);
   font-family: "STKaiti", "Kaiti SC", serif;
   font-size: clamp(34px, 5vw, 46px);
   letter-spacing: 0.14em;
+  align-items: center;
+  padding: 0 8%;
+}
+
+.xiangqi-board__palace {
+  position: absolute;
+  left: 33.333%;
+  width: 33.333%;
+  height: 30%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.xiangqi-board__palace--top {
+  top: 0;
+}
+
+.xiangqi-board__palace--bottom {
+  bottom: 0;
+}
+
+.xiangqi-board__palace-line {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 142%;
+  height: 1.5px;
+  background: var(--xiangqi-board-line);
+  transform-origin: center;
+}
+
+.xiangqi-board__palace-line--lt,
+.xiangqi-board__palace-line--lb {
+  transform: translate(-50%, -50%) rotate(35deg);
+}
+
+.xiangqi-board__palace-line--rt,
+.xiangqi-board__palace-line--rb {
+  transform: translate(-50%, -50%) rotate(-35deg);
 }
 
 .xiangqi-action-bar {
@@ -747,12 +805,14 @@ select {
   }
 
   .xiangqi-board {
-    padding: 8px;
+    padding: 3px;
   }
 
-  .xiangqi-board__river {
-    padding: 0 18%;
+  .xiangqi-board__river-mark {
+    inset: 43.5% 10% auto 10%;
+    height: 13%;
     font-size: 34px;
+    padding: 0 6%;
   }
 
   .xiangqi-action-bar {
@@ -852,19 +912,21 @@ select {
   }
 
   .xiangqi-board {
-    padding: 6px;
+    padding: 2px;
     border-radius: 20px;
   }
 
   .xiangqi-board__piece {
-    width: min(68px, 98%);
-    height: min(68px, 98%);
-    font-size: 25px;
+    width: min(76px, 100%);
+    height: min(76px, 100%);
+    font-size: 28px;
   }
 
-  .xiangqi-board__river {
-    padding: 0 17%;
+  .xiangqi-board__river-mark {
+    inset: 43% 8% auto 8%;
+    height: 14%;
     font-size: 36px;
+    padding: 0 4%;
   }
 
   .xiangqi-room-card__title {
