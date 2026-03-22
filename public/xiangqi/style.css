@@ -423,6 +423,8 @@ select {
   border-radius: 24px;
   padding: 16px 18px;
   background: #faf7f3;
+  border: 2px solid rgba(176, 109, 40, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(213, 159, 82, 0.38);
 }
 
 .xiangqi-player-card {
@@ -467,6 +469,12 @@ select {
   color: #1f5cff;
   line-height: 1;
   letter-spacing: 0.08em;
+}
+
+.xiangqi-match-pill #xiangqiRoomBadge .xiangqi-room-badge__value {
+  font-size: 34px;
+  font-weight: 900;
+  color: #1f5cff;
 }
 
 .xiangqi-match-pill {
@@ -938,6 +946,13 @@ select {
 
   #xiangqiRoomBadge .xiangqi-room-badge__value {
     font-size: 26px;
+    font-weight: 900;
+    color: #1f5cff;
+  }
+
+  .xiangqi-match-pill #xiangqiRoomBadge .xiangqi-room-badge__value {
+    font-size: 26px;
+    font-weight: 900;
     color: #1f5cff;
   }
 

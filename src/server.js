@@ -16,6 +16,8 @@ const {
   buildNexaPaymentCreatePayloadVariants,
   prioritizeNexaPaymentCreateVariants,
   buildNexaPaymentQueryPayload,
+  buildNexaWithdrawalCreatePayload,
+  buildNexaWithdrawalQueryPayload,
   postNexaJson,
   unwrapNexaResult,
   isNexaSignatureError,
@@ -461,6 +463,46 @@ async function queryNexaTipOrder(orderNo) {
   };
   nexaTipOrders.set(normalizedOrderNo, next);
   return next;
+}
+
+async function requestNexaWithdrawal({ req, withdrawal, reviewNote = '' }) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const baseUrl = getPublicBaseUrl(req);
+  const payload = buildNexaWithdrawalCreatePayload({
+    apiKey,
+    appSecret,
+    orderNo: String(withdrawal.partner_order_no || '').trim(),
+    amount: String(withdrawal.amount || '').trim(),
+    currency: String(withdrawal.currency || NEXA_TIP_CURRENCY).trim(),
+    openId: String(withdrawal.openid || '').trim(),
+    notifyUrl: `${baseUrl}/api/xiangqi/withdraw/notify`,
+    remark: String(reviewNote || '').trim() || `象棋提现 ${String(withdrawal.amount || '').trim()} USDT`
+  });
+  const response = await postNexaJson('/partner/api/openapi/account/withdraw', payload);
+  const data = unwrapNexaResult(response, 'Nexa 提现申请失败');
+  return {
+    orderNo: String(data.orderNo || withdrawal.partner_order_no || '').trim(),
+    status: String(data.status || 'PENDING').trim().toUpperCase(),
+    rawBody: response
+  };
+}
+
+async function queryNexaWithdrawalOrder(orderNo) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const payload = buildNexaWithdrawalQueryPayload({
+    apiKey,
+    appSecret,
+    orderNo: String(orderNo || '').trim()
+  });
+  const response = await postNexaJson('/partner/api/openapi/account/withdrawal/query', payload);
+  const data = unwrapNexaResult(response, 'Nexa 查询提现失败');
+  return {
+    orderNo: String(data.orderNo || orderNo || '').trim(),
+    status: String(data.status || 'PENDING').trim().toUpperCase(),
+    amount: String(data.amount || '0.00'),
+    currency: String(data.currency || NEXA_TIP_CURRENCY).trim(),
+    rawBody: response
+  };
 }
 
 function getAdminPassword() {
@@ -2044,6 +2086,46 @@ const selectLatestXiangqiDepositByUserStmt = db.prepare(`
 const selectXiangqiWithdrawalByOrderStmt = db.prepare(
   'SELECT partner_order_no, user_id, amount, status FROM nexa_game_withdrawals WHERE partner_order_no = ?'
 );
+const selectXiangqiWithdrawalDetailByOrderStmt = db.prepare(`
+  SELECT
+    w.id,
+    w.partner_order_no,
+    w.user_id,
+    w.amount,
+    w.currency,
+    w.status,
+    w.nexa_order_no,
+    w.notify_payload,
+    w.review_note,
+    w.reviewed_by,
+    w.reviewed_at,
+    w.created_at,
+    w.finished_at,
+    u.openid
+  FROM nexa_game_withdrawals w
+  JOIN game_users u ON u.id = w.user_id
+  WHERE w.partner_order_no = ?
+`);
+const listAdminXiangqiWithdrawalsStmt = db.prepare(`
+  SELECT
+    w.partner_order_no,
+    w.user_id,
+    w.amount,
+    w.currency,
+    w.status,
+    w.nexa_order_no,
+    w.review_note,
+    w.reviewed_by,
+    w.reviewed_at,
+    w.created_at,
+    w.finished_at,
+    u.openid
+  FROM nexa_game_withdrawals w
+  JOIN game_users u ON u.id = w.user_id
+  WHERE (? = '' OR w.status = ?)
+  ORDER BY CASE WHEN w.status = 'review_pending' THEN 0 ELSE 1 END, w.id DESC
+  LIMIT ?
+`);
 const selectLatestXiangqiWithdrawalByUserStmt = db.prepare(`
   SELECT partner_order_no, amount, status, finished_at, created_at
   FROM nexa_game_withdrawals
@@ -2053,7 +2135,7 @@ const selectLatestXiangqiWithdrawalByUserStmt = db.prepare(`
 `);
 const insertXiangqiWithdrawalStmt = db.prepare(`
   INSERT INTO nexa_game_withdrawals (partner_order_no, user_id, amount, currency, status, notify_payload)
-  VALUES (?, ?, ?, 'USDT', 'pending', '')
+  VALUES (?, ?, ?, 'USDT', 'review_pending', '')
 `);
 const markXiangqiWithdrawalFailedStmt = db.prepare(`
   UPDATE nexa_game_withdrawals
@@ -2732,7 +2814,7 @@ const createPendingWithdrawal = db.transaction((payload) => {
     if (!sameUser || !sameAmount) {
       return { kind: 'idempotency_mismatch' };
     }
-    return { kind: String(existing.status || '').toLowerCase() === 'pending' ? 'already_pending' : 'duplicate' };
+    return { kind: String(existing.status || '').toLowerCase() === 'review_pending' ? 'already_pending' : 'duplicate' };
   }
 
   const wallet = selectXiangqiWalletStmt.get(payload.userId);
@@ -2756,14 +2838,14 @@ const createPendingWithdrawal = db.transaction((payload) => {
     nextBalance,
     'withdraw',
     payload.partnerOrderNo,
-    'withdraw created'
+    'withdraw review pending'
   );
 
-  return { kind: 'pending' };
+  return { kind: 'review_pending' };
 });
 
 const applyFailedWithdrawalNotify = db.transaction((payload) => {
-  const withdrawal = selectXiangqiWithdrawalByOrderStmt.get(payload.partnerOrderNo);
+  const withdrawal = selectXiangqiWithdrawalDetailByOrderStmt.get(payload.partnerOrderNo);
   if (!withdrawal) return { kind: 'not_found' };
   const currentStatus = String(withdrawal.status || '').toLowerCase();
   if (currentStatus === 'failed') {
@@ -2793,6 +2875,150 @@ const applyFailedWithdrawalNotify = db.transaction((payload) => {
   markXiangqiWithdrawalFailedStmt.run(serializeNotifyPayload(payload.rawBody), withdrawal.partner_order_no);
 
   return { kind: 'refunded' };
+});
+
+function markReviewedWithdrawal({
+  partnerOrderNo,
+  status,
+  nexaOrderNo = '',
+  rawBody = {},
+  reviewNote = '',
+  reviewedBy = '',
+  finished = false
+}) {
+  db.prepare(`
+    UPDATE nexa_game_withdrawals
+    SET status = ?,
+        nexa_order_no = ?,
+        notify_payload = ?,
+        review_note = CASE WHEN ? = '' THEN review_note ELSE ? END,
+        reviewed_by = CASE WHEN ? = '' THEN reviewed_by ELSE ? END,
+        reviewed_at = CASE WHEN ? = '' THEN reviewed_at ELSE datetime('now') END,
+        finished_at = CASE WHEN ? THEN datetime('now') ELSE '' END
+    WHERE partner_order_no = ?
+  `).run(
+    status,
+    String(nexaOrderNo || '').trim(),
+    serializeNotifyPayload(rawBody),
+    String(reviewNote || '').trim(),
+    String(reviewNote || '').trim(),
+    String(reviewedBy || '').trim(),
+    String(reviewedBy || '').trim(),
+    String(reviewedBy || '').trim(),
+    finished ? 1 : 0,
+    partnerOrderNo
+  );
+}
+
+const rejectPendingWithdrawalReview = db.transaction((payload) => {
+  const withdrawal = selectXiangqiWithdrawalDetailByOrderStmt.get(payload.partnerOrderNo);
+  if (!withdrawal) return { kind: 'not_found' };
+  const currentStatus = String(withdrawal.status || '').toLowerCase();
+  if (currentStatus === 'rejected') return { kind: 'already_processed' };
+  if (currentStatus !== 'review_pending') return { kind: 'not_review_pending' };
+
+  const wallet = selectXiangqiWalletStmt.get(withdrawal.user_id);
+  if (!wallet) return { kind: 'wallet_not_found' };
+
+  const nextBalanceCents =
+    parseMoneyToCents(wallet.available_balance) + parseMoneyToCents(withdrawal.amount);
+  const nextBalance = centsToMoneyString(nextBalanceCents);
+
+  updateXiangqiWalletBalanceStmt.run(nextBalance, withdrawal.user_id);
+  insertXiangqiLedgerStmt.run(
+    withdrawal.user_id,
+    'withdraw_refund',
+    centsToMoneyString(parseMoneyToCents(withdrawal.amount)),
+    nextBalance,
+    'withdraw',
+    withdrawal.partner_order_no,
+    'withdraw rejected refund'
+  );
+  markReviewedWithdrawal({
+    partnerOrderNo: withdrawal.partner_order_no,
+    status: 'rejected',
+    rawBody: {
+      status: 'REJECTED',
+      note: payload.reviewNote
+    },
+    reviewNote: payload.reviewNote,
+    reviewedBy: payload.reviewedBy,
+    finished: true
+  });
+
+  return { kind: 'rejected' };
+});
+
+const applySuccessfulWithdrawalNotify = db.transaction((payload) => {
+  const withdrawal = selectXiangqiWithdrawalDetailByOrderStmt.get(payload.partnerOrderNo);
+  if (!withdrawal) return { kind: 'not_found' };
+  const currentStatus = String(withdrawal.status || '').toLowerCase();
+  if (currentStatus === 'success') return { kind: 'already_processed' };
+  if (currentStatus !== 'pending') return { kind: 'not_pending' };
+
+  markReviewedWithdrawal({
+    partnerOrderNo: withdrawal.partner_order_no,
+    status: 'success',
+    nexaOrderNo: payload.orderNo || withdrawal.nexa_order_no,
+    rawBody: payload.rawBody,
+    finished: true
+  });
+
+  return { kind: 'completed' };
+});
+
+const settleReviewedWithdrawalApproval = db.transaction((payload) => {
+  const withdrawal = selectXiangqiWithdrawalDetailByOrderStmt.get(payload.partnerOrderNo);
+  if (!withdrawal) return { kind: 'not_found' };
+  const currentStatus = String(withdrawal.status || '').toLowerCase();
+  if (currentStatus === 'pending' || currentStatus === 'success') {
+    return { kind: 'already_processed', status: currentStatus };
+  }
+  if (currentStatus !== 'review_pending') {
+    return { kind: 'not_review_pending' };
+  }
+
+  const normalizedStatus = String(payload.nexaStatus || 'PENDING').trim().toUpperCase();
+  if (normalizedStatus === 'FAILED') {
+    const wallet = selectXiangqiWalletStmt.get(withdrawal.user_id);
+    if (!wallet) return { kind: 'wallet_not_found' };
+    const nextBalanceCents =
+      parseMoneyToCents(wallet.available_balance) + parseMoneyToCents(withdrawal.amount);
+    const nextBalance = centsToMoneyString(nextBalanceCents);
+    updateXiangqiWalletBalanceStmt.run(nextBalance, withdrawal.user_id);
+    insertXiangqiLedgerStmt.run(
+      withdrawal.user_id,
+      'withdraw_refund',
+      centsToMoneyString(parseMoneyToCents(withdrawal.amount)),
+      nextBalance,
+      'withdraw',
+      withdrawal.partner_order_no,
+      'withdraw failed refund'
+    );
+    markReviewedWithdrawal({
+      partnerOrderNo: withdrawal.partner_order_no,
+      status: 'failed',
+      nexaOrderNo: payload.orderNo || '',
+      rawBody: payload.rawBody,
+      reviewNote: payload.reviewNote,
+      reviewedBy: payload.reviewedBy,
+      finished: true
+    });
+    return { kind: 'failed' };
+  }
+
+  const nextStatus = normalizedStatus === 'SUCCESS' ? 'success' : 'pending';
+  markReviewedWithdrawal({
+    partnerOrderNo: withdrawal.partner_order_no,
+    status: nextStatus,
+    nexaOrderNo: payload.orderNo || '',
+    rawBody: payload.rawBody,
+    reviewNote: payload.reviewNote,
+    reviewedBy: payload.reviewedBy,
+    finished: nextStatus === 'success'
+  });
+
+  return { kind: nextStatus, status: nextStatus };
 });
 
 const createXiangqiRoom = db.transaction((payload) => {
@@ -3335,7 +3561,7 @@ app.post('/api/xiangqi/withdraw/create', (req, res) => {
       return res.status(409).json({ ok: false, error: 'INSUFFICIENT_BALANCE' });
     }
     if (result.kind === 'already_pending') {
-      return res.json({ ok: true, status: 'pending' });
+      return res.json({ ok: true, status: 'review_pending' });
     }
     if (result.kind === 'idempotency_mismatch') {
       return res.status(409).json({ ok: false, error: 'WITHDRAWAL_IDEMPOTENCY_MISMATCH' });
@@ -3343,7 +3569,7 @@ app.post('/api/xiangqi/withdraw/create', (req, res) => {
     if (result.kind === 'duplicate') {
       return res.status(409).json({ ok: false, error: 'WITHDRAWAL_ALREADY_EXISTS' });
     }
-    return res.json({ ok: true, status: 'pending' });
+    return res.json({ ok: true, status: 'review_pending' });
   } catch (error) {
     if (error && error.message === 'INVALID_AMOUNT') {
       return res.status(400).json({ ok: false, error: 'INVALID_AMOUNT' });
@@ -3352,7 +3578,7 @@ app.post('/api/xiangqi/withdraw/create', (req, res) => {
   }
 });
 
-app.post('/api/xiangqi/withdraw/query', (req, res) => {
+app.post('/api/xiangqi/withdraw/query', async (req, res) => {
   if (!shouldHandleXiangqiWalletBody(req)) {
     return respondXiangqiWalletNotImplemented(res);
   }
@@ -3367,10 +3593,28 @@ app.post('/api/xiangqi/withdraw/query', (req, res) => {
     return res.status(404).json({ ok: false, error: 'WITHDRAWAL_NOT_FOUND' });
   }
 
+  const partnerOrderNoValue = String(row.partner_order_no || '').trim();
+  const currentStatus = String(row.status || '').trim().toLowerCase();
+
+  if (currentStatus === 'pending') {
+    try {
+      const queried = await queryNexaWithdrawalOrder(partnerOrderNoValue);
+      return res.json({
+        ok: true,
+        item: {
+          partnerOrderNo: partnerOrderNoValue,
+          userId: Number(row.user_id),
+          amount: String(queried.amount || row.amount || '0.00'),
+          status: String(queried.status || row.status || '').trim().toLowerCase()
+        }
+      });
+    } catch {}
+  }
+
   return res.json({
     ok: true,
     item: {
-      partnerOrderNo: String(row.partner_order_no || '').trim(),
+      partnerOrderNo: partnerOrderNoValue,
       userId: Number(row.user_id),
       amount: String(row.amount || '0.00'),
       status: String(row.status || '').trim()
@@ -3388,15 +3632,21 @@ app.post('/api/xiangqi/withdraw/notify', (req, res) => {
   if (!partnerOrderNo) {
     return res.status(400).json({ ok: false, error: 'INVALID_PARTNER_ORDER_NO' });
   }
-  if (status !== 'FAILED') {
+  if (!['FAILED', 'SUCCESS'].includes(status)) {
     return res.status(400).json({ ok: false, error: 'UNSUPPORTED_WITHDRAW_STATUS' });
   }
 
   try {
-    const result = applyFailedWithdrawalNotify({
-      partnerOrderNo,
-      rawBody: req.body
-    });
+    const result = status === 'SUCCESS'
+      ? applySuccessfulWithdrawalNotify({
+          partnerOrderNo,
+          orderNo: String(req.body.orderNo || '').trim(),
+          rawBody: req.body
+        })
+      : applyFailedWithdrawalNotify({
+          partnerOrderNo,
+          rawBody: req.body
+        });
 
     if (result.kind === 'not_found') {
       return res.status(404).json({ ok: false, error: 'WITHDRAWAL_NOT_FOUND' });
@@ -3410,13 +3660,100 @@ app.post('/api/xiangqi/withdraw/notify', (req, res) => {
     if (result.kind === 'already_processed') {
       return res.json({ ok: true, status: 'already_processed' });
     }
-    return res.json({ ok: true, status: 'refunded' });
+    return res.json({ ok: true, status: result.kind === 'completed' ? 'success' : 'refunded' });
   } catch (error) {
     if (error && error.message === 'INVALID_AMOUNT') {
       return res.status(400).json({ ok: false, error: 'INVALID_AMOUNT' });
     }
     throw error;
   }
+});
+
+app.get('/api/admin/xiangqi-withdrawals', requireAdmin, (req, res) => {
+  const status = String(req.query?.status || '').trim().toLowerCase();
+  const limit = Math.min(200, Math.max(1, Number(req.query?.limit || 50) || 50));
+  const items = listAdminXiangqiWithdrawalsStmt.all(status, status, limit).map((row) => ({
+    partnerOrderNo: String(row.partner_order_no || '').trim(),
+    userId: Number(row.user_id),
+    openId: String(row.openid || '').trim(),
+    amount: String(row.amount || '0.00'),
+    currency: String(row.currency || 'USDT').trim(),
+    status: String(row.status || '').trim(),
+    nexaOrderNo: String(row.nexa_order_no || '').trim(),
+    reviewNote: String(row.review_note || '').trim(),
+    reviewedBy: String(row.reviewed_by || '').trim(),
+    reviewedAt: String(row.reviewed_at || '').trim(),
+    createdAt: String(row.created_at || '').trim(),
+    finishedAt: String(row.finished_at || '').trim()
+  }));
+  return res.json({ ok: true, items });
+});
+
+app.post('/api/admin/xiangqi-withdrawals/:partnerOrderNo/approve', requireAdmin, async (req, res) => {
+  const partnerOrderNo = String(req.params.partnerOrderNo || '').trim();
+  const reviewNote = String(req.body?.note || '').trim();
+  if (!partnerOrderNo) {
+    return res.status(400).json({ ok: false, error: 'INVALID_PARTNER_ORDER_NO' });
+  }
+
+  const withdrawal = selectXiangqiWithdrawalDetailByOrderStmt.get(partnerOrderNo);
+  if (!withdrawal) {
+    return res.status(404).json({ ok: false, error: 'WITHDRAWAL_NOT_FOUND' });
+  }
+
+  try {
+    const nexaResult = await requestNexaWithdrawal({ req, withdrawal, reviewNote });
+    const result = settleReviewedWithdrawalApproval({
+      partnerOrderNo,
+      nexaStatus: nexaResult.status,
+      orderNo: nexaResult.orderNo,
+      rawBody: nexaResult.rawBody,
+      reviewNote,
+      reviewedBy: 'admin'
+    });
+
+    if (result.kind === 'wallet_not_found') {
+      return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+    }
+    if (result.kind === 'already_processed') {
+      return res.json({ ok: true, status: result.status });
+    }
+    if (result.kind === 'not_review_pending') {
+      return res.status(409).json({ ok: false, error: 'WITHDRAWAL_NOT_REVIEW_PENDING' });
+    }
+    return res.json({ ok: true, status: result.status || result.kind });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'Nexa 提现申请失败') });
+  }
+});
+
+app.post('/api/admin/xiangqi-withdrawals/:partnerOrderNo/reject', requireAdmin, (req, res) => {
+  const partnerOrderNo = String(req.params.partnerOrderNo || '').trim();
+  const reviewNote = String(req.body?.note || '').trim();
+  if (!partnerOrderNo) {
+    return res.status(400).json({ ok: false, error: 'INVALID_PARTNER_ORDER_NO' });
+  }
+
+  const result = rejectPendingWithdrawalReview({
+    partnerOrderNo,
+    reviewNote,
+    reviewedBy: 'admin'
+  });
+
+  if (result.kind === 'not_found') {
+    return res.status(404).json({ ok: false, error: 'WITHDRAWAL_NOT_FOUND' });
+  }
+  if (result.kind === 'wallet_not_found') {
+    return res.status(404).json({ ok: false, error: 'WALLET_NOT_FOUND' });
+  }
+  if (result.kind === 'already_processed') {
+    return res.json({ ok: true, status: 'rejected' });
+  }
+  if (result.kind === 'not_review_pending') {
+    return res.status(409).json({ ok: false, error: 'WITHDRAWAL_NOT_REVIEW_PENDING' });
+  }
+  return res.json({ ok: true, status: 'rejected' });
 });
 
 app.post('/api/xiangqi/rooms/create', (req, res) => {

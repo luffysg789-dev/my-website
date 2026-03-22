@@ -188,7 +188,7 @@ test('withdraw create rejects when available_balance is insufficient', async () 
   }
 });
 
-test('withdraw create records a pending withdrawal and deducts from available_balance', async () => {
+test('withdraw create records a review-pending withdrawal and deducts from available_balance', async () => {
   const harness = createHarness();
   const userId = seedUser(harness.db, { availableBalance: '20.00', openid: 'withdraw-pending-user' });
 
@@ -201,7 +201,7 @@ test('withdraw create records a pending withdrawal and deducts from available_ba
     });
 
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(response.body, { ok: true, status: 'pending' });
+    assert.deepEqual(response.body, { ok: true, status: 'review_pending' });
     assert.equal(getWallet(harness.db, userId).available_balance, '13.75');
     assert.deepEqual(
       harness.db
@@ -210,7 +210,7 @@ test('withdraw create records a pending withdrawal and deducts from available_ba
       {
         partner_order_no: 'wd-pending-001',
         amount: '6.25',
-        status: 'pending'
+        status: 'review_pending'
       }
     );
     assert.deepEqual(getLedgerByRelated(harness.db, 'withdraw', 'wd-pending-001'), [
@@ -220,7 +220,7 @@ test('withdraw create records a pending withdrawal and deducts from available_ba
         balance_after: '13.75',
         related_type: 'withdraw',
         related_id: 'wd-pending-001',
-        remark: 'withdraw created'
+        remark: 'withdraw review pending'
       }
     ]);
   } finally {
@@ -228,7 +228,7 @@ test('withdraw create records a pending withdrawal and deducts from available_ba
   }
 });
 
-test('failed withdrawal notify refunds the deducted amount', async () => {
+test('failed withdrawal notify rejects review-pending withdrawals before admin approval', async () => {
   const harness = createHarness();
   const userId = seedUser(harness.db, { availableBalance: '10.00', openid: 'withdraw-refund-user' });
 
@@ -248,9 +248,9 @@ test('failed withdrawal notify refunds the deducted amount', async () => {
       status: 'FAILED'
     });
 
-    assert.equal(notifyResponse.statusCode, 200);
-    assert.deepEqual(notifyResponse.body, { ok: true, status: 'refunded' });
-    assert.equal(getWallet(harness.db, userId).available_balance, '10.00');
+    assert.equal(notifyResponse.statusCode, 409);
+    assert.equal(notifyResponse.body.error, 'WITHDRAWAL_NOT_PENDING');
+    assert.equal(getWallet(harness.db, userId).available_balance, '5.50');
     assert.deepEqual(getLedgerByRelated(harness.db, 'withdraw', 'wd-failed-001'), [
       {
         type: 'withdraw_debit',
@@ -258,24 +258,16 @@ test('failed withdrawal notify refunds the deducted amount', async () => {
         balance_after: '5.50',
         related_type: 'withdraw',
         related_id: 'wd-failed-001',
-        remark: 'withdraw created'
-      },
-      {
-        type: 'withdraw_refund',
-        amount: '4.50',
-        balance_after: '10.00',
-        related_type: 'withdraw',
-        related_id: 'wd-failed-001',
-        remark: 'withdraw failed refund'
+        remark: 'withdraw review pending'
       }
     ]);
 
     const withdrawal = harness.db
       .prepare('SELECT status, finished_at, notify_payload FROM nexa_game_withdrawals WHERE partner_order_no = ?')
       .get('wd-failed-001');
-    assert.equal(withdrawal.status, 'failed');
-    assert.ok(withdrawal.finished_at);
-    assert.match(withdrawal.notify_payload, /FAILED/);
+    assert.equal(withdrawal.status, 'review_pending');
+    assert.equal(withdrawal.finished_at, '');
+    assert.equal(withdrawal.notify_payload, '');
   } finally {
     harness.cleanup();
   }

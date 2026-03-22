@@ -263,13 +263,33 @@ db.exec(`
     user_id INTEGER NOT NULL,
     amount TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'USDT',
-    status TEXT NOT NULL DEFAULT 'pending',
+    status TEXT NOT NULL DEFAULT 'review_pending',
+    nexa_order_no TEXT NOT NULL DEFAULT '',
     notify_payload TEXT NOT NULL DEFAULT '',
+    review_note TEXT NOT NULL DEFAULT '',
+    reviewed_by TEXT NOT NULL DEFAULT '',
+    reviewed_at TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     finished_at TEXT NOT NULL DEFAULT '',
     FOREIGN KEY(user_id) REFERENCES game_users(id)
   );
 `);
+const hasWithdrawalNexaOrderNo = db.prepare("SELECT 1 FROM pragma_table_info('nexa_game_withdrawals') WHERE name = 'nexa_order_no'").get();
+if (!hasWithdrawalNexaOrderNo) {
+  db.exec("ALTER TABLE nexa_game_withdrawals ADD COLUMN nexa_order_no TEXT NOT NULL DEFAULT ''");
+}
+const hasWithdrawalReviewNote = db.prepare("SELECT 1 FROM pragma_table_info('nexa_game_withdrawals') WHERE name = 'review_note'").get();
+if (!hasWithdrawalReviewNote) {
+  db.exec("ALTER TABLE nexa_game_withdrawals ADD COLUMN review_note TEXT NOT NULL DEFAULT ''");
+}
+const hasWithdrawalReviewedBy = db.prepare("SELECT 1 FROM pragma_table_info('nexa_game_withdrawals') WHERE name = 'reviewed_by'").get();
+if (!hasWithdrawalReviewedBy) {
+  db.exec("ALTER TABLE nexa_game_withdrawals ADD COLUMN reviewed_by TEXT NOT NULL DEFAULT ''");
+}
+const hasWithdrawalReviewedAt = db.prepare("SELECT 1 FROM pragma_table_info('nexa_game_withdrawals') WHERE name = 'reviewed_at'").get();
+if (!hasWithdrawalReviewedAt) {
+  db.exec("ALTER TABLE nexa_game_withdrawals ADD COLUMN reviewed_at TEXT NOT NULL DEFAULT ''");
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS xiangqi_rooms (

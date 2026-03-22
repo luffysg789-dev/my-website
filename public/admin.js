@@ -56,6 +56,7 @@ const tutorialList = document.getElementById('tutorialList');
 const adminSkillsFetchSection = document.getElementById('adminSkillsFetchSection');
 const adminSkillsSection = document.getElementById('adminSkillsSection');
 const adminGamesSection = document.getElementById('adminGamesSection');
+const adminXiangqiWithdrawalsSection = document.getElementById('adminXiangqiWithdrawalsSection');
 const adminSkillsCreateForm = document.getElementById('adminSkillsCreateForm');
 const adminSkillsCategoryOptions = document.getElementById('adminSkillsCategoryOptions');
 const skillsCreateMessage = document.getElementById('skillsCreateMessage');
@@ -63,6 +64,8 @@ const skillsList = document.getElementById('skillsList');
 const skillsMessage = document.getElementById('skillsMessage');
 const gamesList = document.getElementById('gamesList');
 const gamesMessage = document.getElementById('gamesMessage');
+const xiangqiWithdrawalsList = document.getElementById('xiangqiWithdrawalsList');
+const xiangqiWithdrawalsMessage = document.getElementById('xiangqiWithdrawalsMessage');
 const skillsFetchMessage = document.getElementById('skillsFetchMessage');
 const skillsStagingList = document.getElementById('skillsStagingList');
 const skillsSyncConfigForm = document.getElementById('skillsSyncConfigForm');
@@ -182,6 +185,7 @@ const texts = {
     navSkillsFetch: '技能抓取',
     navSkills: '技能列表',
     navGames: '游戏列表',
+    navXiangqiWithdrawals: '象棋提现审核',
     navPassword: '修改密码',
     navPending: '等待审核',
     navApproved: '已上线',
@@ -285,6 +289,12 @@ const texts = {
     skillsCreateSuccess: '技能已新增',
     skillsCreateRouteMissing: '技能新增接口不存在（404）。请重启后端后再试。',
     gamesListTitle: '游戏列表',
+    xiangqiWithdrawalsTitle: '象棋提现审核',
+    xiangqiWithdrawalsApprove: '通过并打款',
+    xiangqiWithdrawalsReject: '驳回并退款',
+    xiangqiWithdrawalsEmpty: '当前没有待审核的象棋提现申请。',
+    xiangqiWithdrawalsApproved: '提现已审核通过，已提交 Nexa 处理。',
+    xiangqiWithdrawalsRejected: '提现已驳回，金额已退回用户余额。',
     gamesEmpty: '暂无游戏',
     gameDeleteConfirm: '确定删除这个游戏吗？',
     gameDeleted: '游戏已删除',
@@ -414,6 +424,7 @@ const texts = {
     navSkillsFetch: 'Skill Fetch',
     navSkills: 'Skills',
     navGames: 'Games',
+    navXiangqiWithdrawals: 'Xiangqi Withdrawals',
     navPassword: 'Change Password',
     navPending: 'Pending',
     navApproved: 'Approved',
@@ -517,6 +528,12 @@ const texts = {
     skillsCreateSuccess: 'Skill added.',
     skillsCreateRouteMissing: 'Skill create API not found (404). Please restart the backend and try again.',
     gamesListTitle: 'Games',
+    xiangqiWithdrawalsTitle: 'Xiangqi Withdrawals',
+    xiangqiWithdrawalsApprove: 'Approve',
+    xiangqiWithdrawalsReject: 'Reject',
+    xiangqiWithdrawalsEmpty: 'No Xiangqi withdrawal requests are pending.',
+    xiangqiWithdrawalsApproved: 'Withdrawal approved and submitted to Nexa.',
+    xiangqiWithdrawalsRejected: 'Withdrawal rejected and refunded.',
     gamesEmpty: 'No games.',
     gameDeleteConfirm: 'Delete this game?',
     gameDeleted: 'Game deleted.',
@@ -952,6 +969,7 @@ function applyLanguage() {
   document.getElementById('navSkillsFetch').textContent = dict.navSkillsFetch;
   document.getElementById('navSkills').textContent = dict.navSkills;
   document.getElementById('navGames').textContent = dict.navGames;
+  document.getElementById('navXiangqiWithdrawals').textContent = dict.navXiangqiWithdrawals;
   document.getElementById('navPassword').textContent = dict.navPassword;
   document.getElementById('navPending').textContent = dict.navPending;
   document.getElementById('navApproved').textContent = dict.navApproved;
@@ -1009,6 +1027,7 @@ function applyLanguage() {
   document.getElementById('skillsFetchTitle').textContent = dict.skillsFetchTitle;
   document.getElementById('skillsListTitle').textContent = dict.skillsListTitle;
   document.getElementById('gamesListTitle').textContent = dict.gamesListTitle;
+  document.getElementById('xiangqiWithdrawalsTitle').textContent = dict.xiangqiWithdrawalsTitle;
   document.getElementById('skillsSyncConfigTitle').textContent = dict.skillsSyncConfigTitle;
   document.getElementById('skillsSyncEnabledLabel').childNodes[0].textContent = dict.skillsSyncEnabledLabel;
   document.getElementById('skillsSyncTimeLabel').childNodes[0].textContent = dict.skillsSyncTimeLabel;
@@ -1077,6 +1096,7 @@ function setView(view) {
   adminSkillsFetchSection.classList.toggle('hidden', view !== 'skills-fetch');
   adminSkillsSection.classList.toggle('hidden', view !== 'skills');
   adminGamesSection.classList.toggle('hidden', view !== 'games');
+  adminXiangqiWithdrawalsSection.classList.toggle('hidden', view !== 'xiangqi-withdrawals');
   adminPasswordSection.classList.toggle('hidden', view !== 'password');
   adminListSection.classList.toggle('hidden', view !== 'pending' && view !== 'approved');
   adminSearchToolbar.classList.toggle('hidden', view !== 'approved');
@@ -1106,6 +1126,9 @@ function setView(view) {
   if (view === 'games') {
     loadGamesList();
   }
+  if (view === 'xiangqi-withdrawals') {
+    loadXiangqiWithdrawalsList();
+  }
 
   if (view === 'pending') {
     currentQuery = '';
@@ -1117,6 +1140,122 @@ function setView(view) {
 
   syncVisitStatsTimer();
 }
+
+function renderXiangqiWithdrawalsList(items) {
+  if (!xiangqiWithdrawalsList) return;
+  if (!Array.isArray(items) || !items.length) {
+    xiangqiWithdrawalsList.innerHTML = `<p class="empty">${escapeHtml(t('xiangqiWithdrawalsEmpty'))}</p>`;
+    return;
+  }
+
+  xiangqiWithdrawalsList.innerHTML = items
+    .map((item) => {
+      const partnerOrderNo = String(item.partnerOrderNo || '').trim();
+      const amount = String(item.amount || '0.00').trim();
+      const currency = String(item.currency || 'USDT').trim();
+      const status = String(item.status || '').trim();
+      const openId = String(item.openId || '').trim();
+      const createdAt = String(item.createdAt || '').trim();
+      return `
+        <article class="review-card">
+          <h3>${escapeHtml(partnerOrderNo)}</h3>
+          <p class="small">OpenID: ${escapeHtml(openId || '-')}</p>
+          <p class="small">金额: ${escapeHtml(amount)} ${escapeHtml(currency)}</p>
+          <p class="small">状态: ${escapeHtml(status || '-')}</p>
+          <p class="small">申请时间: ${escapeHtml(createdAt || '-')}</p>
+          <div class="review-actions">
+            <button type="button" onclick="approveXiangqiWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('xiangqiWithdrawalsApprove'))}</button>
+            <button type="button" class="danger" onclick="rejectXiangqiWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('xiangqiWithdrawalsReject'))}</button>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function loadXiangqiWithdrawalsList() {
+  if (!xiangqiWithdrawalsList || !xiangqiWithdrawalsMessage) return;
+  xiangqiWithdrawalsMessage.textContent = '';
+  xiangqiWithdrawalsMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/xiangqi-withdrawals?status=review_pending'], { method: 'GET' });
+  if (!result.res) {
+    xiangqiWithdrawalsMessage.textContent = t('operationFailed');
+    xiangqiWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (result.res.status === 404) {
+    xiangqiWithdrawalsMessage.textContent = '当前运行中的后端还没有 /api/admin/xiangqi-withdrawals 接口，请重启后端加载最新代码。';
+    xiangqiWithdrawalsMessage.className = 'message error';
+    xiangqiWithdrawalsList.innerHTML = `<p class="empty">请重启后端后再查看象棋提现审核列表。</p>`;
+    return;
+  }
+  if (!result.res.ok) {
+    xiangqiWithdrawalsMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    xiangqiWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  renderXiangqiWithdrawalsList(result.data?.items || []);
+}
+
+window.approveXiangqiWithdrawal = async function approveXiangqiWithdrawal(partnerOrderNo) {
+  const note = window.prompt('请输入审核备注（可留空）', '') || '';
+  xiangqiWithdrawalsMessage.textContent = '';
+  xiangqiWithdrawalsMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/xiangqi-withdrawals/${encodeURIComponent(partnerOrderNo)}/approve`], {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note })
+  });
+  if (!result.res) {
+    xiangqiWithdrawalsMessage.textContent = t('operationFailed');
+    xiangqiWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    xiangqiWithdrawalsMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    xiangqiWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  xiangqiWithdrawalsMessage.textContent = t('xiangqiWithdrawalsApproved');
+  xiangqiWithdrawalsMessage.className = 'message success';
+  await loadXiangqiWithdrawalsList();
+};
+
+window.rejectXiangqiWithdrawal = async function rejectXiangqiWithdrawal(partnerOrderNo) {
+  const note = window.prompt(t('rejectPrompt'), '') || '';
+  xiangqiWithdrawalsMessage.textContent = '';
+  xiangqiWithdrawalsMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/xiangqi-withdrawals/${encodeURIComponent(partnerOrderNo)}/reject`], {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note })
+  });
+  if (!result.res) {
+    xiangqiWithdrawalsMessage.textContent = t('operationFailed');
+    xiangqiWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    xiangqiWithdrawalsMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    xiangqiWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  xiangqiWithdrawalsMessage.textContent = t('xiangqiWithdrawalsRejected');
+  xiangqiWithdrawalsMessage.className = 'message success';
+  await loadXiangqiWithdrawalsList();
+};
 
 function formatAssetPreview(asset, kind) {
   const value = String(asset || '').trim();
@@ -3056,6 +3195,7 @@ document.getElementById('navTutorialAdd').addEventListener('click', () => {
 document.getElementById('navSkillsFetch').addEventListener('click', () => setView('skills-fetch'));
 document.getElementById('navSkills').addEventListener('click', () => setView('skills'));
 document.getElementById('navGames').addEventListener('click', () => setView('games'));
+document.getElementById('navXiangqiWithdrawals').addEventListener('click', () => setView('xiangqi-withdrawals'));
 document.getElementById('navPassword').addEventListener('click', () => setView('password'));
 document.getElementById('navPending').addEventListener('click', () => setView('pending'));
 document.getElementById('navApproved').addEventListener('click', () => setView('approved'));
