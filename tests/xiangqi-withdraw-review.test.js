@@ -207,7 +207,7 @@ test('admin rejection refunds review-pending withdrawal back to wallet', async (
   }
 });
 
-test('admin approval calls Nexa withdrawal API and keeps funds debited while pending', async () => {
+test('admin approval marks the withdrawal as arrived for xiangqi ledger display', async () => {
   const harness = createHarness({
     mockWithdrawResponse(payload) {
       return {
@@ -242,7 +242,7 @@ test('admin approval calls Nexa withdrawal API and keeps funds debited while pen
     );
 
     assert.equal(approveResponse.statusCode, 200);
-    assert.deepEqual(approveResponse.body, { ok: true, status: 'pending' });
+    assert.deepEqual(approveResponse.body, { ok: true, status: 'success' });
     assert.deepEqual(getWallet(harness.db, userId), {
       available_balance: '15.50',
       frozen_balance: '0.00'
@@ -250,10 +250,14 @@ test('admin approval calls Nexa withdrawal API and keeps funds debited while pen
     const withdrawal = harness.db
       .prepare('SELECT status, review_note, reviewed_by, notify_payload FROM nexa_game_withdrawals WHERE partner_order_no = ?')
       .get('wd-review-approve-001');
-    assert.equal(withdrawal.status, 'pending');
+    assert.equal(withdrawal.status, 'success');
     assert.equal(withdrawal.review_note, '人工审核通过');
     assert.equal(withdrawal.reviewed_by, 'admin');
     assert.match(withdrawal.notify_payload, /PENDING/);
+
+    const ledgerResponse = await harness.request('GET', `/api/xiangqi/wallet/ledger?userId=${userId}&limit=10`);
+    const ledgerEntry = ledgerResponse.body.items.find((item) => item.relatedId === 'wd-review-approve-001');
+    assert.equal(ledgerEntry.withdrawalStatus, 'success');
   } finally {
     harness.cleanup();
   }

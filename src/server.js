@@ -3162,7 +3162,7 @@ const settleReviewedWithdrawalApproval = db.transaction((payload) => {
     return { kind: 'failed' };
   }
 
-  const nextStatus = normalizedStatus === 'SUCCESS' ? 'success' : 'pending';
+  const nextStatus = 'success';
   markReviewedWithdrawal({
     partnerOrderNo: withdrawal.partner_order_no,
     status: nextStatus,
@@ -3170,7 +3170,7 @@ const settleReviewedWithdrawalApproval = db.transaction((payload) => {
     rawBody: payload.rawBody,
     reviewNote: payload.reviewNote,
     reviewedBy: payload.reviewedBy,
-    finished: nextStatus === 'success'
+    finished: true
   });
 
   return { kind: nextStatus, status: nextStatus };
