@@ -39,6 +39,10 @@ test('xiangqi html includes mobile wallet, room, and board sections', () => {
   assert.doesNotMatch(html, /id="xiangqiLoginBtn"/);
   assert.doesNotMatch(html, /id="xiangqiWelcomeName"/);
   assert.match(html, />象棋在线余额</);
+  assert.match(
+    html,
+    /class="xiangqi-wallet-card__chips"[\s\S]*?>实时结算<\/span>[\s\S]*?>每局手续费仅1%<\/span>[\s\S]*?>提现免费<\/span>/
+  );
   assert.match(html, />每局手续费仅1%<\/span>/);
   assert.match(html, />提现免费<\/span>/);
   assert.match(html, />实时结算<\/span>/);
