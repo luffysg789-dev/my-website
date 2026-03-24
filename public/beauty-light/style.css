@@ -50,6 +50,7 @@ input {
   min-height: calc(100vh - 360px);
   min-height: calc(100dvh - 360px);
   padding: calc(env(safe-area-inset-top) + 16px) 18px 200px;
+  touch-action: manipulation;
 }
 
 .beauty-light-topbar {

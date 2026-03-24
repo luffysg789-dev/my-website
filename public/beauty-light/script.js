@@ -16,7 +16,8 @@ const state = {
   brightness: PRESET_LIGHTS[0].brightness,
   panelCollapsed: false,
   panelTouchStartY: null,
-  hintDismissed: false
+  hintDismissed: false,
+  lastStageStepAt: 0
 };
 
 const ui = {
@@ -101,10 +102,15 @@ function stepPreset(delta) {
   setPreset(nextIndex);
 }
 
-function onStageClick(event) {
+function onStageInteract(event) {
   if (event.target.closest('.beauty-light-topbar')) {
     return;
   }
+  const now = Date.now();
+  if (now - state.lastStageStepAt < 220) {
+    return;
+  }
+  state.lastStageStepAt = now;
   if (!state.hintDismissed) {
     state.hintDismissed = true;
     syncHintState();
@@ -146,7 +152,8 @@ function bindEvents() {
     applyColor();
   });
 
-  ui.stage.addEventListener('click', onStageClick);
+  ui.stage.addEventListener('pointerdown', onStageInteract);
+  ui.stage.addEventListener('click', onStageInteract);
   ui.panelCloseBtn.addEventListener('click', closePanel);
   ui.panelToggleBtn.addEventListener('click', () => {
     if (state.panelCollapsed) {
