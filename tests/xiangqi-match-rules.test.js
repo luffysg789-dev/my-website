@@ -288,6 +288,36 @@ test('legal moves update stored state', async () => {
   }
 });
 
+test('moves that expose your own king are still allowed until the opponent actually captures', async () => {
+  const harness = createHarness();
+
+  try {
+    const context = await createPlayingMatch(harness);
+    setCustomMatchState(harness.db, context.matchId, {
+      turnSide: 'RED',
+      pieces: [
+        { file: 4, rank: 9, side: 'RED', type: 'king' },
+        { file: 4, rank: 0, side: 'BLACK', type: 'rook' },
+        { file: 4, rank: 5, side: 'RED', type: 'rook' },
+        { file: 5, rank: 0, side: 'BLACK', type: 'king' }
+      ]
+    });
+
+    const response = await harness.request('POST', `/api/xiangqi/matches/${context.matchId}/move`, {
+      userId: context.redUserId,
+      from: { file: 4, rank: 5 },
+      to: { file: 3, rank: 5 }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.ok, true);
+    assert.equal(response.body.status, 'playing');
+    assert.equal(response.body.turnSide, 'BLACK');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('a new match starts with the standard chinese chess opening setup', async () => {
   const harness = createHarness();
 
@@ -552,6 +582,42 @@ test('checking the opposing king returns the check audio cue', async () => {
     assert.equal(response.body.match.blackTimeLeftMs > 0, true);
     assert.equal(response.body.match.pendingDrawOfferSide, null);
     assert.equal(Array.isArray(response.body.match.pieces), true);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('checkmating the opposing king ends the match without requiring a king capture', async () => {
+  const harness = createHarness();
+
+  try {
+    const context = await createPlayingMatch(harness);
+    setCustomMatchState(harness.db, context.matchId, {
+      turnSide: 'RED',
+      pieces: [
+        { file: 4, rank: 0, side: 'BLACK', type: 'king' },
+        { file: 8, rank: 9, side: 'RED', type: 'king' },
+        { file: 3, rank: 1, side: 'RED', type: 'rook' },
+        { file: 4, rank: 2, side: 'RED', type: 'rook' },
+        { file: 5, rank: 1, side: 'RED', type: 'rook' }
+      ]
+    });
+
+    const response = await harness.request('POST', `/api/xiangqi/matches/${context.matchId}/move`, {
+      userId: context.redUserId,
+      from: { file: 4, rank: 2 },
+      to: { file: 4, rank: 1 }
+    });
+    const matchResponse = await harness.request('GET', `/api/xiangqi/matches/${context.matchId}`);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.ok, true);
+    assert.equal(response.body.status, 'finished');
+    assert.equal(response.body.result, 'RED_WIN');
+    assert.equal(matchResponse.statusCode, 200);
+    assert.equal(matchResponse.body.item.status, 'FINISHED');
+    assert.equal(matchResponse.body.item.result, 'RED_WIN');
+    assert.equal(matchResponse.body.item.winnerUserId, context.redUserId);
   } finally {
     harness.cleanup();
   }

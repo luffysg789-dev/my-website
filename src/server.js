@@ -2715,6 +2715,39 @@ function isXiangqiKingInCheck(state, side) {
   });
 }
 
+function simulateXiangqiStateAfterMove(state, piece, from, to) {
+  return {
+    pendingDrawOfferSide: null,
+    pieces: state.pieces
+      .filter((candidate) => !(candidate.file === from.file && candidate.rank === from.rank))
+      .filter((candidate) => !(candidate.file === to.file && candidate.rank === to.rank))
+      .concat({ ...piece, file: to.file, rank: to.rank })
+  };
+}
+
+function hasAnyXiangqiCheckEscape(state, side) {
+  const normalizedSide = String(side || '').toUpperCase();
+  const pieces = state.pieces.filter((piece) => String(piece.side || '').toUpperCase() === normalizedSide);
+
+  for (const piece of pieces) {
+    const from = { file: piece.file, rank: piece.rank };
+    for (let file = 0; file < 9; file += 1) {
+      for (let rank = 0; rank < 10; rank += 1) {
+        if (file === from.file && rank === from.rank) continue;
+        const to = { file, rank };
+        const targetPiece = findXiangqiPiece(state, file, rank);
+        if (!validateXiangqiMove(state, piece, targetPiece, from, to)) continue;
+        const nextState = simulateXiangqiStateAfterMove(state, piece, from, to);
+        if (!isXiangqiKingInCheck(nextState, normalizedSide)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 function getXiangqiMoveAudioCue(state, movingSide, targetPiece) {
   const opponentSide = String(movingSide || '').toUpperCase() === 'RED' ? 'BLACK' : 'RED';
   if (isXiangqiKingInCheck(state, opponentSide)) {
@@ -3589,14 +3622,7 @@ const moveXiangqiMatch = db.transaction((payload) => {
     return settleXiangqiMatch({ matchId: match.id, result: 'TIMEOUT_DRAW' });
   }
 
-  const nextPieces = state.pieces
-    .filter((piece) => !(piece.file === from.file && piece.rank === from.rank))
-    .filter((piece) => !(piece.file === to.file && piece.rank === to.rank))
-    .concat({ ...movingPiece, file: to.file, rank: to.rank });
-  const nextState = {
-    pendingDrawOfferSide: null,
-    pieces: nextPieces
-  };
+  const nextState = simulateXiangqiStateAfterMove(state, movingPiece, from, to);
   const nextTurnSide = side === 'RED' ? 'BLACK' : 'RED';
   const serializedState = serializeXiangqiState(nextState);
   const moveNo = Number(selectXiangqiMoveCountStmt.get(match.id)?.count || 0) + 1;
@@ -3612,6 +3638,19 @@ const moveXiangqiMatch = db.transaction((payload) => {
   );
 
   if (targetPiece?.type === 'king') {
+    updateXiangqiMatchFinishedSnapshotStmt.run(
+      serializedState,
+      timers.redTimeLeftMs,
+      timers.blackTimeLeftMs,
+      match.id
+    );
+    return settleXiangqiMatch({
+      matchId: match.id,
+      result: side === 'RED' ? 'RED_WIN' : 'BLACK_WIN'
+    });
+  }
+
+  if (isXiangqiKingInCheck(nextState, nextTurnSide) && !hasAnyXiangqiCheckEscape(nextState, nextTurnSide)) {
     updateXiangqiMatchFinishedSnapshotStmt.run(
       serializedState,
       timers.redTimeLeftMs,
