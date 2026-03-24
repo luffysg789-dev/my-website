@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 最萌补光灯</title>
+    <meta name="description" content="Claw800 最萌补光灯，支持左右滑动切换颜色、预设色卡与亮度调节。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/beauty-light/style.css?v=20260324-01" />
+  </head>
+  <body>
+    <main class="beauty-light-shell" id="beautyLightShell">
+      <div class="beauty-light-stage" id="beautyLightStage" aria-label="补光区域">
+        <header class="beauty-light-topbar">
+          <a class="beauty-light-back" href="/games.html" aria-label="返回游戏大全">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                fill="currentColor"
+                d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z"
+              />
+            </svg>
+          </a>
+          <h1 class="beauty-light-title">最萌补光灯</h1>
+          <div class="beauty-light-top-actions">
+            <button type="button" class="beauty-light-camera-pill" aria-label="更多选项（装饰）">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            <button type="button" class="beauty-light-camera-fab" aria-label="相机装饰按钮">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  fill="currentColor"
+                  d="M8.5 5.5 10 4h4l1.5 1.5H18a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Zm3.5 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"
+                />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="beauty-light-hint-bubble">左右滑动切换颜色</div>
+      </div>
+
+      <section class="beauty-light-panel">
+        <article class="beauty-light-copy-card">
+          <h2>最萌补光灯</h2>
+          <p>选一个最衬今天妆容的补光色，让自拍更软更亮。</p>
+        </article>
+
+        <section class="beauty-light-presets" id="beautyLightPresets" aria-label="预设补光颜色">
+          <button type="button" class="beauty-light-preset" data-preset-index="0">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--pink"></span>
+            <span class="beauty-light-preset__label">少女粉</span>
+          </button>
+          <button type="button" class="beauty-light-preset" data-preset-index="1">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--cool"></span>
+            <span class="beauty-light-preset__label">冷白皮</span>
+          </button>
+          <button type="button" class="beauty-light-preset" data-preset-index="2">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--cream"></span>
+            <span class="beauty-light-preset__label">奶油光</span>
+          </button>
+          <button type="button" class="beauty-light-preset" data-preset-index="3">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--match"></span>
+            <span class="beauty-light-preset__label">百搭光</span>
+          </button>
+          <button type="button" class="beauty-light-preset" data-preset-index="4">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--peach"></span>
+            <span class="beauty-light-preset__label">蜜桃灯</span>
+          </button>
+          <button type="button" class="beauty-light-preset" data-preset-index="5">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--fresh"></span>
+            <span class="beauty-light-preset__label">清新光</span>
+          </button>
+          <button type="button" class="beauty-light-preset" data-preset-index="6">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--purple"></span>
+            <span class="beauty-light-preset__label">网感紫</span>
+          </button>
+          <button type="button" class="beauty-light-preset" data-preset-index="7">
+            <span class="beauty-light-preset__swatch beauty-light-preset__swatch--sunset"></span>
+            <span class="beauty-light-preset__label">落日灯</span>
+          </button>
+        </section>
+
+        <section class="beauty-light-slider-card beauty-light-slider-card--hue">
+          <div class="beauty-light-slider-header">
+            <span>色相</span>
+            <strong id="beautyLightHueValue">340°</strong>
+          </div>
+          <input id="beautyLightHue" type="range" min="0" max="360" value="340" />
+        </section>
+
+        <section class="beauty-light-slider-card">
+          <div class="beauty-light-slider-row">
+            <div class="beauty-light-slider-header">
+              <span>饱和度</span>
+              <strong id="beautyLightSaturationValue">88%</strong>
+            </div>
+            <input id="beautyLightSaturation" type="range" min="0" max="100" value="88" />
+          </div>
+
+          <div class="beauty-light-slider-row">
+            <div class="beauty-light-slider-header">
+              <span>屏幕亮度</span>
+              <strong id="beautyLightBrightnessValue">100%</strong>
+            </div>
+            <input id="beautyLightBrightness" type="range" min="35" max="100" value="100" />
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/beauty-light/script.js?v=20260324-01"></script>
+  </body>
+</html>

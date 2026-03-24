@@ -1,0 +1,330 @@
+:root {
+  --default-light-color: hsl(340 92% 81%);
+  --panel-bg: #1f171c;
+  --panel-card-bg: rgba(255, 255, 255, 0.08);
+  --panel-card-border: rgba(255, 255, 255, 0.12);
+  --text-main: #fffafc;
+  --text-soft: rgba(255, 245, 249, 0.76);
+  --bubble-bg: rgba(122, 74, 89, 0.42);
+  --bubble-border: rgba(255, 255, 255, 0.15);
+  --preset-ring: rgba(255, 255, 255, 0.94);
+  --shell-shadow: 0 -24px 80px rgba(34, 8, 22, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #f7b2c6;
+}
+
+body {
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.beauty-light-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.24), transparent 28%),
+    radial-gradient(circle at 82% 14%, rgba(255, 255, 255, 0.16), transparent 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    var(--default-light-color);
+  transition: background 220ms ease;
+}
+
+.beauty-light-stage {
+  position: relative;
+  min-height: calc(100vh - 360px);
+  min-height: calc(100dvh - 360px);
+  padding: calc(env(safe-area-inset-top) + 16px) 18px 200px;
+}
+
+.beauty-light-topbar {
+  display: grid;
+  grid-template-columns: 54px 1fr 132px;
+  align-items: start;
+  gap: 14px;
+}
+
+.beauty-light-back,
+.beauty-light-camera-pill,
+.beauty-light-camera-fab {
+  border: 0;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.beauty-light-back {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(112, 36, 74, 0.12);
+}
+
+.beauty-light-back svg {
+  width: 24px;
+  height: 24px;
+}
+
+.beauty-light-title {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 1.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 8px 18px rgba(121, 48, 84, 0.16);
+}
+
+.beauty-light-top-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.beauty-light-camera-pill {
+  width: 116px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 24px;
+  box-shadow: 0 12px 28px rgba(112, 36, 74, 0.12);
+}
+
+.beauty-light-camera-pill span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.beauty-light-camera-fab {
+  width: 54px;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 12px 28px rgba(112, 36, 74, 0.12);
+}
+
+.beauty-light-camera-fab svg {
+  width: 26px;
+  height: 26px;
+}
+
+.beauty-light-hint-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 126px;
+  transform: translateX(-50%);
+  padding: 14px 28px;
+  border: 1px solid var(--bubble-border);
+  border-radius: 999px;
+  background: var(--bubble-bg);
+  color: #fff7fb;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 14px 36px rgba(98, 43, 67, 0.18);
+  white-space: nowrap;
+}
+
+.beauty-light-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 18px calc(env(safe-area-inset-bottom) + 18px);
+  border-radius: 34px 34px 0 0;
+  background: linear-gradient(180deg, rgba(22, 15, 19, 0.98), rgba(24, 16, 21, 0.99));
+  box-shadow: var(--shell-shadow);
+}
+
+.beauty-light-copy-card,
+.beauty-light-slider-card {
+  border: 1px solid var(--panel-card-border);
+  border-radius: 28px;
+  background: var(--panel-card-bg);
+}
+
+.beauty-light-copy-card {
+  padding: 18px 20px 20px;
+}
+
+.beauty-light-copy-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+
+.beauty-light-copy-card p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.beauty-light-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 16px;
+  margin-top: 20px;
+}
+
+.beauty-light-preset {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.beauty-light-preset__swatch {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.34 / 1;
+  border-radius: 22px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  border: 3px solid transparent;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.beauty-light-preset.is-active .beauty-light-preset__swatch {
+  transform: translateY(-2px) scale(1.02);
+  border-color: var(--preset-ring);
+  box-shadow: 0 14px 34px rgba(255, 255, 255, 0.16);
+}
+
+.beauty-light-preset__label {
+  font-size: 1rem;
+  text-align: center;
+  color: #fff4f7;
+  font-weight: 700;
+}
+
+.beauty-light-preset__swatch--pink { background: linear-gradient(135deg, #ff8dc1, #ffb6cf); }
+.beauty-light-preset__swatch--cool { background: linear-gradient(135deg, #8fdff6, #b7f1ff); }
+.beauty-light-preset__swatch--cream { background: linear-gradient(135deg, #ffe2b6, #fff4db); }
+.beauty-light-preset__swatch--match { background: linear-gradient(135deg, #f8f8f8, #ffffff); }
+.beauty-light-preset__swatch--peach { background: linear-gradient(135deg, #ffc0a0, #ff8ea8); }
+.beauty-light-preset__swatch--fresh { background: linear-gradient(135deg, #7fd9ff, #63a7ff); }
+.beauty-light-preset__swatch--purple { background: linear-gradient(135deg, #8a34ff, #d347ff); }
+.beauty-light-preset__swatch--sunset { background: linear-gradient(135deg, #ff7e36, #ffbb5a); }
+
+.beauty-light-slider-card {
+  margin-top: 20px;
+  padding: 16px 18px 18px;
+}
+
+.beauty-light-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #fff6f9;
+}
+
+.beauty-light-slider-header span,
+.beauty-light-slider-header strong {
+  font-size: 1rem;
+}
+
+.beauty-light-slider-header strong {
+  font-weight: 800;
+}
+
+.beauty-light-slider-row + .beauty-light-slider-row {
+  margin-top: 16px;
+}
+
+.beauty-light-slider-card input[type='range'] {
+  width: 100%;
+  margin: 0;
+  accent-color: #b43dff;
+}
+
+.beauty-light-slider-card--hue input[type='range'] {
+  accent-color: #ff4ecf;
+}
+
+@media (max-width: 430px) {
+  .beauty-light-stage {
+    min-height: calc(100vh - 374px);
+    min-height: calc(100dvh - 374px);
+    padding: calc(env(safe-area-inset-top) + 12px) 12px 188px;
+  }
+
+  .beauty-light-title {
+    font-size: 1.72rem;
+  }
+
+  .beauty-light-topbar {
+    grid-template-columns: 46px 1fr 112px;
+    gap: 10px;
+  }
+
+  .beauty-light-camera-pill {
+    width: 104px;
+    height: 42px;
+  }
+
+  .beauty-light-camera-fab,
+  .beauty-light-back {
+    width: 44px;
+    height: 44px;
+  }
+
+  .beauty-light-panel {
+    padding: 14px 12px calc(env(safe-area-inset-bottom) + 14px);
+    border-radius: 28px 28px 0 0;
+  }
+
+  .beauty-light-copy-card {
+    padding: 16px 16px 18px;
+  }
+
+  .beauty-light-copy-card h2 {
+    font-size: 1.4rem;
+  }
+
+  .beauty-light-copy-card p,
+  .beauty-light-preset__label,
+  .beauty-light-slider-header span,
+  .beauty-light-slider-header strong,
+  .beauty-light-hint-bubble {
+    font-size: 0.92rem;
+  }
+
+  .beauty-light-presets {
+    gap: 12px;
+  }
+
+  .beauty-light-preset__swatch {
+    border-radius: 18px;
+  }
+}

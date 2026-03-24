@@ -60,6 +60,20 @@ const DEFAULT_GAMES = [
     actionText: '开始游戏'
   },
   {
+    slug: 'beauty-light',
+    name: '最萌补光灯',
+    description: '少女感全屏补光工具，支持左右滑动切色、预设色卡和亮度调节。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 32,
+    route: '/beauty-light/',
+    icon: '💖',
+    actionText: '打开工具'
+  },
+  {
     slug: 'minesweeper',
     name: '扫雷',
     description: '经典扫雷网页小游戏，支持手机版触控、插旗模式、难度切换和重新开始。',
@@ -108,6 +122,7 @@ const GAME_ACTION_TEXT = {
   'blast-balloons': '开始游戏',
   xiangqi: '进入房间',
   gomoku: '开始游戏',
+  'beauty-light': '打开工具',
   minesweeper: '开始游戏',
   fortune: '开始游戏',
   muyu: '开始游戏'
