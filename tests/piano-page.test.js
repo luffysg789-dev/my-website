@@ -47,7 +47,8 @@ test('piano html includes header, keyboard shell, orientation hint, and tip moun
   assert.doesNotMatch(html, />返回<\/a>/);
   assert.match(html, /id="pianoKeyboard"/);
   assert.match(html, /id="pianoKeys"/);
-  assert.match(html, /id="pianoOrientationHint"/);
+  assert.doesNotMatch(html, /id="pianoOrientationHint"/);
+  assert.doesNotMatch(html, /id="pianoOrientationLock"/);
   assert.match(html, /data-game-tip-root/);
 });
 
@@ -82,6 +83,10 @@ test('piano css includes landscape-first keyboard layout and desktop centering',
   assert.match(css, /\.piano-keys\s*\{[\s\S]*display:\s*grid;/);
   assert.match(css, /@media \(orientation:\s*landscape\)/);
   assert.match(css, /@media \(min-width:\s*900px\)/);
+  assert.match(css, /\.piano-keyboard\s*\{[\s\S]*touch-action:\s*manipulation;/);
+  assert.match(css, /\.piano-key\s*\{[\s\S]*touch-action:\s*manipulation;/);
+  assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
+  assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
 });
 
 test('piano page includes a low-emphasis NexaPay tip section below the keyboard', () => {
@@ -118,7 +123,12 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(js, /function createAudioEngine\(/);
   assert.match(js, /audioContext/);
   assert.match(js, /resumeAudioContextIfNeeded/);
+  assert.match(js, /function preloadAllSampleBuffers\(/);
+  assert.match(js, /const cachedSample = sampleBufferCache\.get\(sampleNote\);/);
+  assert.match(js, /preloadAllSampleBuffers\(\)\.catch\(\(\) => \{\}\);/);
   assert.match(js, /function syncOrientationState\(/);
+  assert.match(js, /const isPortrait = window\.matchMedia\('\(orientation: portrait\)'\)\.matches && window\.innerWidth < 900;/);
+  assert.match(js, /page\.classList\.toggle\('is-portrait', isPortrait\)/);
 });
 
 test('piano script uses a richer piano tone model instead of a basic two-oscillator synth', () => {
@@ -148,5 +158,5 @@ test('piano page ships local real piano sample assets and loads them before fall
   assert.match(js, /function getNearestSampleNote\(/);
   assert.match(js, /fetch\(sampleUrl\)/);
   assert.match(js, /decodeAudioData\(/);
-  assert.match(js, /await playSampleNote\(note\)/);
+  assert.match(js, /loadSampleBuffer\(sampleNote\)\.catch\(\(\) => null\)/);
 });

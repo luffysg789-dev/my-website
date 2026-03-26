@@ -41,6 +41,7 @@ a {
     max(14px, env(safe-area-inset-top))
     var(--piano-side-pad)
     max(18px, env(safe-area-inset-bottom));
+  overflow: hidden;
 }
 
 .piano-stage {
@@ -91,6 +92,7 @@ a {
   position: relative;
   padding: 16px 14px 18px;
   border-radius: 28px;
+  touch-action: manipulation;
   background:
     linear-gradient(180deg, rgba(123, 84, 52, 0.96) 0%, rgba(76, 47, 27, 0.98) 100%);
   box-shadow:
@@ -127,6 +129,8 @@ a {
   padding: 0;
   cursor: pointer;
   position: relative;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform 120ms ease,
     box-shadow 140ms ease,
@@ -258,14 +262,6 @@ a {
 .pos-gs5 { left: calc((100% / 14) * 12); }
 .pos-as5 { left: calc((100% / 14) * 13); }
 
-.piano-orientation-hint {
-  margin: 12px 0 0;
-  text-align: center;
-  color: rgba(67, 44, 27, 0.66);
-  font-size: 14px;
-  letter-spacing: 0.06em;
-}
-
 .piano-shortcut-hint {
   margin: 8px 0 0;
   text-align: center;
@@ -274,16 +270,27 @@ a {
   letter-spacing: 0.08em;
 }
 
-.piano-page.is-portrait .piano-orientation-hint {
-  display: block;
-}
-
-.piano-page:not(.is-portrait) .piano-orientation-hint {
-  display: none;
-}
-
 .piano-tip-slot {
   margin-top: 18px;
+}
+
+.piano-page.is-portrait {
+  padding: 0;
+}
+
+.piano-page.is-portrait .piano-stage {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vh;
+  max-width: none;
+  padding: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-top));
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center;
+}
+
+.piano-page.is-portrait .piano-shell {
+  min-height: 100vw;
 }
 
 @media (orientation: landscape) {
@@ -294,10 +301,6 @@ a {
 
   .piano-header {
     margin-bottom: 12px;
-  }
-
-  .piano-orientation-hint {
-    font-size: 13px;
   }
 }
 
