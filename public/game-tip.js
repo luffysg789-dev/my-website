@@ -18,7 +18,9 @@
 
   function shouldRenderTip() {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
-    if ((window.location.pathname || '').startsWith('/piano/')) return true;
+    const path = window.location.pathname || '';
+    const isPianoPage = path.startsWith('/piano/');
+    if (isPianoPage) return !window.matchMedia('(max-width: 720px)').matches;
     return window.matchMedia('(max-width: 720px)').matches;
   }
 

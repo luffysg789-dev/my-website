@@ -119,7 +119,7 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(css, /\.piano-key__note/);
   assert.match(css, /\.piano-key__kbd/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__kbd\s*\{[\s\S]*display:\s*none;/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__note\s*\{/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__note\s*\{[\s\S]*display:\s*none;/);
   assert.match(js, /function createAudioEngine\(/);
   assert.match(js, /audioContext/);
   assert.match(js, /resumeAudioContextIfNeeded/);

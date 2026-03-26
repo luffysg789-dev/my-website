@@ -45,6 +45,13 @@ test('shared tip styles keep the donate bar mobile-first and pinned near the bot
   assert.match(css, /@media \(min-width: 721px\)[\s\S]*?\.game-tip\s*\{[\s\S]*display:\s*none;/);
 });
 
+test('piano hides the tip bar on mobile while keeping desktop piano and other mobile games unchanged', () => {
+  assert.match(tipJs, /const path = window\.location\.pathname \|\| '';/);
+  assert.match(tipJs, /const isPianoPage = path\.startsWith\('\/piano\/'\);/);
+  assert.match(tipJs, /if \(isPianoPage\) return !window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
+  assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
+});
+
 test('server exposes nexa tip endpoints', () => {
   assert.match(serverJs, /app\.post\('\/api\/nexa\/tip\/session'/);
   assert.match(serverJs, /app\.post\('\/api\/nexa\/tip\/create'/);

@@ -338,18 +338,7 @@ a {
   }
 
   .piano-key__note {
-    min-width: 26px;
-    padding: 2px 5px;
-  }
-
-  .piano-key--white .piano-key__note {
-    bottom: 16px;
-    font-size: 10px;
-  }
-
-  .piano-key--black .piano-key__note {
-    top: 9px;
-    font-size: 9px;
+    display: none;
   }
 }
 
