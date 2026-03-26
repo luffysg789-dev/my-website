@@ -42,6 +42,9 @@ a {
     var(--piano-side-pad)
     max(18px, env(safe-area-inset-bottom));
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .piano-stage {

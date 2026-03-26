@@ -417,6 +417,15 @@
     audioEngine.stopNote(note);
   }
 
+  function resolvePointerNoteTarget(event, ownerDocument = document) {
+    const activeElement = ownerDocument?.elementFromPoint?.(event?.clientX, event?.clientY);
+    const activeKey = activeElement?.closest?.('.piano-key');
+    if (activeKey?.dataset?.note) {
+      return String(activeKey.dataset.note).trim();
+    }
+    return String(event?.currentTarget?.dataset?.note || '').trim();
+  }
+
   function attachPointerHandlers(store, audioEngine) {
     if (typeof document === 'undefined') return;
     const pointerToNote = new Map();
@@ -424,7 +433,7 @@
 
     for (const key of keys) {
       key.addEventListener('pointerdown', (event) => {
-        const note = String(event.currentTarget?.dataset?.note || '').trim();
+        const note = resolvePointerNoteTarget(event);
         if (!note) return;
         event.preventDefault();
         const source = `pointer:${event.pointerId}`;
@@ -434,21 +443,34 @@
 
       key.addEventListener('pointerenter', (event) => {
         if (event.pointerType !== 'mouse' || event.buttons === 0) return;
-        const note = String(event.currentTarget?.dataset?.note || '').trim();
+        const note = resolvePointerNoteTarget(event);
         if (!note) return;
         const source = `pointer:${event.pointerId}`;
         pointerToNote.set(event.pointerId, note);
         pressNote(note, source, store, audioEngine);
       });
 
+      key.addEventListener('pointermove', (event) => {
+        if (event.pointerType === 'mouse' || (event.buttons === 0 && event.pressure === 0)) return;
+        const source = `pointer:${event.pointerId}`;
+        const nextNote = resolvePointerNoteTarget(event);
+        const previousNote = pointerToNote.get(event.pointerId);
+        if (!nextNote || nextNote === previousNote) return;
+        if (previousNote) {
+          releaseNote(previousNote, source, store, audioEngine);
+        }
+        pointerToNote.set(event.pointerId, nextNote);
+        pressNote(nextNote, source, store, audioEngine);
+      });
+
       key.addEventListener('pointerup', (event) => {
-        const note = pointerToNote.get(event.pointerId) || String(event.currentTarget?.dataset?.note || '').trim();
+        const note = pointerToNote.get(event.pointerId) || resolvePointerNoteTarget(event);
         pointerToNote.delete(event.pointerId);
         releaseNote(note, `pointer:${event.pointerId}`, store, audioEngine);
       });
 
       key.addEventListener('pointercancel', (event) => {
-        const note = pointerToNote.get(event.pointerId) || String(event.currentTarget?.dataset?.note || '').trim();
+        const note = pointerToNote.get(event.pointerId) || resolvePointerNoteTarget(event);
         pointerToNote.delete(event.pointerId);
         releaseNote(note, `pointer:${event.pointerId}`, store, audioEngine);
       });
@@ -475,6 +497,26 @@
     });
   }
 
+  function attachInteractionGuards() {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+    const keyboard = document.getElementById('pianoKeyboard');
+    if (!keyboard) return;
+
+    keyboard.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+    });
+
+    document.addEventListener('selectstart', (event) => {
+      if (!keyboard.contains(event.target)) return;
+      event.preventDefault();
+    });
+
+    document.addEventListener('selectionchange', () => {
+      if (!keyboard.contains(document.activeElement) && !document.querySelector('.piano-key.is-active')) return;
+      window.getSelection()?.removeAllRanges();
+    });
+  }
+
   function primeKeyAccessibility() {
     if (typeof document === 'undefined') return;
     for (const key of document.querySelectorAll('.piano-key')) {
@@ -493,6 +535,7 @@
     syncOrientationState();
     attachPointerHandlers(store, audioEngine);
     attachKeyboardHandlers(store, audioEngine);
+    attachInteractionGuards();
 
     const releaseAll = () => releaseAllNotes(store, audioEngine);
     window.addEventListener('blur', releaseAllNotes);
@@ -510,6 +553,7 @@
     buildKeyboardModel,
     buildKeyboardShortcuts,
     createPressedNotesStore,
+    resolvePointerNoteTarget,
     createAudioEngine,
     attachPointerHandlers,
     attachKeyboardHandlers,

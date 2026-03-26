@@ -85,6 +85,9 @@ test('piano css includes landscape-first keyboard layout and desktop centering',
   assert.match(css, /@media \(min-width:\s*900px\)/);
   assert.match(css, /\.piano-keyboard\s*\{[\s\S]*touch-action:\s*manipulation;/);
   assert.match(css, /\.piano-key\s*\{[\s\S]*touch-action:\s*manipulation;/);
+  assert.match(css, /\.piano-page\s*\{[\s\S]*user-select:\s*none;/);
+  assert.match(css, /\.piano-page\s*\{[\s\S]*-webkit-user-select:\s*none;/);
+  assert.match(css, /\.piano-page\s*\{[\s\S]*-webkit-touch-callout:\s*none;/);
   assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
 });
@@ -104,6 +107,10 @@ test('piano script includes pointer, keyboard, and release handling hooks', () =
   assert.match(js, /function attachPointerHandlers\(/);
   assert.match(js, /function attachKeyboardHandlers\(/);
   assert.match(js, /function releaseAllNotes\(/);
+  assert.match(js, /document\.addEventListener\('selectionchange'/);
+  assert.match(js, /window\.getSelection\(\)\?\.removeAllRanges\(\)/);
+  assert.match(js, /keyboard\.addEventListener\('contextmenu',\s*\(event\)\s*=>\s*\{/);
+  assert.match(js, /document\.addEventListener\('selectstart',\s*\(event\)\s*=>\s*\{/);
   assert.match(js, /window\.addEventListener\('blur',\s*releaseAllNotes\)/);
 });
 

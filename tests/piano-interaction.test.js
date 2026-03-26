@@ -7,7 +7,8 @@ const pianoScriptPath = path.join(rootDir, 'public', 'piano', 'script.js');
 const {
   buildKeyboardModel,
   buildKeyboardShortcuts,
-  createPressedNotesStore
+  createPressedNotesStore,
+  resolvePointerNoteTarget
 } = require(pianoScriptPath);
 
 test('buildKeyboardModel returns 14 white keys and 10 black keys', () => {
@@ -44,4 +45,36 @@ test('createPressedNotesStore tracks multiple simultaneous notes in insertion or
 
   store.release('C4');
   assert.deepEqual(store.notes(), ['E4']);
+});
+
+test('resolvePointerNoteTarget follows the key currently under the finger during touch slides', () => {
+  const activeKey = {
+    dataset: { note: 'D4' },
+    closest(selector) {
+      return selector === '.piano-key' ? this : null;
+    }
+  };
+  const fallbackTarget = {
+    dataset: { note: 'C4' },
+    closest(selector) {
+      return selector === '.piano-key' ? this : null;
+    }
+  };
+  const ownerDocument = {
+    elementFromPoint(x, y) {
+      return x === 20 && y === 30 ? activeKey : null;
+    }
+  };
+
+  assert.equal(resolvePointerNoteTarget({
+    clientX: 20,
+    clientY: 30,
+    currentTarget: fallbackTarget
+  }, ownerDocument), 'D4');
+
+  assert.equal(resolvePointerNoteTarget({
+    clientX: 1,
+    clientY: 2,
+    currentTarget: fallbackTarget
+  }, ownerDocument), 'C4');
 });
