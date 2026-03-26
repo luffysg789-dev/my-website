@@ -4,6 +4,20 @@ const { getGameCardMediaMarkup } = typeof window === 'undefined'
 
 const DEFAULT_GAMES = [
   {
+    slug: 'piano',
+    name: '钢琴',
+    description: '手机横屏优先的双八度网页钢琴，轻触即响，支持多键同时演奏。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 52,
+    route: '/piano/',
+    icon: '🎹',
+    actionText: '开始演奏'
+  },
+  {
     slug: 'zodiac-today',
     name: '今日星座运势',
     description: '输入名字和阳历生日，生成你今天的专属星座分析。',
@@ -118,6 +132,7 @@ const DEFAULT_GAMES = [
 ];
 
 const GAME_ACTION_TEXT = {
+  piano: '开始演奏',
   'zodiac-today': '开始游戏',
   'blast-balloons': '开始游戏',
   xiangqi: '进入房间',
@@ -196,6 +211,11 @@ function normalizeGame(item, fallback = {}) {
   if (slug === 'muyu' && description === MUYU_OLD_DESCRIPTION) {
     description = MUYU_NEW_DESCRIPTION;
   }
+  let route = String(item?.route || fallback.route || `/games/${encodeURIComponent(slug)}`).trim();
+  if (fallback.route) {
+    const legacyRoute = `/games/${encodeURIComponent(slug)}`;
+    if (!route || route === legacyRoute) route = fallback.route;
+  }
   return {
     slug,
     name: String(item?.name || fallback.name || '').trim(),
@@ -206,7 +226,7 @@ function normalizeGame(item, fallback = {}) {
     background_music_file: String(item?.background_music_file || fallback.background_music_file || '').trim(),
     is_enabled: Number(item?.is_enabled ?? fallback.is_enabled ?? 1) ? 1 : 0,
     sort_order: Number(item?.sort_order ?? fallback.sort_order ?? 0) || 0,
-    route: String(item?.route || fallback.route || `/games/${encodeURIComponent(slug)}`).trim(),
+    route,
     icon: String(item?.icon || fallback.icon || '🎮').trim(),
     actionText: String(item?.actionText || fallback.actionText || GAME_ACTION_TEXT[slug] || '开始')
   };

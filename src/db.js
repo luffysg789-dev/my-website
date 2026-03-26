@@ -367,6 +367,17 @@ db.exec(`
 
 const DEFAULT_GAMES_CATALOG = [
   {
+    slug: 'piano',
+    name: '钢琴',
+    description: '手机横屏优先的双八度网页钢琴，轻触即响，支持多键同时演奏。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 52
+  },
+  {
     slug: 'zodiac-today',
     name: '今日星座运势',
     description: '输入名字和阳历生日，生成你今天的专属星座分析。',

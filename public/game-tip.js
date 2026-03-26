@@ -18,6 +18,7 @@
 
   function shouldRenderTip() {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+    if ((window.location.pathname || '').startsWith('/piano/')) return true;
     return window.matchMedia('(max-width: 720px)').matches;
   }
 
@@ -36,6 +37,8 @@
       String(config.slug || '').trim() ||
       (path.startsWith('/gomoku/')
         ? 'gomoku'
+        : path.startsWith('/piano/')
+          ? 'piano'
         : path.endsWith('/minesweeper.html')
           ? 'minesweeper'
           : path.endsWith('/fortune.html')
@@ -57,7 +60,7 @@
   }
 
   function getShell() {
-    return document.querySelector('.gomoku-shell, .minesweeper-shell, .fortune-shell, .muyu-shell, .balloons-shell, .zodiac-shell');
+    return document.querySelector('[data-game-tip-root], .gomoku-shell, .minesweeper-shell, .fortune-shell, .muyu-shell, .balloons-shell, .zodiac-shell, .piano-shell');
   }
 
   function getPersistentStorage() {

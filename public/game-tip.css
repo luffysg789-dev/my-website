@@ -86,4 +86,12 @@
   .game-tip {
     display: none;
   }
+
+  .piano-page .game-tip {
+    display: grid;
+    width: min(420px, 100%);
+    margin: 0 auto;
+    border-color: rgba(149, 114, 66, 0.12);
+    background: rgba(255, 250, 242, 0.92);
+  }
 }

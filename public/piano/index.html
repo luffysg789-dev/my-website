@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 钢琴</title>
+    <meta name="description" content="Claw800 网页钢琴，手机横屏优先的双八度演奏页，轻触即响。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/game-tip.css?v=20260321-01" />
+    <link rel="stylesheet" href="/piano/style.css?v=20260326-01" />
+  </head>
+  <body>
+    <main class="piano-page">
+      <section class="piano-stage">
+        <div class="piano-shell">
+          <header class="piano-header">
+            <a class="piano-back" href="/games.html" aria-label="返回游戏大全" title="返回游戏大全">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  fill="currentColor"
+                  d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z"
+                />
+              </svg>
+            </a>
+          </header>
+
+          <section id="pianoKeyboard" class="piano-keyboard" aria-label="双八度钢琴">
+            <div class="piano-top-rail"></div>
+            <div id="pianoKeys" class="piano-keys">
+              <div class="piano-white-keys" aria-hidden="true">
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="C4" data-keyboard-code="KeyA"><span class="piano-key__note">C4</span><span class="piano-key__kbd">A</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="D4" data-keyboard-code="KeyS"><span class="piano-key__note">D4</span><span class="piano-key__kbd">S</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="E4" data-keyboard-code="KeyD"><span class="piano-key__note">E4</span><span class="piano-key__kbd">D</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="F4" data-keyboard-code="KeyF"><span class="piano-key__note">F4</span><span class="piano-key__kbd">F</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="G4" data-keyboard-code="KeyG"><span class="piano-key__note">G4</span><span class="piano-key__kbd">G</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="A4" data-keyboard-code="KeyH"><span class="piano-key__note">A4</span><span class="piano-key__kbd">H</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="B4" data-keyboard-code="KeyJ"><span class="piano-key__note">B4</span><span class="piano-key__kbd">J</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="C5" data-keyboard-code="KeyK"><span class="piano-key__note">C5</span><span class="piano-key__kbd">K</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="D5" data-keyboard-code="KeyL"><span class="piano-key__note">D5</span><span class="piano-key__kbd">L</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="E5" data-keyboard-code="Semicolon"><span class="piano-key__note">E5</span><span class="piano-key__kbd">;</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="F5" data-keyboard-code="Quote"><span class="piano-key__note">F5</span><span class="piano-key__kbd">'</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="G5" data-keyboard-code="Enter"><span class="piano-key__note">G5</span><span class="piano-key__kbd">↵</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="A5" data-keyboard-code="BracketLeft"><span class="piano-key__note">A5</span><span class="piano-key__kbd">[</span></button>
+                <button class="piano-key piano-key--white" type="button" data-key-type="white" data-note="B5" data-keyboard-code="BracketRight"><span class="piano-key__note">B5</span><span class="piano-key__kbd">]</span></button>
+              </div>
+              <div class="piano-black-keys" aria-hidden="true">
+                <button class="piano-key piano-key--black pos-cs4" type="button" data-key-type="black" data-note="C#4" data-keyboard-code="KeyW"><span class="piano-key__note">C#4</span><span class="piano-key__kbd">W</span></button>
+                <button class="piano-key piano-key--black pos-ds4" type="button" data-key-type="black" data-note="D#4" data-keyboard-code="KeyE"><span class="piano-key__note">D#4</span><span class="piano-key__kbd">E</span></button>
+                <button class="piano-key piano-key--black pos-fs4" type="button" data-key-type="black" data-note="F#4" data-keyboard-code="KeyT"><span class="piano-key__note">F#4</span><span class="piano-key__kbd">T</span></button>
+                <button class="piano-key piano-key--black pos-gs4" type="button" data-key-type="black" data-note="G#4" data-keyboard-code="KeyY"><span class="piano-key__note">G#4</span><span class="piano-key__kbd">Y</span></button>
+                <button class="piano-key piano-key--black pos-as4" type="button" data-key-type="black" data-note="A#4" data-keyboard-code="KeyU"><span class="piano-key__note">A#4</span><span class="piano-key__kbd">U</span></button>
+                <button class="piano-key piano-key--black pos-cs5" type="button" data-key-type="black" data-note="C#5" data-keyboard-code="KeyO"><span class="piano-key__note">C#5</span><span class="piano-key__kbd">O</span></button>
+                <button class="piano-key piano-key--black pos-ds5" type="button" data-key-type="black" data-note="D#5" data-keyboard-code="KeyP"><span class="piano-key__note">D#5</span><span class="piano-key__kbd">P</span></button>
+                <button class="piano-key piano-key--black pos-fs5" type="button" data-key-type="black" data-note="F#5" data-keyboard-code="Minus"><span class="piano-key__note">F#5</span><span class="piano-key__kbd">-</span></button>
+                <button class="piano-key piano-key--black pos-gs5" type="button" data-key-type="black" data-note="G#5" data-keyboard-code="Equal"><span class="piano-key__note">G#5</span><span class="piano-key__kbd">=</span></button>
+                <button class="piano-key piano-key--black pos-as5" type="button" data-key-type="black" data-note="A#5" data-keyboard-code="Backspace"><span class="piano-key__note">A#5</span><span class="piano-key__kbd">⌫</span></button>
+              </div>
+            </div>
+          </section>
+
+          <p id="pianoOrientationHint" class="piano-orientation-hint">横屏体验更好。</p>
+          <p id="pianoShortcutHint" class="piano-shortcut-hint">白键: A S D F G H J K L ; ' 回车 [ ] | 黑键: W E T Y U O P - = ⌫</p>
+          <div class="piano-tip-slot" data-game-tip-root></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/games-config.js?v=20260326-01"></script>
+    <script>
+      window.ClawGamesConfig?.bootstrapGamePage?.('piano');
+    </script>
+    <script src="/piano/script.js?v=20260326-01"></script>
+    <script src="/game-tip.js?v=20260321-01"></script>
+  </body>
+</html>
