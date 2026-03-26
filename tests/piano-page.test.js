@@ -128,6 +128,7 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__kbd\s*\{[\s\S]*display:\s*none;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__note\s*\{[\s\S]*display:\s*none;/);
   assert.match(js, /function createAudioEngine\(/);
+  assert.match(js, /new AudioContextCtor\(\{\s*latencyHint:\s*'interactive'\s*\}\)/);
   assert.match(js, /audioContext/);
   assert.match(js, /resumeAudioContextIfNeeded/);
   assert.match(js, /function scheduleSampleWarmup\(/);
@@ -138,6 +139,7 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(js, /window\.setTimeout\(resolve,\s*90\)/);
   assert.match(js, /},\s*420\)/);
   assert.match(js, /scheduleSampleWarmup\(sampleNote\);/);
+  assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
   assert.match(js, /function syncOrientationState\(/);
   assert.match(js, /const isPortrait = window\.matchMedia\('\(orientation: portrait\)'\)\.matches && window\.innerWidth < 900;/);
   assert.match(js, /page\.classList\.toggle\('is-portrait', isPortrait\)/);
@@ -152,7 +154,10 @@ test('piano script uses a richer piano tone model instead of a basic two-oscilla
   assert.match(js, /oscillator\.setPeriodicWave\(periodicWave\);/);
   assert.match(js, /noiseSource = context\.createBufferSource\(\);/);
   assert.match(js, /noiseFilter\.type = 'bandpass';/);
-  assert.match(js, /masterGain\.gain\.exponentialRampToValueAtTime\(0\.0001,\s*now \+ 2\.4\);/);
+  assert.match(js, /gainNode\.gain\.linearRampToValueAtTime\(0\.98,\s*now \+ 0\.004\);/);
+  assert.match(js, /masterGain\.gain\.linearRampToValueAtTime\(0\.24,\s*now \+ 0\.004\);/);
+  assert.match(js, /masterGain\.gain\.exponentialRampToValueAtTime\(0\.0001,\s*now \+ 3\.2\);/);
+  assert.match(js, /const stopAt = context\.currentTime \+ 0\.22;/);
 });
 
 test('piano page ships local real piano sample assets and loads them before falling back', () => {
@@ -170,5 +175,5 @@ test('piano page ships local real piano sample assets and loads them before fall
   assert.match(js, /function getNearestSampleNote\(/);
   assert.match(js, /fetch\(sampleUrl\)/);
   assert.match(js, /decodeAudioData\(/);
-  assert.match(js, /loadSampleBuffer\(sampleNote\)\.catch\(\(\) => null\)/);
+  assert.match(js, /loadSampleBuffer\(sampleNote\)/);
 });

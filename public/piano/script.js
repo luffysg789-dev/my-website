@@ -144,7 +144,7 @@
       if (audioContext || typeof window === 'undefined') return audioContext;
       const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextCtor) return null;
-      audioContext = new AudioContextCtor();
+      audioContext = new AudioContextCtor({ latencyHint: 'interactive' });
       periodicWave = createPianoPeriodicWave(audioContext);
       hammerNoiseBuffer = createHammerNoiseBuffer(audioContext);
       return audioContext;
@@ -207,8 +207,8 @@
       filterNode.Q.value = 0.4;
 
       gainNode.gain.setValueAtTime(0.0001, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.95, now + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(3.6, audioBuffer.duration + 0.2));
+      gainNode.gain.linearRampToValueAtTime(0.98, now + 0.004);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(4.2, audioBuffer.duration + 0.9));
 
       sourceNode.connect(filterNode);
       filterNode.connect(gainNode);
@@ -284,9 +284,9 @@
       toneFilter.Q.value = 1.15;
 
       masterGain.gain.setValueAtTime(0.0001, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.22, now + 0.012);
-      masterGain.gain.exponentialRampToValueAtTime(0.12, now + 0.09);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.4);
+      masterGain.gain.linearRampToValueAtTime(0.24, now + 0.004);
+      masterGain.gain.exponentialRampToValueAtTime(0.14, now + 0.12);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.2);
 
       for (const detune of detuneOffsets) {
         const oscillator = context.createOscillator();
@@ -353,7 +353,6 @@
 
       playSynthNote(context, note);
       scheduleSampleWarmup(sampleNote);
-      loadSampleBuffer(sampleNote).catch(() => null);
     }
 
     function stopNote(note) {
@@ -361,7 +360,7 @@
       const voice = activeVoices.get(note);
       if (!context || !voice) return;
 
-      const stopAt = context.currentTime + 0.12;
+      const stopAt = context.currentTime + 0.22;
       if (voice.kind === 'sample') {
         voice.gainNode.gain.cancelScheduledValues(context.currentTime);
         voice.gainNode.gain.setValueAtTime(Math.max(voice.gainNode.gain.value, 0.0001), context.currentTime);
