@@ -93,8 +93,9 @@ test('piano css includes landscape-first keyboard layout and desktop centering',
   assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
   assert.match(css, /--piano-shell-glow:\s*rgba\(157,\s*219,\s*255,\s*0\.2\);/);
-  assert.match(css, /\.piano-key--white\.is-active\s*\{[\s\S]*translateY\(2px\)/);
-  assert.match(css, /\.piano-key--black\.is-active\s*\{[\s\S]*translateX\(-50%\) translateY\(2px\)/);
+  assert.match(css, /\.piano-key\s*\{[\s\S]*transform 45ms ease-out,/);
+  assert.match(css, /\.piano-key--white\.is-active\s*\{[\s\S]*translateY\(1px\)/);
+  assert.match(css, /\.piano-key--black\.is-active\s*\{[\s\S]*translateX\(-50%\) translateY\(1px\)/);
 });
 
 test('piano page includes a low-emphasis NexaPay tip section below the keyboard', () => {
@@ -148,7 +149,9 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(js, /},\s*420\)/);
   assert.match(js, /scheduleSampleWarmup\(sampleNote\);/);
   assert.match(js, /const shouldUseCachedSampleDirectly = Boolean\(preferImmediateSynth && cachedSample\);/);
-  assert.match(js, /if \(shouldUseCachedSampleDirectly\) \{[\s\S]*startSamplePlayback\(context,\s*note,\s*sampleNote,\s*cachedSample,\s*\{/);
+  assert.match(js, /if \(shouldUseCachedSampleDirectly\) \{[\s\S]*startSamplePlayback\(context,\s*note,\s*sampleNote,\s*cachedSample,\s*directSampleOptions\)/);
+  assert.match(js, /const directSampleOptions = \{[\s\S]*attackDuration:\s*0\.0025,[\s\S]*peakGain:\s*0\.94,[\s\S]*releaseDuration:\s*2\.8/);
+  assert.match(js, /fadeOutSynthLayer\(context,\s*synthLayer,\s*0\.08\)/);
   assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
   assert.match(js, /if \(preferImmediateSynth\) \{[\s\S]*playTouchResponsiveNote\(context,\s*note,\s*sampleNote,\s*\{\s*cachedSample\s*\}\);[\s\S]*return;/);
   assert.match(js, /function syncOrientationState\(/);

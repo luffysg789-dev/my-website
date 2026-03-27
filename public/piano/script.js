@@ -388,6 +388,11 @@
     function playTouchResponsiveNote(context, note, sampleNote, options = {}) {
       const synthLayer = playSynthNote(context, note);
       const cachedSample = options.cachedSample || sampleBufferCache.get(sampleNote) || null;
+      const directSampleOptions = {
+        attackDuration: 0.0025,
+        peakGain: 0.94,
+        releaseDuration: 2.8
+      };
       const voice = {
         kind: 'hybrid',
         synthLayer,
@@ -402,14 +407,11 @@
         return;
       }
 
-      const sampleLayer = startSamplePlayback(context, note, sampleNote, cachedSample, {
-        attackDuration: 0.045,
-        peakGain: 0.74
-      });
+      const sampleLayer = startSamplePlayback(context, note, sampleNote, cachedSample, directSampleOptions);
       if (!sampleLayer) return;
 
       voice.sampleLayer = sampleLayer;
-      fadeOutSynthLayer(context, synthLayer, 0.16);
+      fadeOutSynthLayer(context, synthLayer, 0.08);
 
       sampleLayer.sourceNode.addEventListener('ended', () => {
         if (activeVoices.get(note) === voice) {
@@ -429,13 +431,14 @@
       const sampleNote = getNearestSampleNote(note);
       const cachedSample = sampleBufferCache.get(sampleNote);
       const preferImmediateSynth = Boolean(options.preferImmediateSynth);
+      const directSampleOptions = {
+        attackDuration: 0.0025,
+        peakGain: 0.94,
+        releaseDuration: 2.8
+      };
       const shouldUseCachedSampleDirectly = Boolean(preferImmediateSynth && cachedSample);
       if (shouldUseCachedSampleDirectly) {
-        const sampleLayer = startSamplePlayback(context, note, sampleNote, cachedSample, {
-          attackDuration: 0.003,
-          peakGain: 1,
-          releaseDuration: 3.6
-        });
+        const sampleLayer = startSamplePlayback(context, note, sampleNote, cachedSample, directSampleOptions);
         if (!sampleLayer) return;
         activeVoices.set(note, {
           kind: 'sample',
