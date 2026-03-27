@@ -602,6 +602,7 @@
 
     for (const key of keys) {
       key.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'touch') return;
         const note = resolvePointerNoteTarget(event);
         if (!note) return;
         event.preventDefault();
@@ -621,7 +622,7 @@
       });
 
       key.addEventListener('pointermove', (event) => {
-        if (event.pointerType === 'mouse' || (event.buttons === 0 && event.pressure === 0)) return;
+        if (event.pointerType === 'touch' || event.pointerType === 'mouse' || (event.buttons === 0 && event.pressure === 0)) return;
         const source = `pointer:${event.pointerType || 'unknown'}:${event.pointerId}`;
         const nextNote = resolvePointerNoteTarget(event);
         const previousNote = pointerToNote.get(event.pointerId);
@@ -646,6 +647,68 @@
         pointerToNote.delete(event.pointerId);
         releaseNote(note, `pointer:${event.pointerType || 'unknown'}:${event.pointerId}`, store, audioEngine);
       });
+    }
+  }
+
+  function attachTouchHandlers(store, audioEngine) {
+    if (typeof document === 'undefined') return;
+    const touchToNote = new Map();
+    const keys = document.querySelectorAll('.piano-key');
+
+    function resolveTouchTarget(touch, currentTarget) {
+      return resolvePointerNoteTarget({
+        clientX: touch?.clientX,
+        clientY: touch?.clientY,
+        currentTarget
+      }, document);
+    }
+
+    for (const key of keys) {
+      key.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        for (const touch of Array.from(event.changedTouches || [])) {
+          const note = resolveTouchTarget(touch, event.currentTarget);
+          if (!note) continue;
+          const source = `touch:${touch.identifier}`;
+          touchToNote.set(touch.identifier, note);
+          pressNote(note, source, store, audioEngine);
+        }
+      }, { passive: false });
+
+      key.addEventListener('touchmove', (event) => {
+        event.preventDefault();
+        for (const touch of Array.from(event.changedTouches || [])) {
+          const source = `touch:${touch.identifier}`;
+          const nextNote = resolveTouchTarget(touch, event.currentTarget);
+          const previousNote = touchToNote.get(touch.identifier);
+          if (!nextNote || nextNote === previousNote) continue;
+          if (previousNote) {
+            releaseNote(previousNote, source, store, audioEngine);
+          }
+          touchToNote.set(touch.identifier, nextNote);
+          pressNote(nextNote, source, store, audioEngine);
+        }
+      }, { passive: false });
+
+      key.addEventListener('touchend', (event) => {
+        event.preventDefault();
+        for (const touch of Array.from(event.changedTouches || [])) {
+          const source = `touch:${touch.identifier}`;
+          const note = touchToNote.get(touch.identifier) || resolveTouchTarget(touch, event.currentTarget);
+          touchToNote.delete(touch.identifier);
+          releaseNote(note, source, store, audioEngine);
+        }
+      }, { passive: false });
+
+      key.addEventListener('touchcancel', (event) => {
+        event.preventDefault();
+        for (const touch of Array.from(event.changedTouches || [])) {
+          const source = `touch:${touch.identifier}`;
+          const note = touchToNote.get(touch.identifier) || resolveTouchTarget(touch, event.currentTarget);
+          touchToNote.delete(touch.identifier);
+          releaseNote(note, source, store, audioEngine);
+        }
+      }, { passive: false });
     }
   }
 
@@ -706,6 +769,7 @@
     primeKeyAccessibility();
     syncOrientationState();
     attachPointerHandlers(store, audioEngine);
+    attachTouchHandlers(store, audioEngine);
     attachKeyboardHandlers(store, audioEngine);
     attachInteractionGuards();
 
@@ -728,6 +792,7 @@
     resolvePointerNoteTarget,
     createAudioEngine,
     attachPointerHandlers,
+    attachTouchHandlers,
     attachKeyboardHandlers,
     releaseAllNotes,
     syncOrientationState,
