@@ -76,9 +76,30 @@
   color: #2f7e43;
 }
 
+.game-tip--floating {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.game-tip--floating .game-tip__button {
+  min-height: 44px;
+  width: auto;
+  padding: 0 18px;
+}
+
 @media (max-width: 720px) {
   .muyu-page .game-tip {
     transform: translateY(-30px);
+  }
+
+  .piano-page .game-tip--floating {
+    position: fixed;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 30;
   }
 }
 

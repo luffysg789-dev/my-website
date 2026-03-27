@@ -20,8 +20,14 @@
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
     const path = window.location.pathname || '';
     const isPianoPage = path.startsWith('/piano/');
-    if (isPianoPage) return !window.matchMedia('(max-width: 720px)').matches;
+    if (isPianoPage) return true;
     return window.matchMedia('(max-width: 720px)').matches;
+  }
+
+  function isMobilePianoTip() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return (window.location.pathname || '').startsWith('/piano/')
+      && window.matchMedia('(max-width: 720px)').matches;
   }
 
   function isNexaAppEnvironment() {
@@ -197,6 +203,11 @@
     button.disabled = busy;
     if (busy) {
       button.textContent = TIP_BUTTON_TEXT_BUSY;
+      return;
+    }
+
+    if (isMobilePianoTip()) {
+      button.textContent = '打赏';
       return;
     }
 
@@ -435,18 +446,19 @@
     const shell = getShell();
     if (!shell) return;
     const game = getCurrentGame();
+    const buttonLabel = isMobilePianoTip() ? '打赏' : TIP_BUTTON_TEXT_PAY;
 
-        const section = document.createElement('section');
-        section.className = 'game-tip';
-        section.setAttribute('data-game-tip', '1');
-        section.innerHTML = `
-          <div class="game-tip__copy">
-            <strong class="game-tip__title">${getTipTitle(game)}</strong>
-            <p class="game-tip__desc" data-game-tip-desc>首次需要授权登录,再次点击打赏即可.</p>
-          </div>
-          <button type="button" class="game-tip__button" data-game-tip-button>${TIP_BUTTON_TEXT_PAY}</button>
-          <p class="game-tip__status" data-game-tip-status aria-live="polite"></p>
-        `;
+    const section = document.createElement('section');
+    section.className = isMobilePianoTip() ? 'game-tip game-tip--floating' : 'game-tip';
+    section.setAttribute('data-game-tip', '1');
+    section.innerHTML = `
+      <div class="game-tip__copy" ${isMobilePianoTip() ? 'hidden' : ''}>
+        <strong class="game-tip__title">${getTipTitle(game)}</strong>
+        <p class="game-tip__desc" data-game-tip-desc>首次需要授权登录,再次点击打赏即可.</p>
+      </div>
+      <button type="button" class="game-tip__button" data-game-tip-button>${buttonLabel}</button>
+      <p class="game-tip__status" data-game-tip-status aria-live="polite" ${isMobilePianoTip() ? 'hidden' : ''}></p>
+    `;
 
     shell.appendChild(section);
     section.querySelector('[data-game-tip-button]')?.addEventListener('click', handleTipClick);
