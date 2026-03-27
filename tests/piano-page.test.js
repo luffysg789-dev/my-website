@@ -67,9 +67,11 @@ test('piano html exposes a two-octave keyboard with white and black key groups',
   assert.match(html, /data-keyboard-code="Minus"/);
   assert.match(html, /data-keyboard-code="Equal"/);
   assert.match(html, /data-keyboard-code="Backspace"/);
-  assert.match(html, /class="piano-key__note">C4<\/span>/);
-  assert.match(html, /class="piano-key__note">C#4<\/span>/);
-  assert.match(html, /class="piano-key__note">B5<\/span>/);
+  assert.match(html, /class="piano-key__solfege">1<\/span>/);
+  assert.match(html, /class="piano-key__solfege">7<\/span>/);
+  assert.match(html, /class="piano-key__solfege">1·<\/span>/);
+  assert.match(html, /class="piano-key__solfege">#1<\/span>/);
+  assert.doesNotMatch(html, /class="piano-key__note">/);
   assert.doesNotMatch(html, /data-keyboard-code="Backslash"/);
   assert.doesNotMatch(html, /data-note="C6"/);
 });
@@ -90,6 +92,9 @@ test('piano css includes landscape-first keyboard layout and desktop centering',
   assert.match(css, /\.piano-page\s*\{[\s\S]*-webkit-touch-callout:\s*none;/);
   assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
+  assert.match(css, /--piano-shell-glow:\s*rgba\(157,\s*219,\s*255,\s*0\.2\);/);
+  assert.match(css, /\.piano-key--white\.is-active\s*\{[\s\S]*translateY\(2px\)/);
+  assert.match(css, /\.piano-key--black\.is-active\s*\{[\s\S]*translateX\(-50%\) translateY\(2px\)/);
 });
 
 test('piano page includes a low-emphasis NexaPay tip section below the keyboard', () => {
@@ -123,10 +128,10 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(html, /白键:\s*A S D F G H J K L ; ' 回车 \[ \]/);
   assert.match(html, /黑键:\s*W E T Y U O P - = ⌫/);
   assert.match(css, /\.piano-shortcut-hint/);
-  assert.match(css, /\.piano-key__note/);
+  assert.match(css, /\.piano-key__solfege/);
   assert.match(css, /\.piano-key__kbd/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__kbd\s*\{[\s\S]*display:\s*none;/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__note\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__solfege\s*\{[\s\S]*display:\s*none;/);
   assert.match(js, /function createAudioEngine\(/);
   assert.match(js, /new AudioContextCtor\(\{\s*latencyHint:\s*'interactive'\s*\}\)/);
   assert.match(js, /audioContext/);
@@ -140,6 +145,8 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(js, /window\.setTimeout\(resolve,\s*90\)/);
   assert.match(js, /},\s*420\)/);
   assert.match(js, /scheduleSampleWarmup\(sampleNote\);/);
+  assert.match(js, /const shouldUseCachedSampleDirectly = Boolean\(preferImmediateSynth && cachedSample\);/);
+  assert.match(js, /if \(shouldUseCachedSampleDirectly\) \{[\s\S]*startSamplePlayback\(context,\s*note,\s*sampleNote,\s*cachedSample,\s*\{/);
   assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
   assert.match(js, /if \(preferImmediateSynth\) \{[\s\S]*playTouchResponsiveNote\(context,\s*note,\s*sampleNote,\s*\{\s*cachedSample\s*\}\);[\s\S]*return;/);
   assert.match(js, /function syncOrientationState\(/);
@@ -152,6 +159,9 @@ test('piano script uses a richer piano tone model instead of a basic two-oscilla
 
   assert.match(js, /function createPianoPeriodicWave\(/);
   assert.match(js, /function createHammerNoiseBuffer\(/);
+  assert.match(js, /const MIN_NOTE_HOLD_SECONDS = 0\.48;/);
+  assert.match(js, /function getVoiceStopAt\(context,\s*voice\) \{/);
+  assert.match(js, /const remainingHold = Math\.max\(0,\s*MIN_NOTE_HOLD_SECONDS - elapsed\);/);
   assert.match(js, /const detuneOffsets = \[-7,\s*0,\s*7\];/);
   assert.match(js, /oscillator\.setPeriodicWave\(periodicWave\);/);
   assert.match(js, /noiseSource = context\.createBufferSource\(\);/);
@@ -161,7 +171,7 @@ test('piano script uses a richer piano tone model instead of a basic two-oscilla
   assert.match(js, /gainNode\.gain\.linearRampToValueAtTime\(peakGain,\s*now \+ attackDuration\);/);
   assert.match(js, /masterGain\.gain\.linearRampToValueAtTime\(0\.24,\s*now \+ 0\.004\);/);
   assert.match(js, /masterGain\.gain\.exponentialRampToValueAtTime\(0\.0001,\s*now \+ 3\.2\);/);
-  assert.match(js, /const stopAt = context\.currentTime \+ 0\.22;/);
+  assert.match(js, /const stopAt = getVoiceStopAt\(context,\s*voice\);/);
   assert.match(js, /function fadeOutSynthLayer\(/);
 });
 

@@ -27,6 +27,7 @@
     'A#': 10,
     B: 11
   };
+  const MIN_NOTE_HOLD_SECONDS = 0.48;
 
   function buildKeyboardModel() {
     return {
@@ -221,7 +222,8 @@
 
       return {
         gainNode,
-        sourceNode
+        sourceNode,
+        startedAt: now
       };
     }
 
@@ -355,7 +357,8 @@
       return {
         oscillators,
         noiseSource,
-        masterGain
+        masterGain,
+        startedAt: now
       };
     }
 
@@ -373,6 +376,13 @@
           synthLayer.noiseSource.stop(stopAt);
         } catch {}
       }
+    }
+
+    function getVoiceStopAt(context, voice) {
+      const startedAt = Number(voice?.startedAt ?? voice?.sampleLayer?.startedAt ?? voice?.synthLayer?.startedAt ?? context.currentTime);
+      const elapsed = Math.max(0, context.currentTime - startedAt);
+      const remainingHold = Math.max(0, MIN_NOTE_HOLD_SECONDS - elapsed);
+      return context.currentTime + remainingHold + 0.22;
     }
 
     function playTouchResponsiveNote(context, note, sampleNote, options = {}) {
@@ -419,6 +429,25 @@
       const sampleNote = getNearestSampleNote(note);
       const cachedSample = sampleBufferCache.get(sampleNote);
       const preferImmediateSynth = Boolean(options.preferImmediateSynth);
+      const shouldUseCachedSampleDirectly = Boolean(preferImmediateSynth && cachedSample);
+      if (shouldUseCachedSampleDirectly) {
+        const sampleLayer = startSamplePlayback(context, note, sampleNote, cachedSample, {
+          attackDuration: 0.003,
+          peakGain: 1,
+          releaseDuration: 3.6
+        });
+        if (!sampleLayer) return;
+        activeVoices.set(note, {
+          kind: 'sample',
+          ...sampleLayer
+        });
+        sampleLayer.sourceNode.addEventListener('ended', () => {
+          if (activeVoices.get(note)?.sourceNode === sampleLayer.sourceNode) {
+            activeVoices.delete(note);
+          }
+        }, { once: true });
+        return;
+      }
       if (preferImmediateSynth) {
         playTouchResponsiveNote(context, note, sampleNote, { cachedSample });
         return;
@@ -451,7 +480,7 @@
       const voice = activeVoices.get(note);
       if (!context || !voice) return;
 
-      const stopAt = context.currentTime + 0.22;
+      const stopAt = getVoiceStopAt(context, voice);
       if (voice.kind === 'sample') {
         voice.gainNode.gain.cancelScheduledValues(context.currentTime);
         voice.gainNode.gain.setValueAtTime(Math.max(voice.gainNode.gain.value, 0.0001), context.currentTime);
