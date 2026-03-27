@@ -49,7 +49,7 @@ test('piano uses a floating mobile tip button while keeping desktop piano and ot
   const css = fs.readFileSync(tipCssPath, 'utf8');
   assert.match(tipJs, /const path = window\.location\.pathname \|\| '';/);
   assert.match(tipJs, /const isPianoPage = path\.startsWith\('\/piano\/'\);/);
-  assert.match(tipJs, /if \(isPianoPage\) return true;/);
+  assert.match(tipJs, /if \(isMobilePianoTip\(\)\) return isNexaAppEnvironment\(\);/);
   assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
   assert.match(tipJs, /function isMobilePianoTip\(\)/);
   assert.match(tipJs, /section\.className = isMobilePianoTip\(\) \? 'game-tip game-tip--floating' : 'game-tip';/);

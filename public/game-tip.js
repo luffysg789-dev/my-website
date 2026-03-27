@@ -20,6 +20,7 @@
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
     const path = window.location.pathname || '';
     const isPianoPage = path.startsWith('/piano/');
+    if (isMobilePianoTip()) return isNexaAppEnvironment();
     if (isPianoPage) return true;
     return window.matchMedia('(max-width: 720px)').matches;
   }
