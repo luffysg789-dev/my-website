@@ -555,8 +555,7 @@
     const page = document.querySelector('.piano-page');
     if (!page) return;
 
-    const isLandscape = window.innerWidth > window.innerHeight || window.matchMedia('(orientation: landscape)').matches;
-    const shouldLockPortrait = isLandscape && window.innerWidth < 900;
+    const shouldLockPortrait = window.innerWidth < 900;
     page.classList.toggle('is-rotation-locked', shouldLockPortrait);
   }
 

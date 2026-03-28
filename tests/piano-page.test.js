@@ -40,9 +40,9 @@ test('piano html includes header, keyboard shell, orientation hint, and tip moun
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assert.match(html, /<title>Claw800 钢琴<\/title>/);
-  assert.match(html, /\/piano\/style\.css\?v=20260328-04/);
-  assert.match(html, /\/games-config\.js\?v=20260328-04/);
-  assert.match(html, /\/piano\/script\.js\?v=20260328-04/);
+  assert.match(html, /\/piano\/style\.css\?v=20260328-05/);
+  assert.match(html, /\/games-config\.js\?v=20260328-05/);
+  assert.match(html, /\/piano\/script\.js\?v=20260328-05/);
   assert.doesNotMatch(html, /id="gamePageTitle"/);
   assert.doesNotMatch(html, /id="gamePageSubtitle"/);
   assert.match(html, /class="piano-back" href="\/games\.html" aria-label="返回游戏大全" title="返回游戏大全"/);
@@ -130,7 +130,7 @@ test('piano script includes pointer, keyboard, and release handling hooks', () =
   assert.match(js, /window\.addEventListener\('blur',\s*releaseAllNotes\)/);
 });
 
-test('piano script prepares note playback and keeps portrait direction stable on mobile rotation', () => {
+test('piano script prepares note playback and keeps the mobile piano locked to the portrait-style key direction', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const css = fs.readFileSync(cssPath, 'utf8');
   const js = fs.readFileSync(jsPath, 'utf8');
@@ -164,8 +164,7 @@ test('piano script prepares note playback and keeps portrait direction stable on
   assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
   assert.match(js, /if \(preferImmediateSynth\) \{[\s\S]*playTouchResponsiveNote\(context,\s*note,\s*sampleNote,\s*\{\s*cachedSample\s*\}\);[\s\S]*return;/);
   assert.match(js, /function syncOrientationState\(/);
-  assert.match(js, /const isLandscape = window\.innerWidth > window\.innerHeight \|\| window\.matchMedia\('\(orientation: landscape\)'\)\.matches;/);
-  assert.match(js, /const shouldLockPortrait = isLandscape && window\.innerWidth < 900;/);
+  assert.match(js, /const shouldLockPortrait = window\.innerWidth < 900;/);
   assert.match(js, /page\.classList\.toggle\('is-rotation-locked', shouldLockPortrait\)/);
   assert.match(js, /window\.addEventListener\('orientationchange', syncOrientationState\)/);
 });
