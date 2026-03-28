@@ -378,6 +378,23 @@ a {
   display: none;
 }
 
+@media (orientation: portrait) {
+  .piano-page.is-mobile-device .piano-stage {
+    width: calc(100dvh - 18px);
+  }
+
+  .piano-page.is-mobile-device .piano-shell {
+    min-height: calc(100vw - 10px);
+    padding: 6px;
+    border-radius: 18px;
+  }
+
+  .piano-page.is-mobile-device .piano-keyboard {
+    padding: 8px 6px 10px;
+    border-radius: 20px;
+  }
+}
+
 @media (orientation: landscape) {
   .piano-page {
     display: flex;
