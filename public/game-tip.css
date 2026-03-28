@@ -94,13 +94,13 @@
   .muyu-page .game-tip {
     transform: translateY(-30px);
   }
+}
 
-  .piano-page .game-tip--floating {
-    position: fixed;
-    right: max(12px, env(safe-area-inset-right));
-    bottom: max(12px, env(safe-area-inset-bottom));
-    z-index: 30;
-  }
+.piano-page.is-mobile-device .game-tip--floating {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 30;
 }
 
 @media (min-width: 721px) {
