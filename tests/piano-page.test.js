@@ -95,7 +95,7 @@ test('piano css keeps the mobile piano isolated from desktop layout breakpoints 
   assert.match(css, /\.piano-page\.is-mobile-device\s*\{[\s\S]*display:\s*flex;/);
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
-  assert.match(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*rotate\(-90deg\)/);
+  assert.doesNotMatch(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*rotate\(-90deg\)/);
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*width:\s*calc\(100dvh - 2px\);/);
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*min-height:\s*calc\(100vw - 2px\);/);
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*padding:\s*2px;/);

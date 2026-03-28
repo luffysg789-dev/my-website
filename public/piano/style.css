@@ -396,10 +396,6 @@ a {
 }
 
 @media (orientation: landscape) {
-  .piano-page.is-mobile-device .piano-stage {
-    transform: translate(-50%, -50%) rotate(-90deg);
-  }
-
   .piano-page {
     display: flex;
     align-items: center;
