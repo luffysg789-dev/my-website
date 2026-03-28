@@ -93,8 +93,8 @@ test('piano css includes landscape-first keyboard layout and desktop centering',
   assert.match(css, /\.piano-page\s*\{[\s\S]*user-select:\s*none;/);
   assert.match(css, /\.piano-page\s*\{[\s\S]*-webkit-user-select:\s*none;/);
   assert.match(css, /\.piano-page\s*\{[\s\S]*-webkit-touch-callout:\s*none;/);
-  assert.match(css, /\.piano-page\.is-rotation-locked\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
-  assert.match(css, /\.piano-page\.is-rotation-locked\s+\.piano-stage\s*\{[\s\S]*rotate\(-90deg\)/);
+  assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
+  assert.match(css, /\.piano-page\.is-portrait\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
   assert.match(css, /--piano-shell-glow:\s*rgba\(157,\s*219,\s*255,\s*0\.2\);/);
   assert.match(css, /\.piano-key\s*\{[\s\S]*transform 45ms ease-out,/);
   assert.match(css, /\.piano-key--white\.is-active\s*\{[\s\S]*translateY\(4px\)/);
@@ -130,7 +130,7 @@ test('piano script includes pointer, keyboard, and release handling hooks', () =
   assert.match(js, /window\.addEventListener\('blur',\s*releaseAllNotes\)/);
 });
 
-test('piano script prepares note playback and keeps mobile piano portrait-locked on rotation', () => {
+test('piano script prepares note playback and orientation syncing', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const css = fs.readFileSync(cssPath, 'utf8');
   const js = fs.readFileSync(jsPath, 'utf8');
@@ -163,8 +163,8 @@ test('piano script prepares note playback and keeps mobile piano portrait-locked
   assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
   assert.match(js, /if \(preferImmediateSynth\) \{[\s\S]*playTouchResponsiveNote\(context,\s*note,\s*sampleNote,\s*\{\s*cachedSample\s*\}\);[\s\S]*return;/);
   assert.match(js, /function syncOrientationState\(/);
-  assert.match(js, /const shouldLockPortrait = window\.matchMedia\('\(orientation: landscape\)'\)\.matches && window\.innerWidth < 900;/);
-  assert.match(js, /page\.classList\.toggle\('is-rotation-locked', shouldLockPortrait\)/);
+  assert.match(js, /const isPortrait = window\.matchMedia\('\(orientation: portrait\)'\)\.matches && window\.innerWidth < 900;/);
+  assert.match(js, /page\.classList\.toggle\('is-portrait', isPortrait\)/);
 });
 
 test('piano script uses a richer piano tone model instead of a basic two-oscillator synth', () => {
