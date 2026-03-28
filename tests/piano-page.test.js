@@ -40,9 +40,9 @@ test('piano html includes header, keyboard shell, orientation hint, and tip moun
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assert.match(html, /<title>Claw800 钢琴<\/title>/);
-  assert.match(html, /\/piano\/style\.css\?v=20260328-05/);
-  assert.match(html, /\/games-config\.js\?v=20260328-05/);
-  assert.match(html, /\/piano\/script\.js\?v=20260328-05/);
+  assert.match(html, /\/piano\/style\.css\?v=20260328-06/);
+  assert.match(html, /\/games-config\.js\?v=20260328-06/);
+  assert.match(html, /\/piano\/script\.js\?v=20260328-06/);
   assert.doesNotMatch(html, /id="gamePageTitle"/);
   assert.doesNotMatch(html, /id="gamePageSubtitle"/);
   assert.match(html, /class="piano-back" href="\/games\.html" aria-label="返回游戏大全" title="返回游戏大全"/);
@@ -94,7 +94,7 @@ test('piano css includes landscape-first keyboard layout and desktop centering',
   assert.match(css, /\.piano-page\s*\{[\s\S]*-webkit-user-select:\s*none;/);
   assert.match(css, /\.piano-page\s*\{[\s\S]*-webkit-touch-callout:\s*none;/);
   assert.match(css, /\.piano-page\.is-rotation-locked\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
-  assert.match(css, /\.piano-page\.is-rotation-locked\s+\.piano-stage\s*\{[\s\S]*rotate\(-90deg\)/);
+  assert.match(css, /\.piano-page\.is-rotation-locked\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
   assert.match(css, /--piano-shell-glow:\s*rgba\(157,\s*219,\s*255,\s*0\.2\);/);
   assert.match(css, /\.piano-key\s*\{[\s\S]*transform 45ms ease-out,/);
   assert.match(css, /\.piano-key--white\.is-active\s*\{[\s\S]*translateY\(4px\)/);
@@ -141,9 +141,9 @@ test('piano script prepares note playback and keeps the mobile piano locked to t
   assert.match(css, /\.piano-shortcut-hint/);
   assert.match(css, /\.piano-key__solfege/);
   assert.match(css, /\.piano-key__kbd/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__kbd\s*\{[\s\S]*display:\s*none;/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__solfege\s*\{[\s\S]*display:\s*none;/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-back\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /\.piano-page\.is-mobile-device[\s\S]*\.piano-key__kbd\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /\.piano-page\.is-mobile-device[\s\S]*\.piano-key__solfege\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /\.piano-page\.is-mobile-device[\s\S]*\.piano-back\s*\{[\s\S]*display:\s*none;/);
   assert.match(js, /function createAudioEngine\(/);
   assert.match(js, /new AudioContextCtor\(\{\s*latencyHint:\s*'interactive'\s*\}\)/);
   assert.match(js, /audioContext/);
@@ -163,8 +163,13 @@ test('piano script prepares note playback and keeps the mobile piano locked to t
   assert.match(js, /fadeOutSynthLayer\(context,\s*synthLayer,\s*0\.08\)/);
   assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
   assert.match(js, /if \(preferImmediateSynth\) \{[\s\S]*playTouchResponsiveNote\(context,\s*note,\s*sampleNote,\s*\{\s*cachedSample\s*\}\);[\s\S]*return;/);
+  assert.match(js, /function isLikelyMobileDevice\(/);
+  assert.match(js, /window\.matchMedia\('\(pointer: coarse\)'\)\.matches/);
+  assert.match(js, /navigator\.maxTouchPoints > 0/);
   assert.match(js, /function syncOrientationState\(/);
-  assert.match(js, /const shouldLockPortrait = window\.innerWidth < 900;/);
+  assert.match(js, /const isMobile = isLikelyMobileDevice\(\);/);
+  assert.match(js, /page\.classList\.toggle\('is-mobile-device', isMobile\)/);
+  assert.match(js, /const shouldLockPortrait = isMobile && \(window\.innerWidth > window\.innerHeight \|\| window\.matchMedia\('\(orientation: landscape\)'\)\.matches\);/);
   assert.match(js, /page\.classList\.toggle\('is-rotation-locked', shouldLockPortrait\)/);
   assert.match(js, /window\.addEventListener\('orientationchange', syncOrientationState\)/);
 });

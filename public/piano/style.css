@@ -326,7 +326,7 @@ a {
   width: 100vh;
   max-width: none;
   padding: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-top));
-  transform: translate(-50%, -50%) rotate(-90deg);
+  transform: translate(-50%, -50%) rotate(90deg);
   transform-origin: center;
 }
 
@@ -345,47 +345,45 @@ a {
   }
 }
 
-@media (max-width: 720px) {
-  .piano-page {
-    padding-left: max(10px, env(safe-area-inset-left));
-    padding-right: max(10px, env(safe-area-inset-right));
-  }
+.piano-page.is-mobile-device {
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+}
 
-  .piano-shell {
-    padding: 12px;
-    border-radius: 24px;
-  }
+.piano-page.is-mobile-device .piano-shell {
+  padding: 12px;
+  border-radius: 24px;
+}
 
-  .piano-header {
-    gap: 10px;
-  }
+.piano-page.is-mobile-device .piano-header {
+  gap: 10px;
+}
 
-  .piano-back {
-    display: none;
-    width: 40px;
-    height: 40px;
-  }
+.piano-page.is-mobile-device .piano-back {
+  display: none;
+  width: 40px;
+  height: 40px;
+}
 
-  .piano-keyboard {
-    padding: 12px 10px 14px;
-    border-radius: 24px;
-  }
+.piano-page.is-mobile-device .piano-keyboard {
+  padding: 12px 10px 14px;
+  border-radius: 24px;
+}
 
-  .piano-shortcut-hint {
-    display: none;
-  }
+.piano-page.is-mobile-device .piano-shortcut-hint {
+  display: none;
+}
 
-  .piano-key__kbd {
-    display: none;
-  }
+.piano-page.is-mobile-device .piano-key__kbd {
+  display: none;
+}
 
-  .piano-key__solfege {
-    display: none;
-  }
+.piano-page.is-mobile-device .piano-key__solfege {
+  display: none;
+}
 
-  .piano-key__note {
-    display: none;
-  }
+.piano-page.is-mobile-device .piano-key__note {
+  display: none;
 }
 
 @media (min-width: 900px) {
