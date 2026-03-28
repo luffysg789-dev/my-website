@@ -50,17 +50,14 @@ test('piano uses a floating mobile tip button while keeping desktop piano and ot
   assert.match(tipJs, /const path = window\.location\.pathname \|\| '';/);
   assert.match(tipJs, /const isPianoPage = path\.startsWith\('\/piano\/'\);/);
   assert.match(tipJs, /if \(isMobilePianoTip\(\)\) return isNexaAppEnvironment\(\);/);
-  assert.match(tipJs, /function isLikelyMobileDevice\(\)/);
-  assert.match(tipJs, /window\.matchMedia\('\(pointer: coarse\)'\)\.matches/);
-  assert.match(tipJs, /navigator\.maxTouchPoints > 0/);
-  assert.match(tipJs, /return \(window\.location\.pathname \|\| ''\)\.startsWith\('\/piano\/'\)[\s\S]*&& isLikelyMobileDevice\(\);/);
+  assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
   assert.match(tipJs, /function isMobilePianoTip\(\)/);
   assert.match(tipJs, /section\.className = isMobilePianoTip\(\) \? 'game-tip game-tip--floating' : 'game-tip';/);
   assert.match(tipJs, /const buttonLabel = isMobilePianoTip\(\) \? '打赏' : TIP_BUTTON_TEXT_PAY;/);
   assert.match(css, /\.game-tip--floating\s*\{/);
-  assert.match(css, /\.piano-page\.is-mobile-device\s+\.game-tip--floating\s*\{/);
-  assert.match(css, /\.piano-page\.is-mobile-device\s+\.game-tip--floating\s*\{[\s\S]*right:\s*max\(12px,\s*env\(safe-area-inset-right\)\);/);
-  assert.match(css, /\.piano-page\.is-mobile-device\s+\.game-tip--floating\s*\{[\s\S]*bottom:\s*max\(12px,\s*env\(safe-area-inset-bottom\)\);/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-page\s+\.game-tip--floating\s*\{/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*right:\s*max\(12px,\s*env\(safe-area-inset-right\)\);/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*bottom:\s*max\(12px,\s*env\(safe-area-inset-bottom\)\);/);
 });
 
 test('server exposes nexa tip endpoints', () => {
