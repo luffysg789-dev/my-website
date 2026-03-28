@@ -329,7 +329,7 @@ a {
   position: fixed;
   top: 50%;
   left: 50%;
-  width: min(calc(100vh - 2px), calc(100vw - 2px));
+  width: calc(100dvh - 2px);
   max-width: none;
   padding: max(1px, env(safe-area-inset-left)) max(1px, env(safe-area-inset-top));
   transform: translate(-50%, -50%) rotate(90deg);
@@ -337,7 +337,7 @@ a {
 }
 
 .piano-page.is-mobile-device .piano-shell {
-  min-height: min(calc(100vw - 2px), calc(100vh - 2px));
+  min-height: calc(100vw - 2px);
   padding: 2px;
   border-radius: 14px;
 }
