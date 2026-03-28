@@ -555,8 +555,9 @@
     const page = document.querySelector('.piano-page');
     if (!page) return;
 
-    const isPortrait = window.matchMedia('(orientation: portrait)').matches && window.innerWidth < 900;
-    page.classList.toggle('is-portrait', isPortrait);
+    const isLandscape = window.innerWidth > window.innerHeight || window.matchMedia('(orientation: landscape)').matches;
+    const shouldLockPortrait = isLandscape && window.innerWidth < 900;
+    page.classList.toggle('is-rotation-locked', shouldLockPortrait);
   }
 
   function pressNote(note, source, store, audioEngine) {
@@ -777,6 +778,7 @@
     window.addEventListener('blur', releaseAllNotes);
     window.addEventListener('blur', releaseAll);
     window.addEventListener('resize', syncOrientationState);
+    window.addEventListener('orientationchange', syncOrientationState);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') {
         releaseAll();
