@@ -397,15 +397,15 @@ a {
 
 @media (orientation: landscape) {
   .piano-page.is-mobile-device .piano-stage {
-    width: calc(100vw - 8px);
+    width: calc(100vw - 20px);
     padding: max(1px, env(safe-area-inset-left)) max(4px, env(safe-area-inset-top));
     transform: translate(-50%, -50%) rotate(0deg);
   }
 
   .piano-page.is-mobile-device .piano-shell {
-    min-height: calc(100dvh - 8px);
+    min-height: calc(100dvh - 20px);
     padding: 4px;
-    border-radius: 18px;
+    border-radius: 22px;
   }
 
   .piano-page.is-mobile-device .piano-keyboard {

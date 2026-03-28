@@ -40,11 +40,11 @@ test('piano html includes the standalone shell and latest bundles', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assert.match(html, /<title>Claw800 钢琴<\/title>/);
-  assert.match(html, /\/game-tip\.css\?v=20260328-18/);
-  assert.match(html, /\/piano\/style\.css\?v=20260328-18/);
-  assert.match(html, /\/games-config\.js\?v=20260328-18/);
-  assert.match(html, /\/piano\/script\.js\?v=20260328-18/);
-  assert.match(html, /\/game-tip\.js\?v=20260328-18/);
+  assert.match(html, /\/game-tip\.css\?v=20260328-19/);
+  assert.match(html, /\/piano\/style\.css\?v=20260328-19/);
+  assert.match(html, /\/games-config\.js\?v=20260328-19/);
+  assert.match(html, /\/piano\/script\.js\?v=20260328-19/);
+  assert.match(html, /\/game-tip\.js\?v=20260328-19/);
   assert.match(html, /class="piano-back" href="\/games\.html" aria-label="返回游戏大全" title="返回游戏大全"/);
   assert.match(html, /id="pianoKeyboard"/);
   assert.match(html, /id="pianoKeys"/);
@@ -102,8 +102,9 @@ test('piano css keeps the mobile piano isolated from desktop layout breakpoints 
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-tip-slot\s*\{[\s\S]*display:\s*none;/);
   assert.match(css, /@media \(orientation:\s*portrait\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*width:\s*calc\(100dvh - 18px\);/);
   assert.match(css, /@media \(orientation:\s*portrait\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*min-height:\s*calc\(100vw - 10px\);/);
-  assert.match(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*width:\s*calc\(100vw - 8px\);/);
-  assert.match(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*min-height:\s*calc\(100dvh - 8px\);/);
+  assert.match(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*width:\s*calc\(100vw - 20px\);/);
+  assert.match(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*min-height:\s*calc\(100dvh - 20px\);/);
+  assert.match(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*border-radius:\s*22px;/);
   assert.match(css, /@media \(orientation:\s*landscape\)[\s\S]*\.piano-page\.is-mobile-device\s+\.piano-keyboard\s*\{[\s\S]*padding:\s*8px 6px 10px;/);
   assert.match(css, /--piano-shell-glow:\s*rgba\(157,\s*219,\s*255,\s*0\.2\);/);
   assert.match(css, /\.piano-key\s*\{[\s\S]*transform 45ms ease-out,/);
