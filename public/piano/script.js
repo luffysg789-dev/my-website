@@ -550,13 +550,23 @@
     store.clear();
   }
 
+  function isLikelyMobileDevice() {
+    if (typeof window === 'undefined') return false;
+
+    const coarsePointer = typeof window.matchMedia === 'function'
+      && window.matchMedia('(pointer: coarse)').matches;
+    const touchPoints = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+
+    return Boolean(coarsePointer || touchPoints);
+  }
+
   function syncOrientationState() {
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
     const page = document.querySelector('.piano-page');
     if (!page) return;
 
-    const isPortrait = window.matchMedia('(orientation: portrait)').matches && window.innerWidth < 900;
-    page.classList.toggle('is-portrait', isPortrait);
+    const isMobile = isLikelyMobileDevice();
+    page.classList.toggle('is-mobile-device', isMobile);
   }
 
   function pressNote(note, source, store, audioEngine) {
@@ -565,8 +575,7 @@
     store.press(note, source);
     setKeyPressedState(note, true);
     if (shouldStartAudio) {
-      const preferImmediateSynth = typeof window !== 'undefined'
-        && window.innerWidth < 900
+      const preferImmediateSynth = isLikelyMobileDevice()
         && String(source || '').startsWith('pointer:touch:');
       audioEngine.playNote(note, { preferImmediateSynth }).catch(() => {});
     }
