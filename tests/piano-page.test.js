@@ -130,7 +130,7 @@ test('piano script includes pointer, keyboard, and release handling hooks', () =
   assert.match(js, /window\.addEventListener\('blur',\s*releaseAllNotes\)/);
 });
 
-test('piano script prepares note playback and keeps phones on the mobile piano UI after rotation', () => {
+test('piano script keeps phones on the mobile piano UI and only rotates the piano in landscape', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const css = fs.readFileSync(cssPath, 'utf8');
   const js = fs.readFileSync(jsPath, 'utf8');
@@ -169,7 +169,8 @@ test('piano script prepares note playback and keeps phones on the mobile piano U
   assert.match(js, /function syncOrientationState\(/);
   assert.match(js, /const isMobile = isLikelyMobileDevice\(\);/);
   assert.match(js, /page\.classList\.toggle\('is-mobile-device', isMobile\)/);
-  assert.match(js, /const shouldLockPortrait = isMobile;/);
+  assert.match(js, /const isLandscape = window\.innerWidth > window\.innerHeight \|\| window\.matchMedia\('\(orientation: landscape\)'\)\.matches;/);
+  assert.match(js, /const shouldLockPortrait = isMobile && isLandscape;/);
   assert.match(js, /page\.classList\.toggle\('is-rotation-locked', shouldLockPortrait\)/);
   assert.match(js, /const preferImmediateSynth = typeof window !== 'undefined'[\s\S]*isLikelyMobileDevice\(\)/);
 });

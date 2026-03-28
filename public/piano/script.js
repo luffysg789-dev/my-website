@@ -557,7 +557,8 @@
 
     const isMobile = isLikelyMobileDevice();
     page.classList.toggle('is-mobile-device', isMobile);
-    const shouldLockPortrait = isMobile;
+    const isLandscape = window.innerWidth > window.innerHeight || window.matchMedia('(orientation: landscape)').matches;
+    const shouldLockPortrait = isMobile && isLandscape;
     page.classList.toggle('is-rotation-locked', shouldLockPortrait);
   }
 
