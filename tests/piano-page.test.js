@@ -40,6 +40,9 @@ test('piano html includes header, keyboard shell, orientation hint, and tip moun
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assert.match(html, /<title>Claw800 钢琴<\/title>/);
+  assert.match(html, /\/piano\/style\.css\?v=20260328-02/);
+  assert.match(html, /\/games-config\.js\?v=20260328-02/);
+  assert.match(html, /\/piano\/script\.js\?v=20260328-02/);
   assert.doesNotMatch(html, /id="gamePageTitle"/);
   assert.doesNotMatch(html, /id="gamePageSubtitle"/);
   assert.match(html, /class="piano-back" href="\/games\.html" aria-label="返回游戏大全" title="返回游戏大全"/);
