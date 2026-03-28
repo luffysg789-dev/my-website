@@ -315,22 +315,22 @@ a {
   margin-top: 18px;
 }
 
-.piano-page.is-portrait {
+.piano-page.is-rotation-locked {
   padding: 0;
 }
 
-.piano-page.is-portrait .piano-stage {
+.piano-page.is-rotation-locked .piano-stage {
   position: fixed;
   top: 50%;
   left: 50%;
   width: 100vh;
   max-width: none;
   padding: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-top));
-  transform: translate(-50%, -50%) rotate(90deg);
+  transform: translate(-50%, -50%) rotate(-90deg);
   transform-origin: center;
 }
 
-.piano-page.is-portrait .piano-shell {
+.piano-page.is-rotation-locked .piano-shell {
   min-height: 100vw;
 }
 

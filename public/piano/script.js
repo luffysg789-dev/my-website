@@ -555,8 +555,8 @@
     const page = document.querySelector('.piano-page');
     if (!page) return;
 
-    const isPortrait = window.matchMedia('(orientation: portrait)').matches && window.innerWidth < 900;
-    page.classList.toggle('is-portrait', isPortrait);
+    const shouldLockPortrait = window.matchMedia('(orientation: landscape)').matches && window.innerWidth < 900;
+    page.classList.toggle('is-rotation-locked', shouldLockPortrait);
   }
 
   function pressNote(note, source, store, audioEngine) {
