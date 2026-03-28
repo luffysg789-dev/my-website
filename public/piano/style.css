@@ -319,30 +319,32 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 100dvh;
   padding: 0;
-  padding-left: max(10px, env(safe-area-inset-left));
-  padding-right: max(10px, env(safe-area-inset-right));
+  padding-left: max(4px, env(safe-area-inset-left));
+  padding-right: max(4px, env(safe-area-inset-right));
 }
 
 .piano-page.is-mobile-device .piano-stage {
   position: fixed;
   top: 50%;
   left: 50%;
-  width: min(100vh, calc(100vw - 20px));
+  width: min(calc(100vh - 8px), calc(100vw - 8px));
   max-width: none;
-  padding: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-top));
+  padding: max(4px, env(safe-area-inset-left)) max(4px, env(safe-area-inset-top));
   transform: translate(-50%, -50%) rotate(90deg);
   transform-origin: center;
 }
 
 .piano-page.is-mobile-device .piano-shell {
-  min-height: min(100vw, calc(100vh - 20px));
-  padding: 12px;
-  border-radius: 24px;
+  min-height: min(calc(100vw - 8px), calc(100vh - 8px));
+  padding: 6px;
+  border-radius: 18px;
 }
 
 .piano-page.is-mobile-device .piano-header {
-  gap: 10px;
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
 .piano-page.is-mobile-device .piano-back {
@@ -352,8 +354,8 @@ a {
 }
 
 .piano-page.is-mobile-device .piano-keyboard {
-  padding: 12px 10px 14px;
-  border-radius: 24px;
+  padding: 8px 6px 10px;
+  border-radius: 20px;
 }
 
 .piano-page.is-mobile-device .piano-shortcut-hint {

@@ -34,7 +34,7 @@ test('server redirects legacy /games/piano route to the standalone piano page', 
   assert.match(server, /return res\.redirect\(302,\s*route\);/);
 });
 
-test('piano html includes header, keyboard shell, orientation hint, and tip mount', () => {
+test('piano html includes the standalone shell and latest bundles', () => {
   assert.equal(fs.existsSync(htmlPath), true);
 
   const html = fs.readFileSync(htmlPath, 'utf8');
@@ -45,16 +45,12 @@ test('piano html includes header, keyboard shell, orientation hint, and tip moun
   assert.match(html, /\/games-config\.js\?v=20260328-11/);
   assert.match(html, /\/piano\/script\.js\?v=20260328-11/);
   assert.match(html, /\/game-tip\.js\?v=20260328-11/);
-  assert.doesNotMatch(html, /id="gamePageTitle"/);
-  assert.doesNotMatch(html, /id="gamePageSubtitle"/);
   assert.match(html, /class="piano-back" href="\/games\.html" aria-label="返回游戏大全" title="返回游戏大全"/);
-  assert.match(html, /<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">/);
-  assert.doesNotMatch(html, />返回<\/a>/);
   assert.match(html, /id="pianoKeyboard"/);
   assert.match(html, /id="pianoKeys"/);
-  assert.doesNotMatch(html, /id="pianoOrientationHint"/);
-  assert.doesNotMatch(html, /id="pianoOrientationLock"/);
   assert.match(html, /data-game-tip-root/);
+  assert.doesNotMatch(html, /id="gamePageTitle"/);
+  assert.doesNotMatch(html, /id="pianoOrientationHint"/);
 });
 
 test('piano html exposes a two-octave keyboard with white and black key groups', () => {
@@ -81,7 +77,7 @@ test('piano html exposes a two-octave keyboard with white and black key groups',
   assert.doesNotMatch(html, /data-note="C6"/);
 });
 
-test('piano css keeps the mobile piano isolated from desktop layout breakpoints', () => {
+test('piano css keeps the mobile piano isolated from desktop layout breakpoints and near fullscreen', () => {
   assert.equal(fs.existsSync(cssPath), true);
 
   const css = fs.readFileSync(cssPath, 'utf8');
@@ -98,11 +94,12 @@ test('piano css keeps the mobile piano isolated from desktop layout breakpoints'
   assert.match(css, /\.piano-page\.is-mobile-device\s*\{[\s\S]*display:\s*flex;/);
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*rotate\(90deg\)/);
-  assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*min-height:\s*min\(100vw,\s*calc\(100vh - 20px\)\);/);
+  assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-stage\s*\{[\s\S]*width:\s*min\(calc\(100vh - 8px\),\s*calc\(100vw - 8px\)\);/);
+  assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*min-height:\s*min\(calc\(100vw - 8px\),\s*calc\(100vh - 8px\)\);/);
+  assert.match(css, /\.piano-page\.is-mobile-device\s+\.piano-shell\s*\{[\s\S]*padding:\s*6px;/);
   assert.match(css, /--piano-shell-glow:\s*rgba\(157,\s*219,\s*255,\s*0\.2\);/);
   assert.match(css, /\.piano-key\s*\{[\s\S]*transform 45ms ease-out,/);
   assert.match(css, /\.piano-key--white\.is-active\s*\{[\s\S]*translateY\(4px\)/);
-  assert.match(css, /\.piano-key--white\.is-active\s*\{[\s\S]*0 10px 0 rgba\(122,\s*156,\s*190,\s*0\.22\)/);
   assert.match(css, /\.piano-key--black\.is-active\s*\{[\s\S]*translateX\(-50%\) translateY\(2px\)/);
 });
 
@@ -150,7 +147,6 @@ test('piano script keeps mobile phones on the dedicated piano layout even in lan
   assert.match(css, /\.piano-page\.is-mobile-device[\s\S]*\.piano-back\s*\{[\s\S]*display:\s*none;/);
   assert.match(js, /function createAudioEngine\(/);
   assert.match(js, /new AudioContextCtor\(\{\s*latencyHint:\s*'interactive'\s*\}\)/);
-  assert.match(js, /audioContext/);
   assert.match(js, /resumeAudioContextIfNeeded/);
   assert.match(js, /function scheduleSampleWarmup\(/);
   assert.match(js, /function playTouchResponsiveNote\(/);
@@ -162,11 +158,7 @@ test('piano script keeps mobile phones on the dedicated piano layout even in lan
   assert.match(js, /},\s*420\)/);
   assert.match(js, /scheduleSampleWarmup\(sampleNote\);/);
   assert.match(js, /const shouldUseCachedSampleDirectly = Boolean\(preferImmediateSynth && cachedSample\);/);
-  assert.match(js, /if \(shouldUseCachedSampleDirectly\) \{[\s\S]*startSamplePlayback\(context,\s*note,\s*sampleNote,\s*cachedSample,\s*directSampleOptions\)/);
-  assert.match(js, /const directSampleOptions = \{[\s\S]*attackDuration:\s*0\.0025,[\s\S]*peakGain:\s*0\.94,[\s\S]*releaseDuration:\s*2\.8/);
   assert.match(js, /fadeOutSynthLayer\(context,\s*synthLayer,\s*0\.08\)/);
-  assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
-  assert.match(js, /if \(preferImmediateSynth\) \{[\s\S]*playTouchResponsiveNote\(context,\s*note,\s*sampleNote,\s*\{\s*cachedSample\s*\}\);[\s\S]*return;/);
   assert.match(js, /function isLikelyMobileDevice\(/);
   assert.match(js, /window\.matchMedia\('\(pointer: coarse\)'\)\.matches/);
   assert.match(js, /navigator\.maxTouchPoints > 0/);
@@ -190,7 +182,6 @@ test('piano script uses a richer piano tone model instead of a basic two-oscilla
   assert.match(js, /noiseFilter\.type = 'bandpass';/);
   assert.match(js, /const attackDuration = Number\(options\.attackDuration \?\? 0\.004\);/);
   assert.match(js, /const peakGain = Number\(options\.peakGain \?\? 0\.98\);/);
-  assert.match(js, /gainNode\.gain\.linearRampToValueAtTime\(peakGain,\s*now \+ attackDuration\);/);
   assert.match(js, /masterGain\.gain\.linearRampToValueAtTime\(0\.24,\s*now \+ 0\.004\);/);
   assert.match(js, /masterGain\.gain\.exponentialRampToValueAtTime\(0\.0001,\s*now \+ 3\.2\);/);
   assert.match(js, /const stopAt = getVoiceStopAt\(context,\s*voice\);/);

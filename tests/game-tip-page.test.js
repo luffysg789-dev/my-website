@@ -52,16 +52,12 @@ test('piano uses a floating mobile tip button while keeping desktop piano and ot
   assert.match(tipJs, /if \(isMobilePianoTip\(\)\) return isNexaAppEnvironment\(\);/);
   assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
   assert.match(tipJs, /function isMobilePianoTip\(\)/);
-  assert.match(tipJs, /function isLikelyMobileDevice\(\)/);
-  assert.match(tipJs, /window\.matchMedia\('\(pointer: coarse\)'\)\.matches/);
-  assert.match(tipJs, /navigator\.maxTouchPoints > 0/);
-  assert.match(tipJs, /&& isLikelyMobileDevice\(\);/);
   assert.match(tipJs, /section\.className = isMobilePianoTip\(\) \? 'game-tip game-tip--floating' : 'game-tip';/);
   assert.match(tipJs, /const buttonLabel = isMobilePianoTip\(\) \? '打赏' : TIP_BUTTON_TEXT_PAY;/);
   assert.match(css, /\.game-tip--floating\s*\{/);
-  assert.match(css, /\.piano-page\.is-mobile-device\s+\.game-tip--floating\s*\{/);
-  assert.match(css, /\.piano-page\.is-mobile-device\s+\.game-tip--floating\s*\{[\s\S]*right:\s*max\(12px,\s*env\(safe-area-inset-right\)\);/);
-  assert.match(css, /\.piano-page\.is-mobile-device\s+\.game-tip--floating\s*\{[\s\S]*bottom:\s*max\(12px,\s*env\(safe-area-inset-bottom\)\);/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-page\s+\.game-tip--floating\s*\{/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*right:\s*max\(12px,\s*env\(safe-area-inset-right\)\);/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*bottom:\s*max\(12px,\s*env\(safe-area-inset-bottom\)\);/);
 });
 
 test('server exposes nexa tip endpoints', () => {
@@ -86,6 +82,9 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /getPersistentStorage\(\)\.removeItem\(PENDING_ORDER_STORAGE_KEY\)/);
   assert.match(tipJs, /function isNexaAppEnvironment\(\)/);
   assert.match(tipJs, /function shouldRenderTip\(\)/);
+  assert.match(tipJs, /function isLikelyMobileDevice\(\)/);
+  assert.match(tipJs, /window\.matchMedia\('\(pointer: coarse\)'\)\.matches/);
+  assert.match(tipJs, /navigator\.maxTouchPoints > 0/);
   assert.match(tipJs, /function clearCachedSession\(\)/);
   assert.match(tipJs, /function syncTipCopy\(/);
   assert.match(tipJs, /function updateButtonState\(/);
@@ -111,7 +110,8 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /parsed\.savedAt = Number\(parsed\.savedAt \|\| 0\) \|\| Date\.now\(\);/);
   assert.match(tipJs, /parsed\.expiresAt = getSessionExpiryTimestamp\(parsed\);/);
   assert.match(tipJs, /const normalizedSession = \{[\s\S]*?savedAt: Number\(session\?\.savedAt \|\| 0\) \|\| Date\.now\(\),[\s\S]*?expiresAt: 0[\s\S]*?\};/);
-  assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
+  assert.match(tipJs, /return \(window\.location\.pathname \|\| ''\)\.startsWith\('\/piano\/'\)/);
+  assert.match(tipJs, /&& isLikelyMobileDevice\(\);/);
   assert.match(tipJs, /if \(!shouldRenderTip\(\)\) return;/);
   assert.match(tipJs, /if \(!isNexaAppEnvironment\(\)\) \{[\s\S]*?promptDownloadNexaApp\(\);[\s\S]*?return;/);
   assert.match(tipJs, /setStatus\('请下载 Nexa App 玩更多游戏,打赏。', 'error'\);/);
