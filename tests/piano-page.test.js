@@ -130,7 +130,7 @@ test('piano script includes pointer, keyboard, and release handling hooks', () =
   assert.match(js, /window\.addEventListener\('blur',\s*releaseAllNotes\)/);
 });
 
-test('piano script prepares note playback and orientation syncing', () => {
+test('piano script prepares note playback and keeps phones on the mobile piano UI after rotation', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const css = fs.readFileSync(cssPath, 'utf8');
   const js = fs.readFileSync(jsPath, 'utf8');
@@ -141,9 +141,9 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(css, /\.piano-shortcut-hint/);
   assert.match(css, /\.piano-key__solfege/);
   assert.match(css, /\.piano-key__kbd/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__kbd\s*\{[\s\S]*display:\s*none;/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-key__solfege\s*\{[\s\S]*display:\s*none;/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.piano-back\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /\.piano-page\.is-mobile-device[\s\S]*\.piano-key__kbd\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /\.piano-page\.is-mobile-device[\s\S]*\.piano-key__solfege\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /\.piano-page\.is-mobile-device[\s\S]*\.piano-back\s*\{[\s\S]*display:\s*none;/);
   assert.match(js, /function createAudioEngine\(/);
   assert.match(js, /new AudioContextCtor\(\{\s*latencyHint:\s*'interactive'\s*\}\)/);
   assert.match(js, /audioContext/);
@@ -163,9 +163,15 @@ test('piano script prepares note playback and orientation syncing', () => {
   assert.match(js, /fadeOutSynthLayer\(context,\s*synthLayer,\s*0\.08\)/);
   assert.match(js, /playSynthNote\(context,\s*note\);[\s\S]*scheduleSampleWarmup\(sampleNote\);[\s\S]*\n\s*\}/);
   assert.match(js, /if \(preferImmediateSynth\) \{[\s\S]*playTouchResponsiveNote\(context,\s*note,\s*sampleNote,\s*\{\s*cachedSample\s*\}\);[\s\S]*return;/);
+  assert.match(js, /function isLikelyMobileDevice\(/);
+  assert.match(js, /window\.matchMedia\('\(pointer: coarse\)'\)\.matches/);
+  assert.match(js, /navigator\.maxTouchPoints > 0/);
   assert.match(js, /function syncOrientationState\(/);
-  assert.match(js, /const isPortrait = window\.matchMedia\('\(orientation: portrait\)'\)\.matches && window\.innerWidth < 900;/);
-  assert.match(js, /page\.classList\.toggle\('is-portrait', isPortrait\)/);
+  assert.match(js, /const isMobile = isLikelyMobileDevice\(\);/);
+  assert.match(js, /page\.classList\.toggle\('is-mobile-device', isMobile\)/);
+  assert.match(js, /const shouldLockPortrait = isMobile;/);
+  assert.match(js, /page\.classList\.toggle\('is-rotation-locked', shouldLockPortrait\)/);
+  assert.match(js, /const preferImmediateSynth = typeof window !== 'undefined'[\s\S]*isLikelyMobileDevice\(\)/);
 });
 
 test('piano script uses a richer piano tone model instead of a basic two-oscillator synth', () => {
