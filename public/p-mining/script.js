@@ -6,7 +6,33 @@
   const STORAGE_KEY_PREFIX = 'claw800:p-mining:state:';
   const NETWORK_STORAGE_KEY = 'claw800:p-mining:network-stats';
   const LOCALE_STORAGE_KEY = 'claw800:p-mining:locale';
+  const INVITE_GRAPH_STORAGE_KEY = 'claw800:p-mining:invite-graph';
+  const PENDING_INVITE_BONUS_STORAGE_KEY = 'claw800:p-mining:pending-invite-bonus';
+  const PMINING_SESSION_STORAGE_KEY = 'claw800:p-mining:nexa-session';
+  const PMINING_AUTH_TARGET_KEY = 'claw800:p-mining:auth-target';
+  const PMINING_PENDING_PAYMENT_STORAGE_KEY = 'claw800:p-mining:pending-payment';
+  const PMINING_SETTLED_PAYMENT_STORAGE_KEY = 'claw800:p-mining:settled-payment';
+  const MAX_NEXA_SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+  const NEXA_API_KEY = 'NEXA2033522880098676737';
+  const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
+  const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
   const MAX_RECORDS = 20;
+  const PAYMENT_QUERY_INTERVAL_MS = 2000;
+  const PAYMENT_QUERY_TIMEOUT_MS = 45000;
+  const POWER_PURCHASE_OPTIONS = {
+    starter: {
+      id: 'starter',
+      power: 10,
+      usdtAmount: 10,
+      amount: '10.00'
+    },
+    boost: {
+      id: 'boost',
+      power: 1000,
+      usdtAmount: 80,
+      amount: '80.00'
+    }
+  };
   const TRANSLATIONS = {
     en: {
       networkOnline: 'Online',
@@ -17,6 +43,7 @@
       totalMined: 'Total Mined',
       todayOutput: 'Today Output',
       todayPower: 'Today Power',
+      estimatedTodayOutput: 'Est. Today',
       remainingSupply: 'Remaining',
       halvingCycle: 'Halving Cycle',
       nextHalving: 'Every 4 Years (Next)',
@@ -26,6 +53,11 @@
       myInviteCode: 'My Code',
       copyButton: 'Copy',
       inviteHint: 'Both sides get +10 power.',
+      buyPower: 'Buy',
+      powerStore: 'Power Store',
+      powerPackageStarter: '+10 Power / 10 USDT',
+      powerPackageBoost: '+1000 Power / 80 USDT',
+      powerPurchaseAction: 'Buy Now',
       enterInviteCode: 'Enter Invite Code',
       invitePlaceholder: "Enter a friend's code",
       invitedUsers: 'Invites',
@@ -51,6 +83,8 @@
       bindUnbound: 'Unbound',
       reasonInitialPower: 'Starting Power',
       reasonInviteReward: 'Invite Bonus',
+      reasonPurchasePower: 'Power Purchase',
+      reasonInviteShare: 'Invite Share',
       errorSelfInvite: 'You cannot bind your own invite code.',
       errorAlreadyBound: 'This account can only bind once.',
       errorInvalidInvite: 'Invite code is invalid.',
@@ -58,13 +92,14 @@
     },
     zh: {
       networkOnline: '在线',
-      currentHoldings: '当前持有 P',
-      currentPower: '当前算力',
-      estimatedPerMinute: '预计收益/分',
+      currentHoldings: '我的持有 P',
+      currentPower: '我的算力',
+      estimatedPerMinute: '预计收益/分钟',
       networkUsers: '全网用户',
       totalMined: '已挖出总量',
       todayOutput: '今日全网产出',
       todayPower: '全网今日算力',
+      estimatedTodayOutput: '今日预挖总数',
       remainingSupply: '剩余总量',
       halvingCycle: '当前减半周期',
       nextHalving: '每四年减半（下次）',
@@ -74,6 +109,11 @@
       myInviteCode: '我的邀请码',
       copyButton: '复制',
       inviteHint: '邀请好友双方各增加 10 算力。',
+      buyPower: '购买',
+      powerStore: '购买算力',
+      powerPackageStarter: '+10 算力 / 10 USDT',
+      powerPackageBoost: '+1000 算力 / 80 USDT',
+      powerPurchaseAction: '立即购买',
       enterInviteCode: '填写邀请码',
       invitePlaceholder: '输入好友邀请码',
       invitedUsers: '已邀请人数',
@@ -99,6 +139,8 @@
       bindUnbound: '未绑定',
       reasonInitialPower: '初始算力',
       reasonInviteReward: '邀请奖励',
+      reasonPurchasePower: '购买算力',
+      reasonInviteShare: '邀请分成',
       errorSelfInvite: '不能绑定自己的邀请码',
       errorAlreadyBound: '每个账号只能绑定一次邀请码',
       errorInvalidInvite: '邀请码无效',
@@ -120,6 +162,174 @@
 
   function formatPowerValue(value) {
     return formatWholeNumber(value);
+  }
+
+  function getPersistentStorage() {
+    try {
+      return globalScope.localStorage;
+    } catch {
+      return globalScope.sessionStorage;
+    }
+  }
+
+  function getPMiningSessionExpiryTimestamp(session) {
+    const savedAt = Number(session?.savedAt || 0) || Date.now();
+    return savedAt + MAX_NEXA_SESSION_RETENTION_MS;
+  }
+
+  function loadCachedPMiningSession(storage = getPersistentStorage()) {
+    try {
+      const raw = storage?.getItem?.(PMINING_SESSION_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (!parsed.openId || !parsed.sessionKey) return null;
+      parsed.savedAt = Number(parsed.savedAt || 0) || Date.now();
+      parsed.expiresAt = getPMiningSessionExpiryTimestamp(parsed);
+      if (parsed.expiresAt < Date.now()) {
+        storage?.removeItem?.(PMINING_SESSION_STORAGE_KEY);
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveCachedPMiningSession(storage = getPersistentStorage(), session) {
+    if (!storage?.setItem) return;
+    try {
+      const normalizedSession = {
+        openId: String(session?.openId || '').trim(),
+        sessionKey: String(session?.sessionKey || '').trim(),
+        nickname: String(session?.nickname || 'Nexa User').trim(),
+        avatar: String(session?.avatar || '').trim(),
+        savedAt: Number(session?.savedAt || 0) || Date.now()
+      };
+      if (!normalizedSession.openId || !normalizedSession.sessionKey) return;
+      normalizedSession.expiresAt = getPMiningSessionExpiryTimestamp(normalizedSession);
+      storage.setItem(PMINING_SESSION_STORAGE_KEY, JSON.stringify(normalizedSession));
+    } catch {}
+  }
+
+  function clearCachedPMiningSession(storage = getPersistentStorage()) {
+    try {
+      storage?.removeItem?.(PMINING_SESSION_STORAGE_KEY);
+    } catch {}
+  }
+
+  function setPendingAuthTarget(storage = getPersistentStorage(), tab) {
+    try {
+      storage?.setItem?.(PMINING_AUTH_TARGET_KEY, String(tab || 'profile').trim() || 'profile');
+    } catch {}
+  }
+
+  function readPendingAuthTarget(storage = getPersistentStorage()) {
+    try {
+      return String(storage?.getItem?.(PMINING_AUTH_TARGET_KEY) || '').trim() || '';
+    } catch {
+      return '';
+    }
+  }
+
+  function clearPendingAuthTarget(storage = getPersistentStorage()) {
+    try {
+      storage?.removeItem?.(PMINING_AUTH_TARGET_KEY);
+    } catch {}
+  }
+
+  function loadInviteGraph(storage = getPersistentStorage()) {
+    try {
+      const raw = storage?.getItem?.(INVITE_GRAPH_STORAGE_KEY);
+      if (!raw) {
+        return { byUid: {}, byCode: {} };
+      }
+      const parsed = JSON.parse(raw);
+      return {
+        byUid: parsed?.byUid && typeof parsed.byUid === 'object' ? parsed.byUid : {},
+        byCode: parsed?.byCode && typeof parsed.byCode === 'object' ? parsed.byCode : {}
+      };
+    } catch {
+      return { byUid: {}, byCode: {} };
+    }
+  }
+
+  function saveInviteGraph(storage = getPersistentStorage(), graph) {
+    try {
+      storage?.setItem?.(INVITE_GRAPH_STORAGE_KEY, JSON.stringify({
+        byUid: graph?.byUid || {},
+        byCode: graph?.byCode || {}
+      }));
+    } catch {}
+  }
+
+  function registerInviteProfile(storage = getPersistentStorage(), state) {
+    const current = state || {};
+    const uid = String(current.uid || '').trim();
+    const inviteCode = String(current.inviteCode || '').trim().toUpperCase();
+    if (!uid || !inviteCode) return;
+    const graph = loadInviteGraph(storage);
+    graph.byUid[uid] = {
+      uid,
+      inviteCode,
+      boundInviteCode: String(current.boundInviteCode || '').trim().toUpperCase()
+    };
+    graph.byCode[inviteCode] = uid;
+    saveInviteGraph(storage, graph);
+  }
+
+  function loadPendingInviteBonusMap(storage = getPersistentStorage()) {
+    try {
+      const raw = storage?.getItem?.(PENDING_INVITE_BONUS_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function savePendingInviteBonusMap(storage = getPersistentStorage(), bonusMap) {
+    try {
+      storage?.setItem?.(PENDING_INVITE_BONUS_STORAGE_KEY, JSON.stringify(bonusMap || {}));
+    } catch {}
+  }
+
+  function queueInvitePurchaseBonus(storage = getPersistentStorage(), payload) {
+    const inviteCode = String(payload?.inviteCode || '').trim().toUpperCase();
+    const sourceUid = String(payload?.sourceUid || '').trim();
+    if (!inviteCode || !sourceUid) return null;
+    const graph = loadInviteGraph(storage);
+    const targetUid = String(graph.byCode?.[inviteCode] || '').trim();
+    if (!targetUid || targetUid === sourceUid) return null;
+    const purchasedPower = Math.max(0, Number(payload?.purchasedPower || 0));
+    const bonusPower = Math.max(1, Math.floor(purchasedPower * 0.1));
+    const createdAt = Number(payload?.createdAt || Date.now());
+    const bonusMap = loadPendingInviteBonusMap(storage);
+    const currentItems = Array.isArray(bonusMap[targetUid]) ? bonusMap[targetUid] : [];
+    bonusMap[targetUid] = [
+      {
+        sourceUid,
+        purchasedPower,
+        bonusPower,
+        createdAt
+      },
+      ...currentItems
+    ].slice(0, MAX_RECORDS);
+    savePendingInviteBonusMap(storage, bonusMap);
+    return { targetUid, bonusPower };
+  }
+
+  function consumePendingInvitePurchaseBonuses(storage = getPersistentStorage(), uid) {
+    const normalizedUid = String(uid || '').trim();
+    if (!normalizedUid) return [];
+    const bonusMap = loadPendingInviteBonusMap(storage);
+    const items = Array.isArray(bonusMap[normalizedUid]) ? bonusMap[normalizedUid] : [];
+    if (items.length) {
+      delete bonusMap[normalizedUid];
+      savePendingInviteBonusMap(storage, bonusMap);
+    }
+    return items;
   }
 
   function getStoredLocale(storage) {
@@ -153,9 +363,20 @@
 
   function getMockNexaUser() {
     return normalizeHostUser({
-      uid: 'KGghQe3j',
-      email: 'luffysg789@gmail.com',
-      nickname: 'Nexa User',
+      uid: 'nexa_guest',
+      email: 'guest@nexa.app',
+      nickname: 'Guest',
+      networkConnected: false
+    });
+  }
+
+  function createHostUserFromSession(session) {
+    const openId = String(session?.openId || '').trim();
+    const nickname = String(session?.nickname || 'Nexa User').trim();
+    return normalizeHostUser({
+      uid: openId || 'nexa_guest',
+      email: nickname || `${openId}@nexa.local`,
+      nickname,
       networkConnected: true
     });
   }
@@ -211,6 +432,13 @@
     return roundToSingle((safeUserPower / safeNetworkPower) * (safeDailyCap / 1440));
   }
 
+  function calculateEstimatedTodayOutput({ userPower, networkPower, dailyCap }) {
+    const safeUserPower = Math.max(0, Number(userPower || 0));
+    const safeNetworkPower = Math.max(1, Number(networkPower || 1));
+    const safeDailyCap = Math.max(0, Number(dailyCap || DAILY_CAP));
+    return roundToSingle((safeUserPower / safeNetworkPower) * safeDailyCap);
+  }
+
   function advanceNetworkStats(stats, elapsedMs) {
     const current = { ...createDefaultNetworkStats(), ...(stats || {}) };
     const minutes = Math.max(0, Number(elapsedMs || 0) / 60000);
@@ -262,6 +490,26 @@
     };
   }
 
+  function purchasePowerPackage(state, { tier, purchasedAt }) {
+    const current = state || createDefaultMiningState(getMockNexaUser());
+    const option = POWER_PURCHASE_OPTIONS[String(tier || '').trim()] || null;
+    if (!option) {
+      throw new Error('purchase tier invalid');
+    }
+    const when = Number(purchasedAt || Date.now());
+    return {
+      ...current,
+      power: roundToSingle(current.power + option.power),
+      powerChanges: prependRecord(current.powerChanges, {
+        id: `power-purchase-${when}`,
+        delta: option.power,
+        reason: '购买算力',
+        usdtAmount: option.usdtAmount,
+        createdAt: when
+      })
+    };
+  }
+
   function bindInviteCode(state, inviteCode) {
     const current = state || createDefaultMiningState(getMockNexaUser());
     const normalizedCode = String(inviteCode || '').trim().toUpperCase();
@@ -297,6 +545,34 @@
         createdAt: timestamp
       })
     };
+  }
+
+  function applyPendingInvitePurchaseBonuses(state, bonusEvents) {
+    const current = state || createDefaultMiningState(getMockNexaUser());
+    const events = Array.isArray(bonusEvents) ? bonusEvents.filter(Boolean) : [];
+    if (!events.length) return current;
+    let nextState = { ...current };
+    events
+      .slice()
+      .sort((left, right) => Number(left.createdAt || 0) - Number(right.createdAt || 0))
+      .forEach((item) => {
+        const bonusPower = Math.max(0, Number(item?.bonusPower || 0));
+        const createdAt = Number(item?.createdAt || Date.now());
+        nextState = {
+          ...nextState,
+          power: roundToSingle(nextState.power + bonusPower),
+          invitePowerBonus: roundToSingle(nextState.invitePowerBonus + bonusPower),
+          powerChanges: prependRecord(nextState.powerChanges, {
+            id: `power-share-${createdAt}-${String(item?.sourceUid || 'invitee').trim() || 'invitee'}`,
+            delta: bonusPower,
+            reason: '邀请分成',
+            purchasedPower: Math.max(0, Number(item?.purchasedPower || 0)),
+            sourceUid: String(item?.sourceUid || '').trim(),
+            createdAt
+          })
+        };
+      });
+    return nextState;
   }
 
   function getStorageKey(uid) {
@@ -352,6 +628,154 @@
     } catch {}
   }
 
+  function loadPendingPaymentOrder(storage = getPersistentStorage()) {
+    try {
+      const raw = storage?.getItem?.(PMINING_PENDING_PAYMENT_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (!parsed.orderNo || !parsed.tier) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function savePendingPaymentOrder(storage = getPersistentStorage(), order) {
+    try {
+      storage?.setItem?.(PMINING_PENDING_PAYMENT_STORAGE_KEY, JSON.stringify({
+        orderNo: String(order?.orderNo || '').trim(),
+        tier: String(order?.tier || '').trim(),
+        power: Math.max(0, Number(order?.power || 0)),
+        usdtAmount: Math.max(0, Number(order?.usdtAmount || 0)),
+        createdAt: Number(order?.createdAt || Date.now())
+      }));
+    } catch {}
+  }
+
+  function clearPendingPaymentOrder(storage = getPersistentStorage()) {
+    try {
+      storage?.removeItem?.(PMINING_PENDING_PAYMENT_STORAGE_KEY);
+    } catch {}
+  }
+
+  function loadSettledPaymentReceipts(storage = getPersistentStorage()) {
+    try {
+      const raw = storage?.getItem?.(PMINING_SETTLED_PAYMENT_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveSettledPaymentReceipt(storage = getPersistentStorage(), receipt) {
+    const orderNo = String(receipt?.orderNo || '').trim();
+    if (!orderNo) return;
+    const receipts = loadSettledPaymentReceipts(storage);
+    receipts[orderNo] = {
+      orderNo,
+      tier: String(receipt?.tier || '').trim(),
+      settledAt: Number(receipt?.settledAt || Date.now())
+    };
+    try {
+      storage?.setItem?.(PMINING_SETTLED_PAYMENT_STORAGE_KEY, JSON.stringify(receipts));
+    } catch {}
+  }
+
+  function hasSettledPaymentOrder(storage = getPersistentStorage(), orderNo) {
+    const normalizedOrderNo = String(orderNo || '').trim();
+    if (!normalizedOrderNo) return false;
+    const receipts = loadSettledPaymentReceipts(storage);
+    return Boolean(receipts[normalizedOrderNo]);
+  }
+
+  function buildCleanReturnUrl() {
+    const url = new URL(globalScope.window.location.href);
+    ['code', 'authCode', 'auth_code', 'state'].forEach((key) => url.searchParams.delete(key));
+    return url.toString();
+  }
+
+  function buildNexaAuthorizeUrl() {
+    const redirectUri = buildCleanReturnUrl();
+    return `${NEXA_PROTOCOL_AUTH_BASE}?apikey=${encodeURIComponent(NEXA_API_KEY)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  }
+
+  function buildNexaPaymentUrl(payment, redirectUrl = buildCleanReturnUrl()) {
+    const params = new URLSearchParams({
+      orderNo: String(payment?.orderNo || '').trim(),
+      paySign: String(payment?.paySign || '').trim(),
+      signType: String(payment?.signType || 'MD5').trim(),
+      apiKey: String(payment?.apiKey || NEXA_API_KEY).trim(),
+      nonce: String(payment?.nonce || '').trim(),
+      timestamp: String(payment?.timestamp || '').trim(),
+      redirectUrl: String(redirectUrl || '').trim()
+    });
+    return `${NEXA_PROTOCOL_ORDER_BASE}?${params.toString()}`;
+  }
+
+  function launchNexaUrl(url) {
+    const targetUrl = String(url || '').trim();
+    if (!targetUrl) return;
+    globalScope.window.location.href = targetUrl;
+  }
+
+  function extractAuthCodeFromUrl() {
+    const params = new URLSearchParams(globalScope.window.location.search);
+    return (
+      String(params.get('code') || '').trim() ||
+      String(params.get('authCode') || '').trim() ||
+      String(params.get('auth_code') || '').trim()
+    );
+  }
+
+  function clearAuthCodeFromUrl() {
+    const url = new URL(globalScope.window.location.href);
+    ['code', 'authCode', 'auth_code', 'state'].forEach((key) => url.searchParams.delete(key));
+    globalScope.window.history.replaceState({}, globalScope.document.title, url.toString());
+  }
+
+  async function postJson(url, body) {
+    const response = await globalScope.fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    const json = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = new Error(String(json?.error || json?.message || '请求失败'));
+      error.statusCode = Number(response.status || 0) || 0;
+      throw error;
+    }
+    return json;
+  }
+
+  async function getJson(url) {
+    const response = await globalScope.fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+    const json = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = new Error(String(json?.error || json?.message || '请求失败'));
+      error.statusCode = Number(response.status || 0) || 0;
+      throw error;
+    }
+    return json;
+  }
+
+  function isNexaAppEnvironment() {
+    const userAgent = String(globalScope.window.navigator?.userAgent || '').trim();
+    const referrer = String(globalScope.document?.referrer || '').trim();
+    const hasNexaMarker = /nexa/i.test(userAgent) || /nexa/i.test(referrer);
+    return Boolean(hasNexaMarker || loadCachedPMiningSession());
+  }
+
   function getClaimUiState({ lastClaimAt, now, isProcessing }) {
     const current = Number(now || Date.now());
     const claimable = canClaim({ lastClaimAt, now: current });
@@ -403,6 +827,28 @@
     });
   }
 
+  function applyAuthorizedSession(appState, session) {
+    const normalizedSession = {
+      openId: String(session?.openId || '').trim(),
+      sessionKey: String(session?.sessionKey || '').trim(),
+      nickname: String(session?.nickname || 'Nexa User').trim(),
+      avatar: String(session?.avatar || '').trim(),
+      savedAt: Number(session?.savedAt || 0) || Date.now()
+    };
+    if (!normalizedSession.openId || !normalizedSession.sessionKey) return;
+    saveCachedPMiningSession(appState.storage, normalizedSession);
+    appState.nexaSession = loadCachedPMiningSession(appState.storage);
+    appState.hostUser = createHostUserFromSession(appState.nexaSession);
+    appState.state = loadMiningState(appState.storage, appState.hostUser);
+    registerInviteProfile(appState.storage, appState.state);
+    const pendingInviteBonuses = consumePendingInvitePurchaseBonuses(appState.storage, appState.state.uid);
+    if (pendingInviteBonuses.length) {
+      appState.state = applyPendingInvitePurchaseBonuses(appState.state, pendingInviteBonuses);
+      saveMiningState(appState.storage, appState.state);
+      registerInviteProfile(appState.storage, appState.state);
+    }
+  }
+
   function renderClaimState(appState) {
     const ui = getClaimUiState({
       lastClaimAt: appState.state.lastClaimAt,
@@ -422,6 +868,11 @@
       networkPower: appState.network.todayPower,
       dailyCap: appState.network.dailyCap
     });
+    const estimatedTodayOutput = calculateEstimatedTodayOutput({
+      userPower: appState.state.power,
+      networkPower: appState.network.todayPower,
+      dailyCap: appState.network.dailyCap
+    });
     appState.elements.balanceValue.textContent = formatMiningNumber(appState.state.balance);
     appState.elements.powerValue.textContent = formatPowerValue(appState.state.power);
     appState.elements.rewardPerMinute.textContent = formatMiningNumber(reward);
@@ -429,6 +880,7 @@
     appState.elements.totalMined.textContent = formatMiningNumber(appState.network.totalMined);
     appState.elements.todayMined.textContent = formatMiningNumber(appState.network.todayMined);
     appState.elements.todayPower.textContent = formatPowerValue(appState.network.todayPower);
+    appState.elements.estimatedTodayOutput.textContent = formatMiningNumber(estimatedTodayOutput);
     appState.elements.remainingSupply.textContent = formatMiningNumber(appState.network.remainingSupply);
     appState.elements.halvingCycle.textContent = `${appState.network.currentHalvingCycle} / 25`;
     appState.elements.nextHalvingDate.textContent = appState.network.nextHalvingDate;
@@ -439,8 +891,9 @@
   }
 
   function renderInvitePanel(appState) {
+    appState.elements.purchasePanel.hidden = !appState.isPurchasePanelOpen;
     appState.elements.inviteCodeValue.textContent = appState.state.inviteCode;
-    appState.elements.inviteCount.textContent = formatMiningNumber(appState.state.inviteCount);
+    appState.elements.inviteCount.textContent = formatWholeNumber(appState.state.inviteCount);
     appState.elements.inviteBonus.textContent = formatPowerValue(appState.state.invitePowerBonus);
     appState.elements.inviteInput.disabled = Boolean(appState.state.boundInviteCode);
     appState.elements.inviteSubmitButton.disabled = Boolean(appState.state.boundInviteCode);
@@ -475,7 +928,14 @@
         return createRecordCardHtml(t(appState.locale, 'inviteTitle'), new Date(item.createdAt).toLocaleString('zh-CN'), `+${formatPowerValue(item.reward)}`);
       }
       if (appState.activeRecordFilter === 'power') {
-        const title = item.reason === '邀请奖励' ? t(appState.locale, 'reasonInviteReward') : t(appState.locale, 'reasonInitialPower');
+        let title = t(appState.locale, 'reasonInitialPower');
+        if (item.reason === '邀请奖励') {
+          title = t(appState.locale, 'reasonInviteReward');
+        } else if (item.reason === '购买算力') {
+          title = t(appState.locale, 'reasonPurchasePower');
+        } else if (item.reason === '邀请分成') {
+          title = t(appState.locale, 'reasonInviteShare');
+        }
         return createRecordCardHtml(title, new Date(item.createdAt).toLocaleString('zh-CN'), `+${formatPowerValue(item.delta)}`);
       }
       return createRecordCardHtml(t(appState.locale, 'claimTitle'), new Date(item.createdAt).toLocaleString('zh-CN'), `+${formatMiningNumber(item.reward)} P`);
@@ -508,42 +968,55 @@
     appState.elements.inviteError.textContent = message;
   }
 
-  function handleClaimButtonClick(appState) {
-    if (appState.isProcessing || !canClaim({ lastClaimAt: appState.state.lastClaimAt, now: Date.now() })) {
+  async function handleClaimButtonClick(appState) {
+    if (appState.isProcessing) {
+      renderClaimState(appState);
+      return;
+    }
+    if (!appState.nexaSession) {
+      await beginNexaLoginFlow(appState, 'mining');
+      return;
+    }
+    if (!canClaim({ lastClaimAt: appState.state.lastClaimAt, now: Date.now() })) {
       renderClaimState(appState);
       return;
     }
 
     appState.isProcessing = true;
-    const reward = calculateClaimReward({
-      userPower: appState.state.power,
-      networkPower: appState.network.todayPower,
-      dailyCap: appState.network.dailyCap
-    });
-    appState.state = applyClaimResult(appState.state, {
-      reward,
-      claimedAt: Date.now()
-    });
-    appState.network = advanceNetworkStats(appState.network, 60_000);
-    saveMiningState(appState.storage, appState.state);
-    saveNetworkStats(appState.storage, appState.network);
-    renderAll(appState);
-    appState.isProcessing = false;
+    try {
+      const response = await postJson('/api/p-mining/claim', {});
+      if (response?.ok) {
+        syncAppStateFromServer(appState, response);
+        renderAll(appState);
+      }
+    } catch {
+      renderClaimState(appState);
+    } finally {
+      appState.isProcessing = false;
+    }
   }
 
-  function handleInviteSubmit(appState) {
+  async function handleInviteSubmit(appState) {
+    if (!appState.nexaSession) {
+      await beginNexaLoginFlow(appState, 'invite');
+      return;
+    }
     try {
-      appState.state = bindInviteCode(appState.state, appState.elements.inviteInput.value);
-      saveMiningState(appState.storage, appState.state);
+      const response = await postJson('/api/p-mining/invite/bind', {
+        inviteCode: appState.elements.inviteInput.value
+      });
+      if (response?.ok) {
+        syncAppStateFromServer(appState, response);
+      }
       showInviteError(appState, '');
       renderAll(appState);
     } catch (error) {
-      const message = String(error?.message || '');
-      if (message.includes('self')) {
+      const message = String(error?.message || '').toUpperCase();
+      if (message.includes('SELF_INVITE')) {
         showInviteError(appState, t(appState.locale, 'errorSelfInvite'));
-      } else if (message.includes('already')) {
+      } else if (message.includes('ALREADY_BOUND')) {
         showInviteError(appState, t(appState.locale, 'errorAlreadyBound'));
-      } else if (message.includes('invalid')) {
+      } else if (message.includes('INVALID_INVITE')) {
         showInviteError(appState, t(appState.locale, 'errorInvalidInvite'));
       } else {
         showInviteError(appState, t(appState.locale, 'errorEmptyInvite'));
@@ -558,6 +1031,86 @@
     }
   }
 
+  function togglePurchasePanel(appState) {
+    appState.isPurchasePanelOpen = !appState.isPurchasePanelOpen;
+    renderInvitePanel(appState);
+  }
+
+  async function queryPMiningPaymentOrder(orderNo) {
+    return postJson('/api/p-mining/payment/query', {
+      orderNo: String(orderNo || '').trim()
+    });
+  }
+
+  async function pollPMiningPaymentOrder(orderNo) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < PAYMENT_QUERY_TIMEOUT_MS) {
+      const response = await queryPMiningPaymentOrder(orderNo);
+      const status = String(response?.status || '').trim().toUpperCase();
+      if (status === 'SUCCESS') return response;
+      if (status === 'FAILED' || status === 'CANCELED' || status === 'EXPIRED') return response;
+      await new Promise((resolve) => globalScope.window.setTimeout(resolve, PAYMENT_QUERY_INTERVAL_MS));
+    }
+    return {
+      ok: true,
+      orderNo: String(orderNo || '').trim(),
+      status: 'PENDING'
+    };
+  }
+
+  async function settlePendingPaymentOrder(appState) {
+    const pendingOrder = loadPendingPaymentOrder(appState.storage);
+    if (!pendingOrder?.orderNo || !pendingOrder?.tier) return false;
+    if (hasSettledPaymentOrder(appState.storage, pendingOrder.orderNo)) {
+      clearPendingPaymentOrder(appState.storage);
+      return false;
+    }
+
+    const response = await pollPMiningPaymentOrder(pendingOrder.orderNo);
+    const status = String(response?.status || '').trim().toUpperCase();
+    if (status !== 'SUCCESS') {
+      if (status === 'FAILED' || status === 'CANCELED' || status === 'EXPIRED') {
+        clearPendingPaymentOrder(appState.storage);
+      }
+      return false;
+    }
+
+    const bootstrap = await loadPMiningBootstrap().catch(() => null);
+    if (bootstrap?.ok) {
+      syncAppStateFromServer(appState, bootstrap);
+    }
+    saveSettledPaymentReceipt(appState.storage, {
+      orderNo: pendingOrder.orderNo,
+      tier: pendingOrder.tier,
+      settledAt: Date.now()
+    });
+    clearPendingPaymentOrder(appState.storage);
+    renderAll(appState);
+    return true;
+  }
+
+  async function handlePurchasePower(appState, tier) {
+    if (!appState.nexaSession) {
+      beginNexaLoginFlow(appState, 'invite').catch(() => {});
+      return;
+    }
+    const option = POWER_PURCHASE_OPTIONS[String(tier || '').trim()] || null;
+    if (!option) return;
+    const orderResponse = await postJson('/api/p-mining/payment/create', {
+      openId: appState.nexaSession.openId,
+      sessionKey: appState.nexaSession.sessionKey,
+      tier: option.id
+    });
+    savePendingPaymentOrder(appState.storage, {
+      orderNo: orderResponse.orderNo,
+      tier: option.id,
+      power: option.power,
+      usdtAmount: option.usdtAmount,
+      createdAt: Date.now()
+    });
+    launchNexaUrl(buildNexaPaymentUrl(orderResponse.payment));
+  }
+
   function attachRecordFilters(appState) {
     appState.elements.recordFilterButtons.forEach((button) => {
       button.addEventListener('click', () => {
@@ -570,18 +1123,154 @@
     });
   }
 
+  async function syncPMiningServerSession(session) {
+    const response = await postJson('/api/p-mining/session', {
+      openId: String(session?.openId || '').trim(),
+      sessionKey: String(session?.sessionKey || '').trim(),
+      nickname: String(session?.nickname || 'Nexa User').trim(),
+      avatar: String(session?.avatar || '').trim()
+    });
+    return response.session || null;
+  }
+
+  async function loadServerPMiningSession() {
+    try {
+      const response = await getJson('/api/p-mining/session');
+      return response.session || null;
+    } catch (error) {
+      if (Number(error?.statusCode || 0) === 401) return null;
+      return null;
+    }
+  }
+
+  function syncAppStateFromServer(appState, payload) {
+    const profile = payload?.profile || {};
+    const account = payload?.account || {};
+    const records = payload?.records || {};
+    const network = payload?.network || {};
+    if (profile.openId) {
+      appState.hostUser = createHostUserFromSession({
+        openId: String(profile.openId || '').trim(),
+        nickname: String(profile.nickname || 'Nexa User').trim(),
+        avatar: String(profile.avatar || '').trim()
+      });
+    }
+    appState.state = {
+      ...appState.state,
+      uid: appState.hostUser.uid,
+      balance: Number(account.balance || 0) || 0,
+      power: Number(account.power || 0) || 0,
+      inviteCode: String(account.inviteCode || '').trim(),
+      boundInviteCode: String(account.boundInviteCode || '').trim(),
+      inviteCount: Number(account.inviteCount || 0) || 0,
+      invitePowerBonus: Number(account.invitePowerBonus || 0) || 0,
+      claimRecords: Array.isArray(records.claims) ? records.claims : [],
+      inviteRecords: Array.isArray(records.invites) ? records.invites : [],
+      powerChanges: Array.isArray(records.power) ? records.power : [],
+      lastClaimAt: Number(account.lastClaimAt || 0) || 0
+    };
+    appState.network = {
+      ...appState.network,
+      totalUsers: Number(network.totalUsers || 0) || 0,
+      totalMined: Number(network.totalMined || 0) || 0,
+      todayMined: Number(network.todayMined || 0) || 0,
+      todayPower: Number(network.todayPower || 0) || 0,
+      remainingSupply: Number(network.remainingSupply || 0) || 0,
+      currentHalvingCycle: Number(network.currentHalvingCycle || 1) || 1,
+      nextHalvingDate: String(network.nextHalvingDate || appState.network.nextHalvingDate || '').trim(),
+      estimatedFinishYears: Number(network.estimatedFinishYears || 0) || 0,
+      dailyCap: Number(network.dailyCap || appState.network.dailyCap || DAILY_CAP) || DAILY_CAP
+    };
+  }
+
+  async function loadPMiningBootstrap() {
+    return getJson('/api/p-mining/bootstrap');
+  }
+
+  async function beginNexaLoginFlow(appState, targetTab = 'profile') {
+    if (!isNexaAppEnvironment()) {
+      globalScope.window.alert('请在 Nexa Pay 中授权登录。');
+      return false;
+    }
+    setPendingAuthTarget(appState.storage, targetTab);
+    launchNexaUrl(buildNexaAuthorizeUrl());
+    return true;
+  }
+
+  async function exchangePMiningSessionFromUrlCode(appState) {
+    const authCode = extractAuthCodeFromUrl();
+    if (!authCode) return false;
+    appState.isAuthorizing = true;
+    try {
+      const response = await postJson('/api/nexa/tip/session', {
+        authCode,
+        gameSlug: 'p-mining'
+      });
+      const session = {
+        openId: String(response.session?.openId || '').trim(),
+        sessionKey: String(response.session?.sessionKey || '').trim(),
+        nickname: 'Nexa User',
+        avatar: '',
+        savedAt: Date.now()
+      };
+      const serverSession = await syncPMiningServerSession(session);
+      applyAuthorizedSession(appState, serverSession || session);
+      const bootstrap = await loadPMiningBootstrap().catch(() => null);
+      if (bootstrap?.ok) {
+        syncAppStateFromServer(appState, bootstrap);
+      }
+      clearAuthCodeFromUrl();
+      const targetTab = readPendingAuthTarget(appState.storage) || 'profile';
+      clearPendingAuthTarget(appState.storage);
+      renderAll(appState);
+      switchTab(appState, targetTab);
+      return true;
+    } catch {
+      clearAuthCodeFromUrl();
+      clearPendingAuthTarget(appState.storage);
+      clearCachedPMiningSession(appState.storage);
+      return false;
+    } finally {
+      appState.isAuthorizing = false;
+    }
+  }
+
+  async function handleProtectedTabNavigation(appState, nextTab) {
+    if (nextTab !== 'profile') {
+      switchTab(appState, nextTab);
+      return;
+    }
+    if (appState.nexaSession || loadCachedPMiningSession(appState.storage)) {
+      appState.nexaSession = loadCachedPMiningSession(appState.storage);
+      if (appState.nexaSession) {
+        const bootstrap = await loadPMiningBootstrap().catch(() => null);
+        if (bootstrap?.ok) {
+          syncAppStateFromServer(appState, bootstrap);
+          renderAll(appState);
+        }
+      }
+      switchTab(appState, nextTab);
+      return;
+    }
+    await beginNexaLoginFlow(appState, nextTab);
+  }
+
   function createBrowserApp(root) {
-    const hostUser = getMockNexaUser();
-    const storage = globalScope.localStorage;
+    const storage = getPersistentStorage();
+    const cachedSession = loadCachedPMiningSession(storage);
+    const hostUser = cachedSession ? createHostUserFromSession(cachedSession) : getMockNexaUser();
     const appState = {
       hostUser,
       storage,
+      nexaSession: cachedSession,
       locale: getStoredLocale(storage),
       state: loadMiningState(storage, hostUser),
       network: loadNetworkStats(storage),
       activeTab: 'mining',
       activeRecordFilter: 'claims',
+      isPurchasePanelOpen: false,
       isProcessing: false,
+      isAuthorizing: false,
       elements: {
         panels: Array.from(root.querySelectorAll('[data-tab]')),
         navButtons: Array.from(root.querySelectorAll('[data-tab-target]')),
@@ -599,6 +1288,7 @@
         totalMined: root.querySelector('#pMiningTotalMined'),
         todayMined: root.querySelector('#pMiningTodayMined'),
         todayPower: root.querySelector('#pMiningTodayPower'),
+        estimatedTodayOutput: root.querySelector('#pMiningEstimatedTodayOutput'),
         remainingSupply: root.querySelector('#pMiningRemainingSupply'),
         halvingCycle: root.querySelector('#pMiningHalvingCycle'),
         nextHalvingDate: root.querySelector('#pMiningNextHalvingDate'),
@@ -606,6 +1296,9 @@
         inviteCodeValue: root.querySelector('#pMiningInviteCodeValue'),
         inviteCount: root.querySelector('#pMiningInviteCount'),
         inviteBonus: root.querySelector('#pMiningInviteBonus'),
+        openPurchaseButton: root.querySelector('#pMiningOpenPurchaseButton'),
+        purchasePanel: root.querySelector('#pMiningPurchasePanel'),
+        purchaseButtons: Array.from(root.querySelectorAll('[data-purchase-tier]')),
         inviteInput: root.querySelector('#pMiningInviteInput'),
         inviteSubmitButton: root.querySelector('#pMiningInviteSubmitButton'),
         inviteError: root.querySelector('#pMiningInviteError'),
@@ -621,15 +1314,28 @@
     };
 
     appState.elements.navButtons.forEach((button) => {
-      button.addEventListener('click', () => switchTab(appState, button.dataset.tabTarget));
+      button.addEventListener('click', () => {
+        handleProtectedTabNavigation(appState, button.dataset.tabTarget).catch(() => {});
+      });
     });
     appState.elements.localeButtons.forEach((button) => {
       button.addEventListener('click', () => toggleLanguage(appState, button.dataset.localeToggle));
     });
-    appState.elements.claimButton?.addEventListener('click', () => handleClaimButtonClick(appState));
-    appState.elements.inviteSubmitButton?.addEventListener('click', () => handleInviteSubmit(appState));
+    appState.elements.claimButton?.addEventListener('click', () => handleClaimButtonClick(appState).catch(() => {}));
+    appState.elements.inviteSubmitButton?.addEventListener('click', () => handleInviteSubmit(appState).catch(() => {}));
     appState.elements.copyInviteButton?.addEventListener('click', () => handleCopyInviteCode(appState));
+    appState.elements.openPurchaseButton?.addEventListener('click', () => togglePurchasePanel(appState));
+    appState.elements.purchaseButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        handlePurchasePower(appState, button.dataset.purchaseTier).catch(() => {});
+      });
+    });
     appState.elements.logoutButton?.addEventListener('click', () => {
+      clearCachedPMiningSession(appState.storage);
+      clearPendingAuthTarget(appState.storage);
+      postJson('/api/p-mining/session/logout', {}).catch(() => {});
+      appState.nexaSession = null;
+      appState.hostUser = getMockNexaUser();
       appState.state = createDefaultMiningState(appState.hostUser);
       saveMiningState(appState.storage, appState.state);
       saveNetworkStats(appState.storage, appState.network);
@@ -649,11 +1355,33 @@
     return appState;
   }
 
-  function bootBrowser() {
+  async function bootBrowser() {
     if (!globalScope.document) return;
     const root = globalScope.document.querySelector('[data-p-mining-app]');
     if (!root) return;
-    createBrowserApp(root);
+    const appState = createBrowserApp(root);
+    const exchanged = await exchangePMiningSessionFromUrlCode(appState);
+    if (!exchanged && appState.nexaSession) {
+      const bootstrap = await loadPMiningBootstrap().catch(() => null);
+      if (bootstrap?.ok) {
+        syncAppStateFromServer(appState, bootstrap);
+        renderAll(appState);
+      }
+    }
+    if (!exchanged && !appState.nexaSession) {
+      const serverSession = await loadServerPMiningSession();
+      if (serverSession) {
+        applyAuthorizedSession(appState, serverSession);
+        const bootstrap = await loadPMiningBootstrap().catch(() => null);
+        if (bootstrap?.ok) {
+          syncAppStateFromServer(appState, bootstrap);
+          renderAll(appState);
+        }
+      } else if (isNexaAppEnvironment()) {
+        await beginNexaLoginFlow(appState, 'mining').catch(() => false);
+      }
+    }
+    await settlePendingPaymentOrder(appState).catch(() => false);
   }
 
   const exported = {
@@ -668,12 +1396,24 @@
     formatWholeNumber,
     formatPowerValue,
     getStoredLocale,
+    getPMiningSessionExpiryTimestamp,
+    loadCachedPMiningSession,
+    POWER_PURCHASE_OPTIONS,
     calculateClaimReward,
+    calculateEstimatedTodayOutput,
+    buildNexaPaymentUrl,
     advanceNetworkStats,
     canClaim,
     getClaimCooldownRemainingSeconds,
     applyClaimResult,
+    purchasePowerPackage,
     bindInviteCode,
+    applyPendingInvitePurchaseBonuses,
+    loadPendingPaymentOrder,
+    savePendingPaymentOrder,
+    clearPendingPaymentOrder,
+    saveSettledPaymentReceipt,
+    hasSettledPaymentOrder,
     loadMiningState,
     loadNetworkStats,
     saveNetworkStats,
@@ -681,12 +1421,17 @@
     applyTranslations,
     toggleLanguage,
     switchTab,
+    syncAppStateFromServer,
+    loadPMiningBootstrap,
     renderClaimState,
     handleClaimButtonClick,
     handleInviteSubmit,
     handleCopyInviteCode,
+    togglePurchasePanel,
     renderRecordsPanel,
-    renderProfilePanel
+    renderProfilePanel,
+    beginNexaLoginFlow,
+    settlePendingPaymentOrder
   };
 
   if (typeof module !== 'undefined' && module.exports) {
@@ -695,6 +1440,6 @@
 
   if (globalScope.window) {
     globalScope.window.PMiningPrototype = exported;
-    bootBrowser();
+    bootBrowser().catch(() => {});
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

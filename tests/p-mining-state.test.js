@@ -25,15 +25,28 @@ const {
   saveNetworkStats,
   formatWholeNumber,
   formatPowerValue,
-  getStoredLocale
+  getStoredLocale,
+  getPMiningSessionExpiryTimestamp,
+  loadCachedPMiningSession,
+  purchasePowerPackage,
+  applyPendingInvitePurchaseBonuses,
+  POWER_PURCHASE_OPTIONS,
+  calculateEstimatedTodayOutput,
+  buildNexaPaymentUrl,
+  loadPendingPaymentOrder,
+  savePendingPaymentOrder,
+  clearPendingPaymentOrder,
+  saveSettledPaymentReceipt,
+  hasSettledPaymentOrder
 } = miningModule;
 
-test('getMockNexaUser returns connected host user data', () => {
+test('getMockNexaUser returns guest placeholder data before Nexa authorization', () => {
   const user = getMockNexaUser();
 
   assert.equal(typeof user.uid, 'string');
   assert.equal(typeof user.email, 'string');
-  assert.equal(user.networkConnected, true);
+  assert.equal(user.email, 'guest@nexa.app');
+  assert.equal(user.networkConnected, false);
 });
 
 test('normalizeHostUser falls back to safe values when host payload is partial', () => {
@@ -76,6 +89,16 @@ test('calculateClaimReward uses the specified mining formula', () => {
   });
 
   assert.equal(reward, 49942.9);
+});
+
+test('calculateEstimatedTodayOutput derives personal daily total from mining formula', () => {
+  const estimated = calculateEstimatedTodayOutput({
+    userPower: 10,
+    networkPower: 10,
+    dailyCap: DAILY_CAP
+  });
+
+  assert.equal(estimated, 71917808.0);
 });
 
 test('createDefaultNetworkStats uses supply and daily cap defaults', () => {
@@ -171,6 +194,37 @@ test('bindInviteCode adds +10 power and records invite activity', () => {
   assert.equal(next.powerChanges[0].delta, 10);
 });
 
+test('purchasePowerPackage adds purchased power and records the purchase reason', () => {
+  const baseState = createDefaultMiningState({ uid: 'buyer_1' });
+  const next = purchasePowerPackage(baseState, {
+    tier: 'starter',
+    purchasedAt: 1710000000000
+  });
+
+  assert.equal(POWER_PURCHASE_OPTIONS.starter.power, 10);
+  assert.equal(next.power, 20);
+  assert.equal(next.powerChanges[0].delta, 10);
+  assert.equal(next.powerChanges[0].reason, '购买算力');
+  assert.equal(next.powerChanges[0].usdtAmount, 10);
+});
+
+test('applyPendingInvitePurchaseBonuses credits 10 percent referral power and logs it', () => {
+  const baseState = createDefaultMiningState({ uid: 'inviter_1' });
+  const next = applyPendingInvitePurchaseBonuses(baseState, [
+    {
+      sourceUid: 'invitee_1',
+      purchasedPower: 1000,
+      bonusPower: 100,
+      createdAt: 1710000000000
+    }
+  ]);
+
+  assert.equal(next.power, 110);
+  assert.equal(next.invitePowerBonus, 100);
+  assert.equal(next.powerChanges[0].delta, 100);
+  assert.equal(next.powerChanges[0].reason, '邀请分成');
+});
+
 test('loadMiningState falls back safely when storage is corrupt', () => {
   const storage = {
     getItem() {
@@ -219,4 +273,91 @@ test('getStoredLocale falls back to english and accepts zh toggle', () => {
 
   assert.equal(getStoredLocale(storage), 'zh');
   assert.equal(getStoredLocale({ getItem() { return 'fr'; } }), 'en');
+});
+
+test('p-mining nexa session expiry stays valid for 30 days from savedAt', () => {
+  const savedAt = 1710000000000;
+  assert.equal(
+    getPMiningSessionExpiryTimestamp({ savedAt }),
+    savedAt + 30 * 24 * 60 * 60 * 1000
+  );
+});
+
+test('loadCachedPMiningSession returns null when the saved nexa session is expired', () => {
+  const expired = {
+    openId: 'nexa-open-id-1',
+    sessionKey: 'session-key-1',
+    savedAt: Date.now() - (31 * 24 * 60 * 60 * 1000)
+  };
+
+  const storage = {
+    getItem() {
+      return JSON.stringify(expired);
+    },
+    removeItem() {}
+  };
+
+  assert.equal(loadCachedPMiningSession(storage), null);
+});
+
+test('buildNexaPaymentUrl serializes Nexa order payload for payment deep link', () => {
+  const url = buildNexaPaymentUrl({
+    orderNo: 'nexa-order-1',
+    paySign: 'pay-sign-1',
+    signType: 'MD5',
+    apiKey: 'api-key-1',
+    nonce: 'nonce-1',
+    timestamp: '1710000000'
+  }, 'https://example.com/p-mining/');
+
+  assert.match(url, /^nexaauth:\/\/order\?/);
+  assert.match(url, /orderNo=nexa-order-1/);
+  assert.match(url, /paySign=pay-sign-1/);
+  assert.match(url, /redirectUrl=https%3A%2F%2Fexample\.com%2Fp-mining%2F/);
+});
+
+test('pending payment order persists through storage and can be cleared', () => {
+  const memory = new Map();
+  const storage = {
+    getItem(key) {
+      return memory.has(key) ? memory.get(key) : null;
+    },
+    setItem(key, value) {
+      memory.set(key, value);
+    },
+    removeItem(key) {
+      memory.delete(key);
+    }
+  };
+
+  savePendingPaymentOrder(storage, {
+    orderNo: 'pmining-order-1',
+    tier: 'starter',
+    power: 10,
+    createdAt: 1710000000000
+  });
+
+  assert.equal(loadPendingPaymentOrder(storage).orderNo, 'pmining-order-1');
+  clearPendingPaymentOrder(storage);
+  assert.equal(loadPendingPaymentOrder(storage), null);
+});
+
+test('settled payment receipts prevent duplicate local power settlement', () => {
+  const memory = new Map();
+  const storage = {
+    getItem(key) {
+      return memory.has(key) ? memory.get(key) : null;
+    },
+    setItem(key, value) {
+      memory.set(key, value);
+    }
+  };
+
+  assert.equal(hasSettledPaymentOrder(storage, 'paid-order-1'), false);
+  saveSettledPaymentReceipt(storage, {
+    orderNo: 'paid-order-1',
+    tier: 'boost',
+    settledAt: 1710000000000
+  });
+  assert.equal(hasSettledPaymentOrder(storage, 'paid-order-1'), true);
 });

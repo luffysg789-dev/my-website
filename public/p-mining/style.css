@@ -326,6 +326,17 @@ body {
   letter-spacing: -0.04em;
 }
 
+.p-mining-section-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.p-mining-section-card__header h2 {
+  margin-bottom: 0;
+}
+
 .p-mining-invite-code__value {
   font-size: 2.4rem;
   font-weight: 700;
@@ -352,6 +363,23 @@ body {
 .p-mining-helper {
   margin: 12px 0 0;
   color: var(--p-mining-muted);
+}
+
+.p-mining-purchase-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.p-mining-purchase-card {
+  padding: 16px;
+  border: 1px solid var(--p-mining-border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.p-mining-purchase-card__button {
+  width: 100%;
+  margin-top: 8px;
 }
 
 .p-mining-text-input {

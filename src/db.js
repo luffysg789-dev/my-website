@@ -241,6 +241,78 @@ db.exec(`
 `);
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS p_mining_users (
+    user_id INTEGER PRIMARY KEY,
+    invite_code TEXT NOT NULL UNIQUE,
+    bound_invite_code TEXT NOT NULL DEFAULT '',
+    balance_p REAL NOT NULL DEFAULT 0,
+    power INTEGER NOT NULL DEFAULT 10,
+    invite_count INTEGER NOT NULL DEFAULT 0,
+    invite_power_bonus INTEGER NOT NULL DEFAULT 0,
+    last_claim_at INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS p_mining_claim_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    reward_p REAL NOT NULL,
+    power_snapshot INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS p_mining_invite_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    invite_code TEXT NOT NULL DEFAULT '',
+    reward_power INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS p_mining_power_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    delta_power INTEGER NOT NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    related_type TEXT NOT NULL DEFAULT '',
+    related_id TEXT NOT NULL DEFAULT '',
+    usdt_amount REAL NOT NULL DEFAULT 0,
+    purchased_power INTEGER NOT NULL DEFAULT 0,
+    source_open_id TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS p_mining_payment_orders (
+    order_no TEXT PRIMARY KEY,
+    partner_order_no TEXT NOT NULL UNIQUE,
+    user_id INTEGER NOT NULL,
+    tier TEXT NOT NULL,
+    power_amount INTEGER NOT NULL DEFAULT 0,
+    usdt_amount TEXT NOT NULL DEFAULT '0.00',
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    nexa_order_no TEXT NOT NULL DEFAULT '',
+    notify_payload TEXT NOT NULL DEFAULT '',
+    paid_at TEXT NOT NULL DEFAULT '',
+    settled_at TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS nexa_game_deposits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     partner_order_no TEXT NOT NULL UNIQUE,

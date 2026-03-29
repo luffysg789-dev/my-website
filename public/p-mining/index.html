@@ -73,6 +73,10 @@
               <div class="p-mining-stat-card__value p-mining-stat-card__value--power" id="pMiningTodayPower">10</div>
             </article>
             <article class="p-mining-card p-mining-stat-card">
+              <p class="p-mining-card__label" data-i18n="estimatedTodayOutput">Est. Today</p>
+              <div class="p-mining-stat-card__value p-mining-stat-card__value--accent" id="pMiningEstimatedTodayOutput">71917808.0</div>
+            </article>
+            <article class="p-mining-card p-mining-stat-card">
               <p class="p-mining-card__label" data-i18n="remainingSupply">Remaining</p>
               <div class="p-mining-stat-card__value" id="pMiningRemainingSupply">210000000000.0</div>
             </article>
@@ -101,7 +105,10 @@
 
         <section class="p-mining-panel" data-tab="invite" hidden>
           <article class="p-mining-card p-mining-section-card">
-            <h2 data-i18n="inviteFriends">Invite Friends</h2>
+            <div class="p-mining-section-card__header">
+              <h2 data-i18n="inviteFriends">Invite Friends</h2>
+              <button id="pMiningOpenPurchaseButton" class="p-mining-inline-button" type="button" data-i18n="buyPower">Buy</button>
+            </div>
             <div class="p-mining-invite-code">
               <div>
                 <p class="p-mining-card__label" data-i18n="myInviteCode">My Code</p>
@@ -110,6 +117,22 @@
               <button id="pMiningCopyInviteButton" class="p-mining-inline-button" type="button" data-i18n="copyButton">Copy</button>
             </div>
             <p class="p-mining-helper" data-i18n="inviteHint">Both sides get +10 power.</p>
+          </article>
+
+          <article id="pMiningPurchasePanel" class="p-mining-card p-mining-section-card" hidden>
+            <div class="p-mining-section-card__header">
+              <h2 data-i18n="powerStore">购买算力</h2>
+            </div>
+            <div class="p-mining-purchase-grid">
+              <article class="p-mining-purchase-card">
+                <p class="p-mining-card__label" data-i18n="powerPackageStarter">+10 算力 / 10 USDT</p>
+                <button class="p-mining-submit-button p-mining-purchase-card__button" type="button" data-purchase-tier="starter" data-i18n="powerPurchaseAction">立即购买</button>
+              </article>
+              <article class="p-mining-purchase-card">
+                <p class="p-mining-card__label" data-i18n="powerPackageBoost">+1000 算力 / 80 USDT</p>
+                <button class="p-mining-submit-button p-mining-purchase-card__button" type="button" data-purchase-tier="boost" data-i18n="powerPurchaseAction">立即购买</button>
+              </article>
+            </div>
           </article>
 
           <article class="p-mining-card p-mining-section-card">

@@ -44,9 +44,14 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /id="pMiningClaimCountdown">60</);
   assert.doesNotMatch(html, /id="pMiningClaimCountdown">00:00:00</);
   assert.match(html, /id="pMiningStatsGrid"/);
+  assert.match(html, /id="pMiningEstimatedTodayOutput"/);
   assert.match(html, /data-record-filter="claims"/);
   assert.match(html, /data-record-filter="invites"/);
   assert.match(html, /data-record-filter="power"/);
+  assert.match(html, /id="pMiningOpenPurchaseButton"/);
+  assert.match(html, /id="pMiningPurchasePanel"/);
+  assert.match(html, /data-purchase-tier="starter"/);
+  assert.match(html, /data-purchase-tier="boost"/);
   assert.match(html, /\/games-config\.js/);
   assert.match(html, /\/p-mining\/script\.js/);
 });
@@ -78,6 +83,7 @@ test('p-mining html includes the expected mining, invite, records, and profile s
 
   assert.match(html, /data-i18n="currentHoldings"/);
   assert.match(html, /data-i18n="estimatedPerMinute"/);
+  assert.match(html, /data-i18n="estimatedTodayOutput"/);
   assert.match(html, /data-i18n="enterInviteCode"/);
   assert.match(html, /data-i18n="inviteFriends"/);
   assert.match(html, /data-i18n="claimRecords"/);
@@ -92,6 +98,37 @@ test('p-mining script includes the expected UI hooks', () => {
   const js = fs.readFileSync(jsPath, 'utf8');
 
   assert.match(js, /const LOCALE_STORAGE_KEY = 'claw800:p-mining:locale';/);
+  assert.match(js, /const PMINING_SESSION_STORAGE_KEY = 'claw800:p-mining:nexa-session';/);
+  assert.match(js, /const MAX_NEXA_SESSION_RETENTION_MS = 30 \* 24 \* 60 \* 60 \* 1000;/);
+  assert.match(js, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
+  assert.match(js, /const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth:\/\/order';/);
+  assert.match(js, /const PMINING_PENDING_PAYMENT_STORAGE_KEY = 'claw800:p-mining:pending-payment';/);
+  assert.match(js, /const PMINING_SETTLED_PAYMENT_STORAGE_KEY = 'claw800:p-mining:settled-payment';/);
+  assert.match(js, /function loadCachedPMiningSession\(/);
+  assert.match(js, /function saveCachedPMiningSession\(/);
+  assert.match(js, /function beginNexaLoginFlow\(/);
+  assert.match(js, /email:\s*'guest@nexa\.app'/);
+  assert.doesNotMatch(js, /luffysg789@gmail\.com/);
+  assert.match(js, /const POWER_PURCHASE_OPTIONS = \{/);
+  assert.match(js, /function purchasePowerPackage\(/);
+  assert.match(js, /function buildNexaPaymentUrl\(/);
+  assert.match(js, /function loadPendingPaymentOrder\(/);
+  assert.match(js, /function savePendingPaymentOrder\(/);
+  assert.match(js, /function saveSettledPaymentReceipt\(/);
+  assert.match(js, /function hasSettledPaymentOrder\(/);
+  assert.match(js, /function settlePendingPaymentOrder\(/);
+  assert.match(js, /function applyPendingInvitePurchaseBonuses\(/);
+  assert.match(js, /function togglePurchasePanel\(/);
+  assert.match(js, /function calculateEstimatedTodayOutput\(/);
+  assert.match(js, /\/api\/p-mining\/session/);
+  assert.match(js, /\/api\/p-mining\/session\/logout/);
+  assert.match(js, /\/api\/p-mining\/bootstrap/);
+  assert.match(js, /\/api\/p-mining\/claim/);
+  assert.match(js, /\/api\/p-mining\/invite\/bind/);
+  assert.match(js, /\/api\/p-mining\/payment\/create/);
+  assert.match(js, /\/api\/p-mining\/payment\/query/);
+  assert.match(js, /function syncAppStateFromServer\(/);
+  assert.match(js, /function loadPMiningBootstrap\(/);
   assert.match(js, /function toggleLanguage\(/);
   assert.match(js, /function applyTranslations\(/);
   assert.match(js, /function switchTab\(/);
@@ -101,6 +138,7 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function handleCopyInviteCode\(/);
   assert.match(js, /function renderRecordsPanel\(/);
   assert.match(js, /function renderProfilePanel\(/);
+  assert.match(js, /else if \(isNexaAppEnvironment\(\)\) \{\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);/);
   assert.match(js, /root\.classList\.add\('is-ready'\);/);
   assert.match(js, /window\.setInterval\(/);
 });

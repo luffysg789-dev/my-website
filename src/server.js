@@ -39,12 +39,32 @@ const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
 const TUTORIAL_MAX_BYTES = 5000000;
 const tutorialUploadDrafts = new Map();
 const ADMIN_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const PMINING_SESSION_COOKIE_NAME = 'p_mining_session';
+const PMINING_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 // Use COOKIE_SECURE=true in production HTTPS; keep false for localhost HTTP.
 const COOKIE_SECURE = String(process.env.COOKIE_SECURE || '') === 'true';
 const TRUST_PROXY = String(process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal').trim();
 const NEXA_TIP_AMOUNT = '0.10';
 const NEXA_TIP_CURRENCY = 'USDT';
+const PMINING_TOTAL_SUPPLY = 210000000000;
+const PMINING_DAILY_CAP = 71917808;
+const PMINING_CLAIM_COOLDOWN_MS = 60 * 1000;
+const PMINING_MAX_RECORDS = 20;
 const nexaTipOrders = new Map();
+const PMINING_PAYMENT_CURRENCY = 'USDT';
+const PMINING_POWER_PAYMENT_OPTIONS = {
+  starter: {
+    tier: 'starter',
+    amount: '10.00',
+    power: 10
+  },
+  boost: {
+    tier: 'boost',
+    amount: '80.00',
+    power: 1000
+  }
+};
+const pMiningPaymentOrders = new Map();
 const xiangqiRoomEventStreams = new Map();
 let preferredNexaPaymentVariantName = 'github-doc-strict';
 
@@ -246,6 +266,40 @@ function ensureNexaCredentialsConfigured() {
     throw error;
   }
   return credentials;
+}
+
+function encodePMiningSessionCookie(session) {
+  return Buffer.from(JSON.stringify(session), 'utf8').toString('base64url');
+}
+
+function decodePMiningSessionCookie(raw) {
+  try {
+    const decoded = Buffer.from(String(raw || '').trim(), 'base64url').toString('utf8');
+    const parsed = JSON.parse(decoded);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const openId = String(parsed.openId || '').trim();
+    const sessionKey = String(parsed.sessionKey || '').trim();
+    if (!openId || !sessionKey) return null;
+    return {
+      openId,
+      sessionKey,
+      nickname: String(parsed.nickname || 'Nexa User').trim() || 'Nexa User',
+      avatar: String(parsed.avatar || '').trim(),
+      savedAt: Number(parsed.savedAt || 0) || Date.now()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildPMiningCookieSession(payload = {}) {
+  return {
+    openId: String(payload.openId || '').trim(),
+    sessionKey: String(payload.sessionKey || '').trim(),
+    nickname: String(payload.nickname || 'Nexa User').trim() || 'Nexa User',
+    avatar: String(payload.avatar || '').trim(),
+    savedAt: Date.now()
+  };
 }
 
 async function exchangeNexaSessionFromAuthCode(authCode) {
@@ -472,6 +526,412 @@ async function queryNexaTipOrder(orderNo) {
   };
   nexaTipOrders.set(normalizedOrderNo, next);
   return next;
+}
+
+async function createPMiningPaymentOrder({ req, openId, sessionKey, tier }) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const selectedOption = PMINING_POWER_PAYMENT_OPTIONS[String(tier || '').trim()] || null;
+  if (!selectedOption) {
+    const error = new Error('购买档位无效');
+    error.statusCode = 400;
+    throw error;
+  }
+  const baseUrl = getPublicBaseUrl(req);
+  const partnerOrderNo = `claw800_p_mining_${selectedOption.tier}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const paymentVariants = prioritizeNexaPaymentCreateVariants(
+    buildNexaPaymentCreatePayloadVariants({
+      apiKey,
+      appSecret,
+      orderNo: partnerOrderNo,
+      amount: selectedOption.amount,
+      currency: PMINING_PAYMENT_CURRENCY,
+      callbackUrl: `${baseUrl}/p-mining/`,
+      subject: 'P-Mining 算力购买',
+      body: `P-Mining ${selectedOption.power} Power`,
+      notifyUrl: `${baseUrl}/api/p-mining/payment/notify`,
+      returnUrl: `${baseUrl}/p-mining/`,
+      openId: String(openId || '').trim(),
+      sessionKey: String(sessionKey || '').trim()
+    }),
+    preferredNexaPaymentVariantName
+  );
+
+  let response = null;
+  let lastSignatureResponse = null;
+  for (const variant of paymentVariants) {
+    try {
+      response = await postNexaJson('/partner/api/openapi/payment/create', variant.payload);
+    } catch (error) {
+      if (isNexaRateLimitError(error)) {
+        const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+      throw error;
+    }
+
+    if (isNexaRateLimitError(response)) {
+      const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+      rateLimitError.statusCode = 429;
+      throw rateLimitError;
+    }
+
+    if (isNexaSignatureError(response)) {
+      lastSignatureResponse = response;
+      response = null;
+      continue;
+    }
+
+    preferredNexaPaymentVariantName = variant.name;
+    break;
+  }
+
+  if (!response) {
+    if (lastSignatureResponse) {
+      throw new Error(String(lastSignatureResponse?.message || 'Nexa 下单失败'));
+    }
+    throw new Error('Nexa 下单失败');
+  }
+
+  const data = unwrapNexaResult(response, 'Nexa 下单失败');
+  const orderNo = String(data.orderNo || '').trim();
+  if (!orderNo) {
+    throw new Error('Nexa 没有返回订单号');
+  }
+
+  const ensured = ensurePMiningUserAccount({
+    openId: String(openId || '').trim(),
+    nickname: 'Nexa User',
+    avatar: ''
+  });
+  insertPMiningPaymentOrderStmt.run(
+    orderNo,
+    partnerOrderNo,
+    ensured.user.id,
+    selectedOption.tier,
+    selectedOption.power,
+    selectedOption.amount,
+    'PENDING'
+  );
+  pMiningPaymentOrders.set(orderNo, {
+    orderNo,
+    partnerOrderNo,
+    userId: ensured.user.id,
+    tier: selectedOption.tier,
+    power: selectedOption.power,
+    amount: selectedOption.amount,
+    status: 'PENDING',
+    createdAt: Date.now()
+  });
+
+  return {
+    orderNo,
+    tier: selectedOption.tier,
+    power: selectedOption.power,
+    amount: selectedOption.amount,
+    payment: {
+      timestamp: String(data.timestamp || '').trim(),
+      nonce: String(data.nonce || '').trim(),
+      signType: String(data.signType || 'MD5').trim(),
+      paySign: String(data.paySign || '').trim(),
+      apiKey: String(data.apiKey || apiKey).trim(),
+      orderNo
+    }
+  };
+}
+
+async function queryPMiningPaymentOrder(orderNo) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const payload = buildNexaPaymentQueryPayload({
+    apiKey,
+    appSecret,
+    orderNo: String(orderNo || '').trim()
+  });
+  const response = await postNexaJson('/partner/api/openapi/payment/query', payload);
+  const data = unwrapNexaResult(response, 'Nexa 查询订单失败');
+  const normalizedOrderNo = String(data.orderNo || orderNo || '').trim();
+  const normalizedStatus = String(data.status || 'PENDING').trim().toUpperCase();
+  const cached = pMiningPaymentOrders.get(normalizedOrderNo) || {};
+  const next = {
+    ...cached,
+    orderNo: normalizedOrderNo,
+    status: normalizedStatus,
+    amount: String(data.amount || cached.amount || '0.00'),
+    currency: String(data.currency || PMINING_PAYMENT_CURRENCY).trim(),
+    paidTime: String(data.paidTime || '')
+  };
+  pMiningPaymentOrders.set(normalizedOrderNo, next);
+  updatePMiningPaymentOrderStatusStmt.run(
+    normalizedStatus,
+    String(data.paidTime || '').trim(),
+    String(data.paidTime || '').trim(),
+    normalizedOrderNo
+  );
+  if (normalizedStatus === 'SUCCESS') {
+    settlePMiningPaymentSuccess(normalizedOrderNo, data);
+  }
+  return next;
+}
+
+function roundPMiningValue(value) {
+  return Number(Number(value || 0).toFixed(1));
+}
+
+function formatPMiningDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}/${month}/${day}`;
+}
+
+function generatePMiningInviteCode(seed) {
+  const base = String(seed || 'PMINER').replace(/[^a-z0-9]/gi, '').toUpperCase() || 'PMINER';
+  const alphabet = `${base}2G4WQC789XYZ`;
+  let inviteCode = alphabet.slice(0, 6).padEnd(6, 'X');
+  let attempt = 0;
+  while (selectPMiningUserByInviteCodeStmt.get(inviteCode)) {
+    attempt += 1;
+    inviteCode = `${alphabet}${attempt.toString(36).toUpperCase()}`.slice(attempt, attempt + 6).padEnd(6, 'X');
+    if (attempt > 20) {
+      inviteCode = crypto.randomBytes(4).toString('base64url').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
+    }
+  }
+  return inviteCode;
+}
+
+function formatPMiningAccountRow(row) {
+  return {
+    balance: roundPMiningValue(row?.balance_p || 0),
+    power: Math.max(0, Number(row?.power || 0) || 0),
+    inviteCode: String(row?.invite_code || '').trim(),
+    boundInviteCode: String(row?.bound_invite_code || '').trim(),
+    inviteCount: Math.max(0, Number(row?.invite_count || 0) || 0),
+    invitePowerBonus: Math.max(0, Number(row?.invite_power_bonus || 0) || 0),
+    lastClaimAt: Math.max(0, Number(row?.last_claim_at || 0) || 0)
+  };
+}
+
+function buildPMiningNetworkStats() {
+  const aggregate = selectPMiningNetworkAggregateStmt.get() || {};
+  const today = selectPMiningTodayMinedAggregateStmt.get() || {};
+  const totalUsers = Math.max(0, Number(aggregate.total_users || 0) || 0);
+  const totalMined = roundPMiningValue(aggregate.total_mined || 0);
+  const todayPower = Math.max(10, Number(aggregate.total_power || 0) || 0);
+  const todayMined = roundPMiningValue(today.today_mined || 0);
+  const currentHalvingCycle = 1;
+  const nextHalvingDate = '2030/03/28';
+  return {
+    totalUsers,
+    totalMined,
+    todayMined,
+    todayPower,
+    remainingSupply: roundPMiningValue(Math.max(0, PMINING_TOTAL_SUPPLY - totalMined)),
+    currentHalvingCycle,
+    nextHalvingDate,
+    estimatedFinishYears: roundPMiningValue(Math.max(0, 100 - totalMined / (PMINING_DAILY_CAP * 365))),
+    dailyCap: PMINING_DAILY_CAP
+  };
+}
+
+function listPMiningRecordBundle(userId) {
+  const claims = selectRecentPMiningClaimRecordsStmt.all(userId, PMINING_MAX_RECORDS).map((row) => ({
+    id: `claim-${Number(row.id)}`,
+    reward: roundPMiningValue(row.reward_p || 0),
+    power: Math.max(0, Number(row.power_snapshot || 0) || 0),
+    createdAt: String(row.created_at || '').trim()
+  }));
+  const invites = selectRecentPMiningInviteRecordsStmt.all(userId, PMINING_MAX_RECORDS).map((row) => ({
+    id: `invite-${Number(row.id)}`,
+    code: String(row.invite_code || '').trim(),
+    reward: Math.max(0, Number(row.reward_power || 0) || 0),
+    createdAt: String(row.created_at || '').trim()
+  }));
+  const power = selectRecentPMiningPowerRecordsStmt.all(userId, PMINING_MAX_RECORDS).map((row) => ({
+    id: `power-${Number(row.id)}`,
+    delta: Math.max(0, Number(row.delta_power || 0) || 0),
+    reason: String(row.reason || '').trim(),
+    usdtAmount: roundPMiningValue(row.usdt_amount || 0),
+    purchasedPower: Math.max(0, Number(row.purchased_power || 0) || 0),
+    sourceOpenId: String(row.source_open_id || '').trim(),
+    createdAt: String(row.created_at || '').trim()
+  }));
+  return { claims, invites, power };
+}
+
+function buildPMiningBootstrapPayload(session) {
+  const ensured = ensurePMiningUserAccount({
+    openId: session.openId,
+    nickname: session.nickname || 'Nexa User',
+    avatar: session.avatar || ''
+  });
+  const accountRow = selectPMiningUserByUserIdStmt.get(ensured.user.id);
+  return {
+    profile: {
+      openId: ensured.user.openId,
+      nickname: ensured.user.nickname,
+      avatar: ensured.user.avatar
+    },
+    account: formatPMiningAccountRow(accountRow),
+    records: listPMiningRecordBundle(ensured.user.id),
+    network: buildPMiningNetworkStats()
+  };
+}
+
+function requirePMiningSession(req) {
+  const session = decodePMiningSessionCookie(req.cookies?.[PMINING_SESSION_COOKIE_NAME]);
+  if (!session) {
+    const error = new Error('UNAUTHORIZED');
+    error.statusCode = 401;
+    throw error;
+  }
+  return session;
+}
+
+function ensurePMiningUserAccount({ openId, nickname = 'Nexa User', avatar = '' }) {
+  const normalizedOpenId = String(openId || '').trim();
+  if (!normalizedOpenId) {
+    const error = new Error('INVALID_OPEN_ID');
+    error.statusCode = 400;
+    throw error;
+  }
+  return db.transaction(() => {
+    let user = selectXiangqiUserByOpenIdStmt.get(normalizedOpenId);
+    if (!user) {
+      const result = insertXiangqiUserStmt.run(
+        normalizedOpenId,
+        String(nickname || 'Nexa User').trim() || 'Nexa User',
+        String(avatar || '').trim()
+      );
+      user = selectXiangqiUserByOpenIdStmt.get(normalizedOpenId) || {
+        id: Number(result.lastInsertRowid),
+        openid: normalizedOpenId,
+        nickname: String(nickname || 'Nexa User').trim() || 'Nexa User',
+        avatar: String(avatar || '').trim()
+      };
+    }
+
+    let miningUser = selectPMiningUserByUserIdStmt.get(user.id);
+    if (!miningUser) {
+      const inviteCode = generatePMiningInviteCode(normalizedOpenId);
+      insertPMiningUserStmt.run(user.id, inviteCode);
+      insertPMiningPowerRecordStmt.run(
+        user.id,
+        10,
+        '初始算力',
+        '',
+        '',
+        0,
+        0,
+        ''
+      );
+      miningUser = selectPMiningUserByUserIdStmt.get(user.id);
+    }
+    return {
+      user: {
+        id: Number(user.id),
+        openId: String(user.openid || normalizedOpenId).trim(),
+        nickname: String(user.nickname || nickname || 'Nexa User').trim() || 'Nexa User',
+        avatar: String(user.avatar || avatar || '').trim()
+      },
+      account: formatPMiningAccountRow(miningUser)
+    };
+  })();
+}
+
+const applyPMiningClaim = db.transaction((payload) => {
+  const account = selectPMiningUserByUserIdStmt.get(payload.userId);
+  if (!account) return { kind: 'account_not_found' };
+  const now = Number(payload.now || Date.now()) || Date.now();
+  const lastClaimAt = Math.max(0, Number(account.last_claim_at || 0) || 0);
+  if (now - lastClaimAt < PMINING_CLAIM_COOLDOWN_MS) {
+    return {
+      kind: 'cooldown',
+      remainingSeconds: Math.ceil((PMINING_CLAIM_COOLDOWN_MS - (now - lastClaimAt)) / 1000)
+    };
+  }
+  const network = buildPMiningNetworkStats();
+  const reward = roundPMiningValue((Math.max(0, Number(account.power || 0)) / Math.max(1, Number(network.todayPower || 1))) * (PMINING_DAILY_CAP / 1440));
+  const nextBalance = roundPMiningValue(Number(account.balance_p || 0) + reward);
+  updatePMiningClaimStateStmt.run(nextBalance, now, payload.userId);
+  insertPMiningClaimRecordStmt.run(payload.userId, reward, Math.max(0, Number(account.power || 0)));
+  return { kind: 'claimed', reward };
+});
+
+const bindPMiningInviteCode = db.transaction((payload) => {
+  const inviteCode = String(payload.inviteCode || '').trim().toUpperCase();
+  if (!inviteCode) return { kind: 'empty' };
+  const invitee = selectPMiningUserByUserIdStmt.get(payload.userId);
+  if (!invitee) return { kind: 'account_not_found' };
+  if (String(invitee.bound_invite_code || '').trim()) return { kind: 'already_bound' };
+  if (String(invitee.invite_code || '').trim().toUpperCase() === inviteCode) return { kind: 'self' };
+  const inviter = selectPMiningUserByInviteCodeStmt.get(inviteCode);
+  if (!inviter) return { kind: 'invalid' };
+
+  const nextInviteePower = Math.max(0, Number(invitee.power || 0)) + 10;
+  const nextInviterPower = Math.max(0, Number(inviter.power || 0)) + 10;
+  const nextInviterCount = Math.max(0, Number(inviter.invite_count || 0)) + 1;
+  const nextInviterBonus = Math.max(0, Number(inviter.invite_power_bonus || 0)) + 10;
+
+  updatePMiningBindInviteeStmt.run(inviteCode, nextInviteePower, payload.userId);
+  updatePMiningInviterRewardStatsStmt.run(nextInviterPower, nextInviterCount, nextInviterBonus, inviter.user_id);
+  insertPMiningInviteRecordStmt.run(payload.userId, inviteCode, 10);
+  insertPMiningInviteRecordStmt.run(inviter.user_id, inviteCode, 10);
+  insertPMiningPowerRecordStmt.run(payload.userId, 10, '邀请奖励', 'invite_bind', inviteCode, 0, 0, '');
+  insertPMiningPowerRecordStmt.run(inviter.user_id, 10, '邀请奖励', 'invite_bind', String(payload.userId), 0, 0, '');
+  return { kind: 'bound' };
+});
+
+function settlePMiningPaymentSuccess(orderNo, responseData = {}) {
+  return db.transaction(() => {
+    const order = selectPMiningPaymentOrderStmt.get(orderNo);
+    if (!order) return { kind: 'not_found' };
+    if (String(order.settled_at || '').trim()) return { kind: 'already_settled' };
+    const paidAt = String(responseData.paidTime || responseData.paid_time || order.paid_at || '').trim();
+    markPMiningPaymentOrderSuccessStmt.run(
+      String(responseData.orderNo || orderNo || '').trim() || orderNo,
+      paidAt,
+      orderNo
+    );
+
+    const buyer = selectPMiningUserByUserIdStmt.get(order.user_id);
+    if (!buyer) return { kind: 'account_not_found' };
+    const powerAmount = Math.max(0, Number(order.power_amount || 0) || 0);
+    const nextBuyerPower = Math.max(0, Number(buyer.power || 0) || 0) + powerAmount;
+    updatePMiningUserPowerOnlyStmt.run(nextBuyerPower, order.user_id);
+    insertPMiningPowerRecordStmt.run(
+      order.user_id,
+      powerAmount,
+      '购买算力',
+      'payment',
+      orderNo,
+      roundPMiningValue(order.usdt_amount || 0),
+      powerAmount,
+      ''
+    );
+
+    const boundInviteCode = String(buyer.bound_invite_code || '').trim().toUpperCase();
+    if (boundInviteCode) {
+      const inviter = selectPMiningUserByInviteCodeStmt.get(boundInviteCode);
+      if (inviter && Number(inviter.user_id) !== Number(order.user_id)) {
+        const bonusPower = Math.max(1, Math.floor(powerAmount * 0.1));
+        const nextInviterPower = Math.max(0, Number(inviter.power || 0) || 0) + bonusPower;
+        const nextInviterBonus = Math.max(0, Number(inviter.invite_power_bonus || 0) || 0) + bonusPower;
+        updatePMiningInviterShareStatsStmt.run(nextInviterPower, nextInviterBonus, inviter.user_id);
+        insertPMiningPowerRecordStmt.run(
+          inviter.user_id,
+          bonusPower,
+          '邀请分成',
+          'payment_share',
+          orderNo,
+          0,
+          powerAmount,
+          String(selectXiangqiUserByIdStmt.get(order.user_id)?.openid || '').trim()
+        );
+      }
+    }
+    markPMiningPaymentOrderSettledStmt.run(orderNo);
+    return { kind: 'settled' };
+  })();
 }
 
 async function requestNexaWithdrawal({ req, withdrawal, reviewNote = '' }) {
@@ -1956,6 +2416,208 @@ app.post('/api/nexa/tip/session', async (req, res) => {
   }
 });
 
+app.post('/api/p-mining/session', (req, res) => {
+  const session = buildPMiningCookieSession(req.body || {});
+  if (!session.openId || !session.sessionKey) {
+    return res.status(400).json({ ok: false, error: 'openId 和 sessionKey 必填' });
+  }
+
+  res.cookie(PMINING_SESSION_COOKIE_NAME, encodePMiningSessionCookie(session), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: COOKIE_SECURE,
+    path: '/',
+    maxAge: PMINING_SESSION_MAX_AGE_MS
+  });
+
+  return res.json({
+    ok: true,
+    session: {
+      ...session,
+      expiresAt: session.savedAt + PMINING_SESSION_MAX_AGE_MS
+    }
+  });
+});
+
+app.get('/api/p-mining/session', (req, res) => {
+  const session = decodePMiningSessionCookie(req.cookies?.[PMINING_SESSION_COOKIE_NAME]);
+  if (!session) {
+    return res.status(401).json({ ok: false, error: 'UNAUTHORIZED' });
+  }
+  return res.json({
+    ok: true,
+    session: {
+      ...session,
+      expiresAt: Number(session.savedAt || Date.now()) + PMINING_SESSION_MAX_AGE_MS
+    }
+  });
+});
+
+app.post('/api/p-mining/session/logout', (_req, res) => {
+  res.clearCookie(PMINING_SESSION_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: COOKIE_SECURE,
+    path: '/'
+  });
+  return res.json({ ok: true });
+});
+
+app.get('/api/p-mining/bootstrap', (req, res) => {
+  try {
+    const session = requirePMiningSession(req);
+    return res.json({
+      ok: true,
+      ...buildPMiningBootstrapPayload(session)
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 401) || 401;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'UNAUTHORIZED') });
+  }
+});
+
+app.post('/api/p-mining/claim', (req, res) => {
+  try {
+    const session = requirePMiningSession(req);
+    const ensured = ensurePMiningUserAccount(session);
+    const result = applyPMiningClaim({
+      userId: ensured.user.id,
+      now: Date.now()
+    });
+    if (result.kind === 'cooldown') {
+      return res.status(409).json({ ok: false, error: 'COOLDOWN', remainingSeconds: result.remainingSeconds });
+    }
+    if (result.kind !== 'claimed') {
+      return res.status(404).json({ ok: false, error: 'ACCOUNT_NOT_FOUND' });
+    }
+    return res.json({
+      ok: true,
+      reward: result.reward,
+      ...buildPMiningBootstrapPayload(session)
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 500) || 500;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'CLAIM_FAILED') });
+  }
+});
+
+app.post('/api/p-mining/invite/bind', (req, res) => {
+  try {
+    const session = requirePMiningSession(req);
+    const ensured = ensurePMiningUserAccount(session);
+    const result = bindPMiningInviteCode({
+      userId: ensured.user.id,
+      inviteCode: req.body?.inviteCode
+    });
+    if (result.kind === 'self') {
+      return res.status(400).json({ ok: false, error: 'SELF_INVITE' });
+    }
+    if (result.kind === 'already_bound') {
+      return res.status(409).json({ ok: false, error: 'ALREADY_BOUND' });
+    }
+    if (result.kind === 'invalid' || result.kind === 'empty') {
+      return res.status(400).json({ ok: false, error: 'INVALID_INVITE' });
+    }
+    if (result.kind !== 'bound') {
+      return res.status(404).json({ ok: false, error: 'ACCOUNT_NOT_FOUND' });
+    }
+    return res.json({
+      ok: true,
+      ...buildPMiningBootstrapPayload(session)
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 500) || 500;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'INVITE_BIND_FAILED') });
+  }
+});
+
+app.post('/api/p-mining/payment/create', async (req, res) => {
+  try {
+    const openId = String(req.body?.openId || '').trim();
+    const sessionKey = String(req.body?.sessionKey || '').trim();
+    const tier = String(req.body?.tier || '').trim();
+
+    if (!openId || !sessionKey) {
+      return res.status(400).json({ error: 'openId 和 sessionKey 必填' });
+    }
+    if (!PMINING_POWER_PAYMENT_OPTIONS[tier]) {
+      return res.status(400).json({ error: '购买档位无效' });
+    }
+
+    const order = await createPMiningPaymentOrder({
+      req,
+      openId,
+      sessionKey,
+      tier
+    });
+
+    return res.json({
+      ok: true,
+      orderNo: order.orderNo,
+      tier: order.tier,
+      power: order.power,
+      amount: order.amount,
+      currency: PMINING_PAYMENT_CURRENCY,
+      payment: order.payment
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    return res.status(statusCode).json({ error: String(error?.message || 'Nexa 下单失败') });
+  }
+});
+
+app.post('/api/p-mining/payment/query', async (req, res) => {
+  try {
+    const orderNo = String(req.body?.orderNo || '').trim();
+    if (!orderNo) {
+      return res.status(400).json({ error: 'orderNo 必填' });
+    }
+
+    const order = await queryPMiningPaymentOrder(orderNo);
+    return res.json({
+      ok: true,
+      orderNo: order.orderNo,
+      status: order.status,
+      amount: order.amount,
+      currency: order.currency,
+      paidTime: order.paidTime
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    return res.status(statusCode).json({ error: String(error?.message || 'Nexa 查询失败') });
+  }
+});
+
+app.post('/api/p-mining/payment/notify', (req, res) => {
+  const orderNo = String(req.body?.orderNo || req.body?.data?.orderNo || '').trim();
+  const status = String(req.body?.status || req.body?.data?.status || '').trim().toUpperCase();
+  const paidTime = String(req.body?.paidTime || req.body?.data?.paidTime || '').trim();
+  if (orderNo) {
+    const cached = pMiningPaymentOrders.get(orderNo) || {};
+    pMiningPaymentOrders.set(orderNo, {
+      ...cached,
+      orderNo,
+      status: status || cached.status || 'PENDING',
+      notifyPayload: req.body,
+      notifiedAt: Date.now()
+    });
+    updatePMiningPaymentOrderNotifyStmt.run(
+      status || cached.status || 'PENDING',
+      serializeNotifyPayload(req.body),
+      paidTime,
+      paidTime,
+      orderNo
+    );
+    if ((status || '').toUpperCase() === 'SUCCESS') {
+      settlePMiningPaymentSuccess(orderNo, {
+        orderNo,
+        paidTime
+      });
+    }
+  }
+  return res.json({ code: '0', msg: 'success' });
+});
+
 app.post('/api/nexa/tip/create', async (req, res) => {
   try {
     const gameSlug = String(req.body?.gameSlug || '').trim();
@@ -2054,12 +2716,146 @@ const XIANGQI_LEGACY_TEST_OPEN_IDS = new Set(['xiangqi-demo-local', 'xiangqi-bro
 const selectXiangqiWalletStmt = db.prepare(
   'SELECT user_id, available_balance, frozen_balance FROM game_wallets WHERE user_id = ?'
 );
+const selectXiangqiUserByIdStmt = db.prepare(
+  'SELECT id, openid, nickname, avatar, created_at FROM game_users WHERE id = ?'
+);
 const selectXiangqiUserByOpenIdStmt = db.prepare(
   'SELECT id, openid, nickname, avatar, created_at FROM game_users WHERE openid = ?'
 );
 const insertXiangqiUserStmt = db.prepare(
   'INSERT INTO game_users (openid, nickname, avatar) VALUES (?, ?, ?)'
 );
+const selectPMiningUserByUserIdStmt = db.prepare(`
+  SELECT
+    user_id,
+    invite_code,
+    bound_invite_code,
+    balance_p,
+    power,
+    invite_count,
+    invite_power_bonus,
+    last_claim_at
+  FROM p_mining_users
+  WHERE user_id = ?
+`);
+const selectPMiningUserByInviteCodeStmt = db.prepare(`
+  SELECT
+    user_id,
+    invite_code,
+    bound_invite_code,
+    balance_p,
+    power,
+    invite_count,
+    invite_power_bonus,
+    last_claim_at
+  FROM p_mining_users
+  WHERE invite_code = ?
+`);
+const insertPMiningUserStmt = db.prepare(`
+  INSERT INTO p_mining_users (user_id, invite_code, balance_p, power, invite_count, invite_power_bonus, last_claim_at)
+  VALUES (?, ?, 0, 10, 0, 0, 0)
+`);
+const updatePMiningClaimStateStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET balance_p = ?, last_claim_at = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
+const updatePMiningBindInviteeStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET bound_invite_code = ?, power = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
+const updatePMiningInviterRewardStatsStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET power = ?, invite_count = ?, invite_power_bonus = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
+const updatePMiningInviterShareStatsStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET power = ?, invite_power_bonus = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
+const updatePMiningUserPowerOnlyStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET power = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
+const insertPMiningClaimRecordStmt = db.prepare(`
+  INSERT INTO p_mining_claim_records (user_id, reward_p, power_snapshot)
+  VALUES (?, ?, ?)
+`);
+const insertPMiningInviteRecordStmt = db.prepare(`
+  INSERT INTO p_mining_invite_records (user_id, invite_code, reward_power)
+  VALUES (?, ?, ?)
+`);
+const insertPMiningPowerRecordStmt = db.prepare(`
+  INSERT INTO p_mining_power_records (
+    user_id, delta_power, reason, related_type, related_id, usdt_amount, purchased_power, source_open_id
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const selectRecentPMiningClaimRecordsStmt = db.prepare(`
+  SELECT id, reward_p, power_snapshot, created_at
+  FROM p_mining_claim_records
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT ?
+`);
+const selectRecentPMiningInviteRecordsStmt = db.prepare(`
+  SELECT id, invite_code, reward_power, created_at
+  FROM p_mining_invite_records
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT ?
+`);
+const selectRecentPMiningPowerRecordsStmt = db.prepare(`
+  SELECT id, delta_power, reason, usdt_amount, purchased_power, source_open_id, created_at
+  FROM p_mining_power_records
+  WHERE user_id = ?
+  ORDER BY id DESC
+  LIMIT ?
+`);
+const selectPMiningNetworkAggregateStmt = db.prepare(`
+  SELECT
+    COUNT(*) AS total_users,
+    COALESCE(SUM(balance_p), 0) AS total_mined,
+    COALESCE(SUM(power), 0) AS total_power
+  FROM p_mining_users
+`);
+const selectPMiningTodayMinedAggregateStmt = db.prepare(`
+  SELECT COALESCE(SUM(reward_p), 0) AS today_mined
+  FROM p_mining_claim_records
+  WHERE date(created_at, 'localtime') = date('now', 'localtime')
+`);
+const insertPMiningPaymentOrderStmt = db.prepare(`
+  INSERT INTO p_mining_payment_orders (
+    order_no, partner_order_no, user_id, tier, power_amount, usdt_amount, status, nexa_order_no, notify_payload, paid_at, settled_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '', '')
+`);
+const selectPMiningPaymentOrderStmt = db.prepare(`
+  SELECT order_no, partner_order_no, user_id, tier, power_amount, usdt_amount, status, nexa_order_no, notify_payload, paid_at, settled_at, created_at
+  FROM p_mining_payment_orders
+  WHERE order_no = ?
+`);
+const markPMiningPaymentOrderSuccessStmt = db.prepare(`
+  UPDATE p_mining_payment_orders
+  SET status = 'SUCCESS', nexa_order_no = ?, paid_at = ?, notify_payload = notify_payload
+  WHERE order_no = ?
+`);
+const updatePMiningPaymentOrderStatusStmt = db.prepare(`
+  UPDATE p_mining_payment_orders
+  SET status = ?, paid_at = CASE WHEN ? <> '' THEN ? ELSE paid_at END
+  WHERE order_no = ?
+`);
+const markPMiningPaymentOrderSettledStmt = db.prepare(`
+  UPDATE p_mining_payment_orders
+  SET settled_at = datetime('now')
+  WHERE order_no = ?
+`);
+const updatePMiningPaymentOrderNotifyStmt = db.prepare(`
+  UPDATE p_mining_payment_orders
+  SET status = ?, notify_payload = ?, paid_at = CASE WHEN ? <> '' THEN ? ELSE paid_at END
+  WHERE order_no = ?
+`);
 const insertXiangqiWalletStmt = db.prepare(
   "INSERT INTO game_wallets (user_id, currency, available_balance, frozen_balance) VALUES (?, 'USDT', '0.00', '0.00')"
 );
