@@ -50,6 +50,8 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /data-record-filter="invites"/);
   assert.match(html, /data-record-filter="power"/);
   assert.match(html, /id="pMiningPurchasePanel"/);
+  assert.match(html, /id="pMiningPurchaseStatus"/);
+  assert.match(html, /id="pMiningPurchaseFallback"/);
   assert.match(html, /data-purchase-tier="starter"/);
   assert.match(html, /data-purchase-tier="boost"/);
   assert.match(html, /\/games-config\.js/);
@@ -124,6 +126,14 @@ test('p-mining mobile typography scales down across all tabs for a denser phone 
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-nav__item\s*\{[\s\S]*?font-size:\s*0\.84rem;/);
 });
 
+test('p-mining mobile purchase cards use a single-row layout with the buy button on the right', () => {
+  const css = fs.readFileSync(cssPath, 'utf8');
+
+  assert.match(css, /\.p-mining-purchase-card\s*\{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/);
+  assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?min-width:\s*132px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-purchase-card__button\s*\{[\s\S]*?min-width:\s*96px;[\s\S]*?height:\s*46px;/);
+});
+
 test('p-mining html includes the expected mining, invite, records, and profile sections', () => {
   const html = fs.readFileSync(htmlPath, 'utf8');
 
@@ -164,6 +174,9 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function hasSettledPaymentOrder\(/);
   assert.match(js, /function settlePendingPaymentOrder\(/);
   assert.match(js, /function applyPendingInvitePurchaseBonuses\(/);
+  assert.match(js, /function openNexaPaymentUrl\(/);
+  assert.match(js, /document\.createElement\('a'\)/);
+  assert.match(js, /anchor\.click\(\)/);
   assert.doesNotMatch(js, /function togglePurchasePanel\(/);
   assert.match(js, /function calculateEstimatedTodayOutput\(/);
   assert.match(js, /\/api\/p-mining\/session/);
