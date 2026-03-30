@@ -19,10 +19,13 @@
   const MAX_RECORDS = 20;
   const PAYMENT_QUERY_INTERVAL_MS = 2000;
   const PAYMENT_QUERY_TIMEOUT_MS = 45000;
+  const CLAIM_SOUND_DURATION_SECONDS = 0.18;
+  const CLAIM_SOUND_FREQUENCY_HZ = 880;
+  const AudioContextCtor = globalScope.window?.AudioContext || globalScope.window?.webkitAudioContext;
   const POWER_PURCHASE_OPTIONS = {
     starter: {
       id: 'starter',
-      power: 10,
+      power: 100,
       usdtAmount: 10,
       amount: '10.00'
     },
@@ -58,7 +61,8 @@
       tabPurchase: 'Buy',
       powerStore: 'Power Store',
       purchaseCreateFailed: 'Unable to create the payment order right now.',
-      powerPackageStarter: '+10 Power / 10 USDT',
+      purchaseOpening: 'Opening Nexa Pay...',
+      powerPackageStarter: '+100 Power / 10 USDT',
       powerPackageBoost: '+1000 Power / 80 USDT',
       powerPurchaseAction: 'Buy Now',
       enterInviteCode: 'Enter Invite Code',
@@ -117,7 +121,8 @@
       tabPurchase: '购买',
       powerStore: '购买算力',
       purchaseCreateFailed: '当前无法创建支付订单，请稍后重试。',
-      powerPackageStarter: '+10 算力 / 10 USDT',
+      purchaseOpening: '正在打开 Nexa Pay...',
+      powerPackageStarter: '+100 算力 / 10 USDT',
       powerPackageBoost: '+1000 算力 / 80 USDT',
       powerPurchaseAction: '立即购买',
       enterInviteCode: '填写邀请码',
@@ -272,13 +277,13 @@
   function registerInviteProfile(storage = getPersistentStorage(), state) {
     const current = state || {};
     const uid = String(current.uid || '').trim();
-    const inviteCode = String(current.inviteCode || '').trim().toUpperCase();
+    const inviteCode = normalizeInviteCode(current.inviteCode);
     if (!uid || !inviteCode) return;
     const graph = loadInviteGraph(storage);
     graph.byUid[uid] = {
       uid,
       inviteCode,
-      boundInviteCode: String(current.boundInviteCode || '').trim().toUpperCase()
+      boundInviteCode: normalizeInviteCode(current.boundInviteCode)
     };
     graph.byCode[inviteCode] = uid;
     saveInviteGraph(storage, graph);
@@ -302,7 +307,7 @@
   }
 
   function queueInvitePurchaseBonus(storage = getPersistentStorage(), payload) {
-    const inviteCode = String(payload?.inviteCode || '').trim().toUpperCase();
+    const inviteCode = normalizeInviteCode(payload?.inviteCode);
     const sourceUid = String(payload?.sourceUid || '').trim();
     if (!inviteCode || !sourceUid) return null;
     const graph = loadInviteGraph(storage);
@@ -391,6 +396,13 @@
     const seed = String(uid || '100000').replace(/\D/g, '') || '100000';
     const digits = seed.padEnd(6, '0').slice(-6);
     return digits;
+  }
+
+  function normalizeInviteCode(value) {
+    const raw = String(value || '').trim();
+    if (/^\d{6}$/.test(raw)) return raw;
+    const digitsOnly = raw.replace(/\D/g, '');
+    return /^\d{6}$/.test(digitsOnly) ? digitsOnly : '';
   }
 
   function createDefaultMiningState(hostUser) {
@@ -519,7 +531,7 @@
 
   function bindInviteCode(state, inviteCode) {
     const current = state || createDefaultMiningState(getMockNexaUser());
-    const normalizedCode = String(inviteCode || '').trim().toUpperCase();
+    const normalizedCode = normalizeInviteCode(inviteCode);
     if (!normalizedCode) {
       throw new Error('invite required');
     }
@@ -598,7 +610,8 @@
         ...fallback,
         ...parsed,
         uid: fallback.uid,
-        inviteCode: String(parsed.inviteCode || fallback.inviteCode).trim() || fallback.inviteCode
+        inviteCode: normalizeInviteCode(parsed.inviteCode) || fallback.inviteCode,
+        boundInviteCode: normalizeInviteCode(parsed.boundInviteCode)
       };
     } catch {
       return fallback;
@@ -752,6 +765,21 @@
       launchNexaUrl(targetUrl);
     }, 160);
     return true;
+  }
+
+  function setPurchaseButtonsBusy(appState, isBusy, activeTier = '') {
+    const busy = Boolean(isBusy);
+    const currentTier = String(activeTier || '').trim();
+    appState.isPurchaseBusy = busy;
+    appState.activePurchaseTier = currentTier;
+    appState.elements.purchaseButtons.forEach((button) => {
+      const isActiveButton = currentTier && button.dataset.purchaseTier === currentTier;
+      button.disabled = Boolean(isBusy);
+      button.classList.toggle('is-busy', busy && isActiveButton);
+      button.textContent = busy && isActiveButton
+        ? t(appState.locale, 'purchaseOpening')
+        : t(appState.locale, 'powerPurchaseAction');
+    });
   }
 
   function extractAuthCodeFromUrl() {
@@ -990,7 +1018,10 @@
   }
 
   function renderPurchasePanel(appState) {
-    showPurchaseStatus(appState, '');
+    setPurchaseButtonsBusy(appState, appState.isPurchaseBusy, appState.activePurchaseTier);
+    if (!appState.isPurchaseBusy) {
+      showPurchaseStatus(appState, '');
+    }
   }
 
   function createRecordCardHtml(title, meta, value) {
@@ -1062,6 +1093,54 @@
     appState.elements.inviteError.textContent = message;
   }
 
+  async function ensureClaimAudioContext(appState) {
+    if (!AudioContextCtor) return null;
+    if (!appState.claimAudioContext) {
+      try {
+        appState.claimAudioContext = new AudioContextCtor({ latencyHint: 'interactive' });
+      } catch {
+        return null;
+      }
+    }
+    if (appState.claimAudioContext.state === 'suspended') {
+      try {
+        await appState.claimAudioContext.resume();
+      } catch {
+        return null;
+      }
+    }
+    return appState.claimAudioContext;
+  }
+
+  function warmClaimAudio(appState) {
+    if (appState.claimAudioWarmPromise) return;
+    appState.claimAudioWarmPromise = ensureClaimAudioContext(appState).finally(() => {
+      appState.claimAudioWarmPromise = null;
+    });
+  }
+
+  function playClaimSuccessSound(appState) {
+    void ensureClaimAudioContext(appState).then((audioContext) => {
+      if (!audioContext) return;
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      const now = audioContext.currentTime;
+
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(CLAIM_SOUND_FREQUENCY_HZ, now);
+      oscillator.frequency.exponentialRampToValueAtTime(CLAIM_SOUND_FREQUENCY_HZ * 1.18, now + CLAIM_SOUND_DURATION_SECONDS);
+
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + CLAIM_SOUND_DURATION_SECONDS);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + CLAIM_SOUND_DURATION_SECONDS);
+    }).catch(() => {});
+  }
+
   async function handleClaimButtonClick(appState) {
     if (appState.isProcessing) {
       renderClaimState(appState);
@@ -1081,6 +1160,7 @@
       const response = await postJson('/api/p-mining/claim', {});
       if (response?.ok) {
         syncAppStateFromServer(appState, response);
+        playClaimSuccessSound(appState);
         renderAll(appState);
       }
     } catch {
@@ -1179,13 +1259,15 @@
   }
 
   async function handlePurchasePower(appState, tier) {
+    if (appState.isPurchaseBusy) return;
     if (!appState.nexaSession) {
       beginNexaLoginFlow(appState, 'purchase').catch(() => {});
       return;
     }
     const option = POWER_PURCHASE_OPTIONS[String(tier || '').trim()] || null;
     if (!option) return;
-    showPurchaseStatus(appState, '');
+    setPurchaseButtonsBusy(appState, true, option.id);
+    showPurchaseStatus(appState, t(appState.locale, 'purchaseOpening'));
     try {
       const orderResponse = await postJson('/api/p-mining/payment/create', {
         openId: appState.nexaSession.openId,
@@ -1199,8 +1281,11 @@
         usdtAmount: option.usdtAmount,
         createdAt: Date.now()
       });
+      setPurchaseButtonsBusy(appState, false);
+      showPurchaseStatus(appState, '');
       openNexaPaymentUrl(appState, buildNexaPaymentUrl(orderResponse.payment));
     } catch (error) {
+      setPurchaseButtonsBusy(appState, false);
       showPurchaseStatus(appState, String(error?.message || t(appState.locale, 'purchaseCreateFailed')), { isError: true });
     }
   }
@@ -1334,16 +1419,19 @@
       switchTab(appState, nextTab);
       return;
     }
-    if (appState.nexaSession || loadCachedPMiningSession(appState.storage)) {
-      appState.nexaSession = loadCachedPMiningSession(appState.storage);
-      if (appState.nexaSession) {
-        const bootstrap = await loadPMiningBootstrap().catch(() => null);
-        if (bootstrap?.ok) {
-          syncAppStateFromServer(appState, bootstrap);
-          renderAll(appState);
-        }
-      }
+    const cachedSession = appState.nexaSession || loadCachedPMiningSession(appState.storage);
+    if (cachedSession) {
+      appState.nexaSession = cachedSession;
       switchTab(appState, nextTab);
+      if (appState.nexaSession) {
+        void loadPMiningBootstrap()
+          .then((bootstrap) => {
+            if (!bootstrap?.ok) return;
+            syncAppStateFromServer(appState, bootstrap);
+            renderAll(appState);
+          })
+          .catch(() => {});
+      }
       return;
     }
     await beginNexaLoginFlow(appState, nextTab);
@@ -1366,6 +1454,10 @@
       balanceAnimationFrame: null,
       hasAnimatedBalance: false,
       isProcessing: false,
+      isPurchaseBusy: false,
+      activePurchaseTier: '',
+      claimAudioContext: null,
+      claimAudioWarmPromise: null,
       isAuthorizing: false,
       elements: {
         panels: Array.from(root.querySelectorAll('[data-tab]')),
@@ -1417,6 +1509,8 @@
     appState.elements.localeButtons.forEach((button) => {
       button.addEventListener('click', () => toggleLanguage(appState, button.dataset.localeToggle));
     });
+    appState.elements.claimButton?.addEventListener('pointerdown', () => warmClaimAudio(appState), { passive: true });
+    appState.elements.claimButton?.addEventListener('touchstart', () => warmClaimAudio(appState), { passive: true });
     appState.elements.claimButton?.addEventListener('click', () => handleClaimButtonClick(appState).catch(() => {}));
     appState.elements.inviteSubmitButton?.addEventListener('click', () => handleInviteSubmit(appState).catch(() => {}));
     appState.elements.copyInviteButton?.addEventListener('click', () => handleCopyInviteCode(appState));

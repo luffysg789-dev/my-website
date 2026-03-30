@@ -30,6 +30,7 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   const html = fs.readFileSync(htmlPath, 'utf8');
 
   assert.match(html, /<title>Claw800 P-Mining<\/title>/);
+  assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1\.0, viewport-fit=cover"/);
   assert.match(html, /data-p-mining-app/);
   assert.match(html, /id="pMiningHostStatus"/);
   assert.match(html, /data-locale-toggle="en"/);
@@ -126,6 +127,15 @@ test('p-mining mobile typography scales down across all tabs for a denser phone 
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-nav__item\s*\{[\s\S]*?font-size:\s*0\.84rem;/);
 });
 
+test('p-mining css covers narrow phones, short screens, and landscape mobile layouts', () => {
+  const css = fs.readFileSync(cssPath, 'utf8');
+
+  assert.match(css, /@media \(max-width:\s*420px\)[\s\S]*?\.p-mining-page\s*\{/);
+  assert.match(css, /@media \(max-width:\s*360px\)[\s\S]*?\.p-mining-balance-card__value\s*\{/);
+  assert.match(css, /@media \(max-height:\s*760px\)[\s\S]*?\.p-mining-nav\s*\{/);
+  assert.match(css, /@media \(orientation:\s*landscape\) and \(max-width:\s*960px\)[\s\S]*?\.p-mining-panels\s*\{/);
+});
+
 test('p-mining mobile purchase cards use a single-row layout with the buy button on the right', () => {
   const css = fs.readFileSync(cssPath, 'utf8');
 
@@ -175,6 +185,9 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function settlePendingPaymentOrder\(/);
   assert.match(js, /function applyPendingInvitePurchaseBonuses\(/);
   assert.match(js, /function openNexaPaymentUrl\(/);
+  assert.match(js, /function setPurchaseButtonsBusy\(/);
+  assert.match(js, /purchaseButtons\.forEach\(\(button\) => \{/);
+  assert.match(js, /button\.disabled = Boolean\(isBusy\)/);
   assert.match(js, /document\.createElement\('a'\)/);
   assert.match(js, /anchor\.click\(\)/);
   assert.doesNotMatch(js, /function togglePurchasePanel\(/);
@@ -200,6 +213,9 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function handleCopyInviteCode\(/);
   assert.match(js, /function renderRecordsPanel\(/);
   assert.match(js, /function renderProfilePanel\(/);
+  assert.match(js, /const AudioContextCtor = globalScope\.window\?\.AudioContext \|\| globalScope\.window\?\.webkitAudioContext;/);
+  assert.match(js, /function playClaimSuccessSound\(/);
+  assert.match(js, /playClaimSuccessSound\(appState\);/);
   assert.match(js, /else if \(isNexaAppEnvironment\(\)\) \{\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);/);
   assert.match(js, /root\.classList\.add\('is-ready'\);/);
   assert.match(js, /window\.setInterval\(/);
@@ -209,4 +225,17 @@ test('p-mining script only refreshes cooldown on interval without auto-advancing
   const js = fs.readFileSync(jsPath, 'utf8');
 
   assert.match(js, /window\.setInterval\(\(\)\s*=>\s*\{\s*renderClaimState\(appState\);\s*\},\s*1000\);/);
+});
+
+test('p-mining protected tab navigation switches purchase/profile immediately before bootstrap refresh', () => {
+  const js = fs.readFileSync(jsPath, 'utf8');
+
+  assert.doesNotMatch(
+    js,
+    /if \(appState\.nexaSession \|\| loadCachedPMiningSession\(appState\.storage\)\) \{[\s\S]*?const bootstrap = await loadPMiningBootstrap\(\)\.catch\(\(\) => null\);[\s\S]*?switchTab\(appState, nextTab\);/
+  );
+  assert.match(
+    js,
+    /const cachedSession = appState\.nexaSession \|\| loadCachedPMiningSession\(appState\.storage\);[\s\S]*?if \(cachedSession\) \{[\s\S]*?switchTab\(appState, nextTab\);[\s\S]*?void loadPMiningBootstrap\(\)[\s\S]*?\.then\(/
+  );
 });

@@ -194,8 +194,38 @@ test('p-mining bootstrap creates a backend account and returns synced account st
     assert.equal(response.body.account.balance, 0);
     assert.equal(response.body.account.inviteCount, 0);
     assert.equal(typeof response.body.account.inviteCode, 'string');
+    assert.match(response.body.account.inviteCode, /^\d{6}$/);
     assert.equal(response.body.records.power.length >= 1, true);
     assert.equal(response.body.network.totalUsers, 1);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('p-mining bootstrap migrates legacy alphanumeric invite codes to 6-digit numeric codes', async () => {
+  const harness = createHarness();
+
+  try {
+    const syncResponse = await harness.request('POST', '/api/p-mining/session', {
+      openId: 'p-mining-open-id-legacy-invite',
+      sessionKey: 'p-mining-session-key-legacy-invite',
+      nickname: 'Legacy Invite Miner'
+    });
+    const serialized = JSON.parse(syncResponse.headers['set-cookie'][0]);
+    const cookies = {
+      [serialized.name]: serialized.value
+    };
+
+    await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });
+    const userRow = harness.db.prepare("SELECT id FROM game_users WHERE openid = ?").get('p-mining-open-id-legacy-invite');
+    harness.db.prepare("UPDATE p_mining_users SET invite_code = ? WHERE user_id = ?").run('AB12CD', userRow.id);
+
+    const response = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.ok, true);
+    assert.match(response.body.account.inviteCode, /^\d{6}$/);
+    assert.doesNotMatch(response.body.account.inviteCode, /[A-Za-z]/);
   } finally {
     harness.cleanup();
   }
@@ -301,7 +331,7 @@ test('p-mining payment create returns a Nexa order payload for supported power t
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.ok, true);
     assert.equal(response.body.tier, 'starter');
-    assert.equal(response.body.power, 10);
+    assert.equal(response.body.power, 100);
     assert.equal(response.body.amount, '10.00');
     assert.equal(response.body.currency, 'USDT');
     assert.equal(response.body.orderNo, 'nexa-paid-order-1');

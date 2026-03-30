@@ -425,6 +425,11 @@ body {
   font-size: 2rem;
 }
 
+.p-mining-submit-button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
 .p-mining-error {
   margin: 14px 0 0;
   color: #ff867b;
@@ -766,5 +771,133 @@ body {
 @media (min-width: 900px) {
   .p-mining-page {
     padding-top: 42px;
+  }
+}
+
+@media (max-width: 420px) {
+  .p-mining-page {
+    padding-top: 10px;
+    padding-right: 12px;
+    padding-left: 12px;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .p-mining-header {
+    gap: 8px;
+  }
+
+  .p-mining-brand__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    font-size: 1.15rem;
+  }
+
+  .p-mining-brand__name {
+    font-size: clamp(1.18rem, 5.4vw, 1.56rem);
+  }
+
+  .p-mining-host-status {
+    padding: 8px 12px;
+    gap: 8px;
+    font-size: 0.8rem;
+  }
+
+  .p-mining-locale-toggle__button {
+    min-width: 44px;
+    height: 30px;
+    font-size: 0.78rem;
+  }
+
+  .p-mining-card {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .p-mining-balance-card {
+    min-height: 148px;
+  }
+
+  .p-mining-claim-ring {
+    width: min(36vw, 124px);
+  }
+
+  .p-mining-purchase-card,
+  .p-mining-record-card {
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .p-mining-balance-card__value {
+    font-size: clamp(1.82rem, 8vw, 2.72rem);
+  }
+
+  .p-mining-metric,
+  .p-mining-stat-card__value {
+    font-size: clamp(0.94rem, 3.4vw, 1.18rem);
+  }
+
+  .p-mining-claim-ring {
+    width: min(40vw, 112px);
+    padding: 4px;
+  }
+
+  .p-mining-nav__item {
+    min-height: 48px;
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-height: 760px) {
+  .p-mining-nav {
+    padding-top: 8px;
+    padding-right: 10px;
+    padding-left: 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .p-mining-page {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .p-mining-panel {
+    gap: 10px;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 960px) {
+  .p-mining-page {
+    width: min(100%, 1180px);
+    padding-top: 12px;
+    padding-bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+
+  .p-mining-panels {
+    margin-top: 12px;
+  }
+
+  .p-mining-panel[data-tab="mining"] {
+    grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+    align-items: start;
+  }
+
+  .p-mining-panel[data-tab="mining"] .p-mining-balance-card,
+  .p-mining-panel[data-tab="mining"] .p-mining-claim,
+  .p-mining-panel[data-tab="mining"] .p-mining-rule-card {
+    grid-column: 1;
+  }
+
+  .p-mining-panel[data-tab="mining"] .p-mining-stats-grid {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .p-mining-claim {
+    justify-self: start;
+  }
+
+  .p-mining-claim-ring {
+    width: min(24vw, 156px);
   }
 }

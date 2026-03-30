@@ -56,7 +56,7 @@ const PMINING_POWER_PAYMENT_OPTIONS = {
   starter: {
     tier: 'starter',
     amount: '10.00',
-    power: 10
+    power: 100
   },
   boost: {
     tier: 'boost',
@@ -733,6 +733,47 @@ function generatePMiningInviteCode(seed) {
   return inviteCode;
 }
 
+function normalizePMiningInviteCode(value) {
+  const raw = String(value || '').trim();
+  if (/^\d{6}$/.test(raw)) return raw;
+  const digitsOnly = raw.replace(/\D/g, '');
+  return /^\d{6}$/.test(digitsOnly) ? digitsOnly : '';
+}
+
+function migratePMiningInviteCodeRecord(miningUser, seed) {
+  const currentUser = miningUser || {};
+  const currentInviteCode = String(currentUser.invite_code || '').trim();
+  if (normalizePMiningInviteCode(currentInviteCode) === currentInviteCode) {
+    return currentUser;
+  }
+  const nextInviteCode = generatePMiningInviteCode(seed || currentUser.user_id || currentInviteCode);
+  updatePMiningInviteCodeStmt.run(nextInviteCode, currentUser.user_id);
+  if (currentInviteCode && currentInviteCode !== nextInviteCode) {
+    remapPMiningBoundInviteCodesStmt.run(nextInviteCode, currentInviteCode);
+  }
+  return selectPMiningUserByUserIdStmt.get(currentUser.user_id) || currentUser;
+}
+
+function ensureBoundPMiningInviteCodeIsNumeric(miningUser) {
+  const currentUser = miningUser || {};
+  const currentBoundCode = String(currentUser.bound_invite_code || '').trim();
+  if (!currentBoundCode) return currentUser;
+  const normalizedBoundCode = normalizePMiningInviteCode(currentBoundCode);
+  if (normalizedBoundCode === currentBoundCode) return currentUser;
+
+  const inviter = selectPMiningUserByInviteCodeStmt.get(currentBoundCode);
+  if (!inviter) return currentUser;
+  const inviterProfile = selectXiangqiUserByIdStmt.get(inviter.user_id) || {};
+  const migratedInviter = migratePMiningInviteCodeRecord(
+    inviter,
+    String(inviterProfile.openid || inviter.user_id || currentBoundCode).trim()
+  );
+  const nextBoundCode = String(migratedInviter.invite_code || '').trim();
+  if (!nextBoundCode) return currentUser;
+  updatePMiningBoundInviteCodeStmt.run(nextBoundCode, currentUser.user_id);
+  return selectPMiningUserByUserIdStmt.get(currentUser.user_id) || currentUser;
+}
+
 function formatPMiningAccountRow(row) {
   return {
     balance: roundPMiningValue(row?.balance_p || 0),
@@ -860,6 +901,8 @@ function ensurePMiningUserAccount({ openId, nickname = 'Nexa User', avatar = '' 
       );
       miningUser = selectPMiningUserByUserIdStmt.get(user.id);
     }
+    miningUser = migratePMiningInviteCodeRecord(miningUser, normalizedOpenId);
+    miningUser = ensureBoundPMiningInviteCodeIsNumeric(miningUser);
     return {
       user: {
         id: Number(user.id),
@@ -892,12 +935,12 @@ const applyPMiningClaim = db.transaction((payload) => {
 });
 
 const bindPMiningInviteCode = db.transaction((payload) => {
-  const inviteCode = String(payload.inviteCode || '').trim().toUpperCase();
+  const inviteCode = normalizePMiningInviteCode(payload.inviteCode);
   if (!inviteCode) return { kind: 'empty' };
   const invitee = selectPMiningUserByUserIdStmt.get(payload.userId);
   if (!invitee) return { kind: 'account_not_found' };
   if (String(invitee.bound_invite_code || '').trim()) return { kind: 'already_bound' };
-  if (String(invitee.invite_code || '').trim().toUpperCase() === inviteCode) return { kind: 'self' };
+  if (normalizePMiningInviteCode(invitee.invite_code) === inviteCode) return { kind: 'self' };
   const inviter = selectPMiningUserByInviteCodeStmt.get(inviteCode);
   if (!inviter) return { kind: 'invalid' };
 
@@ -943,7 +986,7 @@ function settlePMiningPaymentSuccess(orderNo, responseData = {}) {
       ''
     );
 
-    const boundInviteCode = String(buyer.bound_invite_code || '').trim().toUpperCase();
+    const boundInviteCode = normalizePMiningInviteCode(buyer.bound_invite_code);
     if (boundInviteCode) {
       const inviter = selectPMiningUserByInviteCodeStmt.get(boundInviteCode);
       if (inviter && Number(inviter.user_id) !== Number(order.user_id)) {
@@ -2789,10 +2832,25 @@ const insertPMiningUserStmt = db.prepare(`
   INSERT INTO p_mining_users (user_id, invite_code, balance_p, power, invite_count, invite_power_bonus, last_claim_at)
   VALUES (?, ?, 0, 10, 0, 0, 0)
 `);
+const updatePMiningInviteCodeStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET invite_code = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
 const updatePMiningClaimStateStmt = db.prepare(`
   UPDATE p_mining_users
   SET balance_p = ?, last_claim_at = ?, updated_at = datetime('now')
   WHERE user_id = ?
+`);
+const updatePMiningBoundInviteCodeStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET bound_invite_code = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
+const remapPMiningBoundInviteCodesStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET bound_invite_code = ?, updated_at = datetime('now')
+  WHERE bound_invite_code = ?
 `);
 const updatePMiningBindInviteeStmt = db.prepare(`
   UPDATE p_mining_users
