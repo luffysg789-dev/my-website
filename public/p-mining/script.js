@@ -57,11 +57,7 @@
       buyPower: 'Buy',
       tabPurchase: 'Buy',
       powerStore: 'Power Store',
-      purchaseHelper: 'Pay with Nexa secure checkout. Power settles after payment success.',
-      purchaseLaunching: 'Opening Nexa Pay...',
-      purchaseManualOpen: 'Open Nexa Pay',
       purchaseCreateFailed: 'Unable to create the payment order right now.',
-      purchaseOpenHint: 'If Nexa Pay did not open, tap the button below.',
       powerPackageStarter: '+10 Power / 10 USDT',
       powerPackageBoost: '+1000 Power / 80 USDT',
       powerPurchaseAction: 'Buy Now',
@@ -120,11 +116,7 @@
       buyPower: '购买',
       tabPurchase: '购买',
       powerStore: '购买算力',
-      purchaseHelper: '通过 Nexa 第三方安全支付完成购买，支付成功后算力自动到账。',
-      purchaseLaunching: '正在打开 Nexa Pay...',
-      purchaseManualOpen: '手动打开 Nexa Pay',
       purchaseCreateFailed: '当前无法创建支付订单，请稍后重试。',
-      purchaseOpenHint: '如果 Nexa Pay 没有自动打开，请点击下方按钮重试。',
       powerPackageStarter: '+10 算力 / 10 USDT',
       powerPackageBoost: '+1000 算力 / 80 USDT',
       powerPurchaseAction: '立即购买',
@@ -745,14 +737,6 @@
     node.classList.toggle('is-error', Boolean(text && isError));
   }
 
-  function setPurchaseFallback(appState, url = '') {
-    const node = appState.elements.purchaseFallback;
-    if (!node) return;
-    const targetUrl = String(url || '').trim();
-    node.hidden = !targetUrl;
-    node.href = targetUrl || '#';
-  }
-
   function openNexaPaymentUrl(appState, url) {
     const targetUrl = String(url || '').trim();
     if (!targetUrl) return false;
@@ -764,10 +748,7 @@
     globalScope.document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-
     globalScope.window.setTimeout(() => {
-      setPurchaseFallback(appState, targetUrl);
-      showPurchaseStatus(appState, t(appState.locale, 'purchaseOpenHint'));
       launchNexaUrl(targetUrl);
     }, 160);
     return true;
@@ -1009,7 +990,6 @@
   }
 
   function renderPurchasePanel(appState) {
-    setPurchaseFallback(appState);
     showPurchaseStatus(appState, '');
   }
 
@@ -1205,8 +1185,7 @@
     }
     const option = POWER_PURCHASE_OPTIONS[String(tier || '').trim()] || null;
     if (!option) return;
-    showPurchaseStatus(appState, t(appState.locale, 'purchaseLaunching'));
-    setPurchaseFallback(appState);
+    showPurchaseStatus(appState, '');
     try {
       const orderResponse = await postJson('/api/p-mining/payment/create', {
         openId: appState.nexaSession.openId,
@@ -1221,9 +1200,8 @@
         createdAt: Date.now()
       });
       openNexaPaymentUrl(appState, buildNexaPaymentUrl(orderResponse.payment));
-    } catch {
-      setPurchaseFallback(appState);
-      showPurchaseStatus(appState, t(appState.locale, 'purchaseCreateFailed'), { isError: true });
+    } catch (error) {
+      showPurchaseStatus(appState, String(error?.message || t(appState.locale, 'purchaseCreateFailed')), { isError: true });
     }
   }
 
@@ -1412,11 +1390,10 @@
         nextHalvingDate: root.querySelector('#pMiningNextHalvingDate'),
         estimatedFinish: root.querySelector('#pMiningEstimatedFinish'),
         inviteCodeValue: root.querySelector('#pMiningInviteCodeValue'),
-        inviteCount: root.querySelector('#pMiningInviteCount'),
+            inviteCount: root.querySelector('#pMiningInviteCount'),
             inviteBonus: root.querySelector('#pMiningInviteBonus'),
             purchasePanel: root.querySelector('#pMiningPurchasePanel'),
             purchaseStatus: root.querySelector('#pMiningPurchaseStatus'),
-            purchaseFallback: root.querySelector('#pMiningPurchaseFallback'),
             purchaseButtons: Array.from(root.querySelectorAll('[data-purchase-tier]')),
         inviteInput: root.querySelector('#pMiningInviteInput'),
         inviteSubmitButton: root.querySelector('#pMiningInviteSubmitButton'),

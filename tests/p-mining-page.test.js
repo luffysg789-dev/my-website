@@ -51,7 +51,7 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /data-record-filter="power"/);
   assert.match(html, /id="pMiningPurchasePanel"/);
   assert.match(html, /id="pMiningPurchaseStatus"/);
-  assert.match(html, /id="pMiningPurchaseFallback"/);
+  assert.doesNotMatch(html, /id="pMiningPurchaseFallback"/);
   assert.match(html, /data-purchase-tier="starter"/);
   assert.match(html, /data-purchase-tier="boost"/);
   assert.match(html, /\/games-config\.js/);

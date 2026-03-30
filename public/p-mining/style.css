@@ -366,16 +366,12 @@ body {
 }
 
 .p-mining-purchase-status {
-  min-height: 20px;
+  min-height: 0;
+  margin-top: 0;
 }
 
 .p-mining-purchase-status.is-error {
   color: #ff867b;
-}
-
-.p-mining-purchase-fallback {
-  margin-top: 12px;
-  text-decoration: none;
 }
 
 .p-mining-purchase-grid {
