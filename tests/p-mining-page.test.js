@@ -92,11 +92,14 @@ test('p-mining mobile layout is tightened for smaller phone screens', () => {
 
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-page\s*\{[\s\S]*?padding-top:\s*12px;[\s\S]*?padding-right:\s*14px;[\s\S]*?padding-left:\s*14px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-brand__icon\s*\{[\s\S]*?width:\s*52px;[\s\S]*?height:\s*52px;/);
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card\s*\{[\s\S]*?min-height:\s*184px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-panel\s*\{[\s\S]*?gap:\s*8px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card\s*\{[\s\S]*?min-height:\s*164px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__meta\s*\{[\s\S]*?margin-top:\s*10px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim\s*\{[\s\S]*?margin-top:\s*-4px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(2\.15rem,\s*9vw,\s*3\.5rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim-ring\s*\{[\s\S]*?width:\s*min\(29vw,\s*132px\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-card\s*\{[\s\S]*?padding:\s*14px;/);
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.18rem,\s*4\.1vw,\s*1\.7rem\);/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.04rem,\s*3\.6vw,\s*1\.46rem\);/);
 });
 
 test('p-mining mobile stats stay in a compact two-column dashboard layout', () => {
@@ -114,7 +117,8 @@ test('p-mining mobile typography scales down across all tabs for a denser phone 
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(2\.15rem,\s*9vw,\s*3\.5rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-metric\s*\{[\s\S]*?font-size:\s*clamp\(1\.08rem,\s*4vw,\s*1\.55rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim-ring__countdown\s*\{[\s\S]*?font-size:\s*clamp\(0\.88rem,\s*3vw,\s*1\.15rem\);/);
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.18rem,\s*4\.1vw,\s*1\.7rem\);/);
+  assert.match(css, /\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.38rem,\s*4\.2vw,\s*2rem\);/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.04rem,\s*3\.6vw,\s*1\.46rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-record-card__title\s*\{[\s\S]*?font-size:\s*1\.02rem;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-record-card__value\s*\{[\s\S]*?font-size:\s*1\.34rem;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-nav__item\s*\{[\s\S]*?font-size:\s*0\.84rem;/);

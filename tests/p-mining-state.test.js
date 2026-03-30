@@ -67,9 +67,9 @@ test('createDefaultMiningState seeds balance, power, and invite code', () => {
   assert.match(state.inviteCode, /^\d{6}$/);
 });
 
-test('formatMiningNumber always keeps one decimal place', () => {
-  assert.equal(formatMiningNumber(12), '12.0');
-  assert.equal(formatMiningNumber(12.34), '12.3');
+test('formatMiningNumber rounds mining displays down to integers without decimals', () => {
+  assert.equal(formatMiningNumber(12), '12');
+  assert.equal(formatMiningNumber(12.34), '12');
 });
 
 test('formatWholeNumber rounds user counts to integers without decimals', () => {

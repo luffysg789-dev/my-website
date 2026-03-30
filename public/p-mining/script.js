@@ -159,7 +159,7 @@
   }
 
   function formatMiningNumber(value) {
-    return roundToSingle(value).toFixed(1);
+    return formatWholeNumber(value);
   }
 
   function formatWholeNumber(value) {
