@@ -311,6 +311,50 @@ test('p-mining payment create returns a Nexa order payload for supported power t
   }
 });
 
+test('p-mining payment create falls back to github variants after a legacy signature error', async () => {
+  const seenPayloads = [];
+  const harness = createHarness({
+    mockPaymentResponse(payload) {
+      seenPayloads.push(payload);
+      if (seenPayloads.length === 1) {
+        return {
+          code: '10000002',
+          message: '签名参数错误'
+        };
+      }
+      return {
+        code: '0',
+        data: {
+          orderNo: 'nexa-paid-order-fallback-1',
+          apiKey: String(payload.apiKey || ''),
+          timestamp: '1710000000',
+          nonce: 'nonce-create-fallback-1',
+          signType: 'MD5',
+          paySign: 'pay-sign-fallback-1'
+        }
+      };
+    }
+  });
+
+  try {
+    const response = await harness.request('POST', '/api/p-mining/payment/create', {
+      openId: 'p-mining-open-id-fallback',
+      sessionKey: 'p-mining-session-key-fallback',
+      tier: 'starter'
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.ok, true);
+    assert.equal(response.body.orderNo, 'nexa-paid-order-fallback-1');
+    assert.equal(seenPayloads.length, 2);
+    assert.equal(Object.hasOwn(seenPayloads[0], 'callbackUrl'), false);
+    assert.equal(Object.hasOwn(seenPayloads[1], 'callbackUrl'), true);
+    assert.equal(String(seenPayloads[1].orderNo || '').startsWith('claw800_p_mining_starter_'), true);
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('p-mining payment query returns normalized payment status', async () => {
   const harness = createHarness({
     mockQueryResponse(payload) {

@@ -538,6 +538,18 @@ async function createPMiningPaymentOrder({ req, openId, sessionKey, tier }) {
   }
   const baseUrl = getPublicBaseUrl(req);
   const partnerOrderNo = `claw800_p_mining_${selectedOption.tier}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const legacyPayload = buildNexaLegacyPaymentCreatePayload({
+    apiKey,
+    appSecret,
+    amount: selectedOption.amount,
+    currency: PMINING_PAYMENT_CURRENCY,
+    subject: 'P-Mining 算力购买',
+    body: `P-Mining ${selectedOption.power} Power`,
+    notifyUrl: `${baseUrl}/api/p-mining/payment/notify`,
+    returnUrl: `${baseUrl}/p-mining/`,
+    openId: String(openId || '').trim(),
+    sessionKey: String(sessionKey || '').trim()
+  });
   const paymentVariants = prioritizeNexaPaymentCreateVariants(
     buildNexaPaymentCreatePayloadVariants({
       apiKey,
@@ -558,7 +570,30 @@ async function createPMiningPaymentOrder({ req, openId, sessionKey, tier }) {
 
   let response = null;
   let lastSignatureResponse = null;
-  for (const variant of paymentVariants) {
+
+  try {
+    response = await postNexaJson('/partner/api/openapi/payment/create', legacyPayload);
+  } catch (error) {
+    if (isNexaRateLimitError(error)) {
+      const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+      rateLimitError.statusCode = 429;
+      throw rateLimitError;
+    }
+    throw error;
+  }
+
+  if (isNexaRateLimitError(response)) {
+    const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+    rateLimitError.statusCode = 429;
+    throw rateLimitError;
+  }
+
+  if (isNexaSignatureError(response)) {
+    lastSignatureResponse = response;
+    response = null;
+  }
+
+  for (const variant of response ? [] : paymentVariants) {
     try {
       response = await postNexaJson('/partner/api/openapi/payment/create', variant.payload);
     } catch (error) {
