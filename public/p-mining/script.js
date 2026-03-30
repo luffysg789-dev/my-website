@@ -868,6 +868,63 @@
     appState.elements.claimButton.style.setProperty('--progress', `${ui.progress}%`);
   }
 
+  function animateBalanceValue(appState, nextBalance, { immediate = false } = {}) {
+    const node = appState.elements.balanceValue;
+    if (!node) return;
+    const targetBalance = Number(nextBalance || 0) || 0;
+    const raf = globalScope.window?.requestAnimationFrame?.bind(globalScope.window);
+    const caf = globalScope.window?.cancelAnimationFrame?.bind(globalScope.window);
+
+    if (appState.balanceAnimationFrame && caf) {
+      caf(appState.balanceAnimationFrame);
+      appState.balanceAnimationFrame = null;
+    }
+
+    if (immediate || !raf || !appState.hasAnimatedBalance) {
+      appState.animatedBalanceValue = targetBalance;
+      appState.hasAnimatedBalance = true;
+      node.textContent = formatMiningNumber(targetBalance);
+      node.style.transform = 'translateX(0)';
+      return;
+    }
+
+    const startBalance = Number(appState.animatedBalanceValue ?? targetBalance) || 0;
+    if (Math.abs(targetBalance - startBalance) < 0.05) {
+      appState.animatedBalanceValue = targetBalance;
+      node.textContent = formatMiningNumber(targetBalance);
+      node.style.transform = 'translateX(0)';
+      return;
+    }
+
+    const durationMs = 560;
+    let startTime = 0;
+
+    const step = (timestamp) => {
+      if (!startTime) startTime = Number(timestamp || Date.now());
+      const elapsed = Math.max(0, Number(timestamp || Date.now()) - startTime);
+      const progress = Math.min(1, elapsed / durationMs);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const currentBalance = startBalance + ((targetBalance - startBalance) * eased);
+      const shift = (1 - eased) * 16;
+
+      appState.animatedBalanceValue = currentBalance;
+      node.textContent = formatMiningNumber(currentBalance);
+      node.style.transform = `translateX(${-shift}px)`;
+
+      if (progress < 1) {
+        appState.balanceAnimationFrame = raf(step);
+        return;
+      }
+
+      appState.animatedBalanceValue = targetBalance;
+      appState.balanceAnimationFrame = null;
+      node.textContent = formatMiningNumber(targetBalance);
+      node.style.transform = 'translateX(0)';
+    };
+
+    appState.balanceAnimationFrame = raf(step);
+  }
+
   function renderMiningPanel(appState) {
     appState.network.todayPower = Math.max(Number(appState.network.todayPower || 0), Number(appState.state.power || 0), 10);
     const reward = calculateClaimReward({
@@ -880,7 +937,7 @@
       networkPower: appState.network.todayPower,
       dailyCap: appState.network.dailyCap
     });
-    appState.elements.balanceValue.textContent = formatMiningNumber(appState.state.balance);
+    animateBalanceValue(appState, appState.state.balance);
     appState.elements.powerValue.textContent = formatPowerValue(appState.state.power);
     appState.elements.rewardPerMinute.textContent = formatMiningNumber(reward);
     appState.elements.totalUsers.textContent = formatWholeNumber(appState.network.totalUsers);
@@ -1269,6 +1326,9 @@
       network: loadNetworkStats(storage),
       activeTab: 'mining',
       activeRecordFilter: 'claims',
+      animatedBalanceValue: Number(hostUser?.balance || 0) || 0,
+      balanceAnimationFrame: null,
+      hasAnimatedBalance: false,
       isProcessing: false,
       isAuthorizing: false,
       elements: {
