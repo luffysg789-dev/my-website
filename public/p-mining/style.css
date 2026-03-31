@@ -424,6 +424,7 @@ body {
 }
 
 .p-mining-rule-card {
+  padding: 10px 16px;
   color: rgba(255, 255, 255, 0.72);
   line-height: 1.52;
 }
@@ -511,9 +512,9 @@ body {
   margin-top: 0;
   padding: 0 20px;
   white-space: nowrap;
-  background: linear-gradient(180deg, #ff922e, var(--p-mining-accent));
+  background: linear-gradient(180deg, #33c56b, #149a46);
   color: #fff;
-  box-shadow: 0 12px 24px rgba(242, 125, 38, 0.24);
+  box-shadow: 0 12px 24px rgba(20, 154, 70, 0.24);
 }
 
 .p-mining-text-input {
@@ -805,6 +806,7 @@ body {
   }
 
   .p-mining-rule-card {
+    padding: 8px 12px;
     line-height: 1.36;
   }
 

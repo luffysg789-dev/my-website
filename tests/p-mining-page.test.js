@@ -106,6 +106,7 @@ test('p-mining css includes dark glass tokens, bottom nav, and circular claim la
   assert.match(css, /\.p-mining-card__label\s*\{[\s\S]*?margin:\s*0 0 6px;/);
   assert.match(css, /\.p-mining-balance-card__meta\s*\{[\s\S]*?margin-top:\s*12px;/);
   assert.match(css, /\.p-mining-helper\s*\{[\s\S]*?margin:\s*6px 0 0;/);
+  assert.match(css, /\.p-mining-rule-card\s*\{[\s\S]*?padding:\s*10px 16px;/);
 });
 
 test('p-mining mobile layout is tightened for smaller phone screens', () => {
@@ -122,6 +123,7 @@ test('p-mining mobile layout is tightened for smaller phone screens', () => {
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.9rem,\s*8vw,\s*3rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim-ring\s*\{[\s\S]*?width:\s*min\(24vw,\s*108px\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-card\s*\{[\s\S]*?padding:\s*10px 12px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-rule-card\s*\{[\s\S]*?padding:\s*8px 12px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.04rem,\s*3\.6vw,\s*1\.46rem\);/);
 });
 
@@ -163,7 +165,7 @@ test('p-mining mobile purchase cards use a single-row layout with the buy button
 
   assert.match(css, /\.p-mining-purchase-card\s*\{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/);
   assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?min-width:\s*132px;/);
-  assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?background:\s*linear-gradient\(180deg,\s*#ff922e,\s*var\(--p-mining-accent\)\);/);
+  assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?background:\s*linear-gradient\(180deg,\s*#33c56b,\s*#149a46\);/);
   assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?color:\s*#fff;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-purchase-card__button\s*\{[\s\S]*?min-width:\s*96px;[\s\S]*?height:\s*46px;/);
 });
