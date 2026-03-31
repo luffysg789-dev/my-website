@@ -231,12 +231,16 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function openInvitePrompt\(/);
   assert.match(js, /function closeInvitePrompt\(/);
   assert.match(js, /function openInviteSuccessPrompt\(/);
+  assert.match(js, /function ensureInviteInputVisible\(/);
+  assert.match(js, /function attachInviteInputVisibilityHandlers\(/);
   assert.match(js, /function handleCopyInviteCode\(/);
   assert.match(js, /function renderRecordsPanel\(/);
   assert.match(js, /function renderProfilePanel\(/);
   assert.match(js, /const AudioContextCtor = globalScope\.window\?\.AudioContext \|\| globalScope\.window\?\.webkitAudioContext;/);
   assert.match(js, /function playClaimSuccessSound\(/);
   assert.match(js, /playClaimSuccessSound\(appState\);/);
+  assert.match(js, /input\.addEventListener\('focus',[\s\S]*ensureInviteInputVisible\(appState,\s*input\)/);
+  assert.match(js, /window\.visualViewport\?\.addEventListener\('resize'/);
   assert.match(js, /else if \(isNexaAppEnvironment\(\)\) \{\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);/);
   assert.match(js, /root\.classList\.add\('is-ready'\);/);
   assert.match(js, /window\.setInterval\(/);

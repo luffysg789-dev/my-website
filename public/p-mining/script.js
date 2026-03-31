@@ -1142,6 +1142,43 @@
     appState.elements.invitePromptSuccessModal.hidden = true;
   }
 
+  function ensureInviteInputVisible(appState, input) {
+    const targetInput = input || null;
+    if (!targetInput?.scrollIntoView) return;
+    const targetContainer = appState.elements.invitePromptModal?.hidden === false
+      ? targetInput.closest('.p-mining-modal__dialog')
+      : targetInput.closest('.p-mining-card');
+    const scrollTarget = targetContainer || targetInput;
+    globalScope.window?.requestAnimationFrame?.(() => {
+      globalScope.window.setTimeout(() => {
+        scrollTarget.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+      }, 80);
+    });
+  }
+
+  function attachInviteInputVisibilityHandlers(appState) {
+    const inviteInputs = [
+      appState.elements.inviteInput,
+      appState.elements.invitePromptInput
+    ].filter(Boolean);
+    if (!inviteInputs.length) return;
+
+    inviteInputs.forEach((input) => {
+      input.addEventListener('focus', () => ensureInviteInputVisible(appState, input));
+    });
+
+    globalScope.window.visualViewport?.addEventListener('resize', () => {
+      const activeInput = inviteInputs.find((input) => input === globalScope.document.activeElement);
+      if (activeInput) {
+        ensureInviteInputVisible(appState, activeInput);
+      }
+    });
+  }
+
   async function ensureClaimAudioContext(appState) {
     if (!AudioContextCtor) return null;
     if (!appState.claimAudioContext) {
@@ -1619,6 +1656,7 @@
       renderAll(appState);
       switchTab(appState, 'mining');
     });
+    attachInviteInputVisibilityHandlers(appState);
     attachRecordFilters(appState);
     renderAll(appState);
     switchTab(appState, 'mining');
@@ -1716,6 +1754,8 @@
         openInvitePrompt,
         closeInvitePrompt,
         openInviteSuccessPrompt,
+        ensureInviteInputVisible,
+        attachInviteInputVisibilityHandlers,
         syncAppStateFromServer,
     loadPMiningBootstrap,
     renderClaimState,
