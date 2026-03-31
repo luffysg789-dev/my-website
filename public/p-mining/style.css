@@ -401,6 +401,9 @@ body {
   margin-top: 0;
   padding: 0 20px;
   white-space: nowrap;
+  background: linear-gradient(180deg, #ff922e, var(--p-mining-accent));
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(242, 125, 38, 0.24);
 }
 
 .p-mining-text-input {
@@ -708,7 +711,7 @@ body {
     height: 60px;
     padding: 0 16px;
     border-radius: 18px;
-    font-size: 0.92rem;
+    font-size: 16px;
   }
 
   .p-mining-submit-button {
@@ -775,6 +778,10 @@ body {
 }
 
 @media (max-width: 420px) {
+  .p-mining-invite-form {
+    align-items: stretch;
+  }
+
   .p-mining-page {
     padding-top: 10px;
     padding-right: 12px;

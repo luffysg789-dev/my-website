@@ -125,12 +125,14 @@ test('p-mining mobile typography scales down across all tabs for a denser phone 
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-record-card__title\s*\{[\s\S]*?font-size:\s*1\.02rem;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-record-card__value\s*\{[\s\S]*?font-size:\s*1\.34rem;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-nav__item\s*\{[\s\S]*?font-size:\s*0\.84rem;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-text-input\s*\{[\s\S]*?font-size:\s*16px;/);
 });
 
 test('p-mining css covers narrow phones, short screens, and landscape mobile layouts', () => {
   const css = fs.readFileSync(cssPath, 'utf8');
 
   assert.match(css, /@media \(max-width:\s*420px\)[\s\S]*?\.p-mining-page\s*\{/);
+  assert.match(css, /@media \(max-width:\s*420px\)[\s\S]*?\.p-mining-invite-form\s*\{[\s\S]*?align-items:\s*stretch;/);
   assert.match(css, /@media \(max-width:\s*360px\)[\s\S]*?\.p-mining-balance-card__value\s*\{/);
   assert.match(css, /@media \(max-height:\s*760px\)[\s\S]*?\.p-mining-nav\s*\{/);
   assert.match(css, /@media \(orientation:\s*landscape\) and \(max-width:\s*960px\)[\s\S]*?\.p-mining-panels\s*\{/);
@@ -141,6 +143,8 @@ test('p-mining mobile purchase cards use a single-row layout with the buy button
 
   assert.match(css, /\.p-mining-purchase-card\s*\{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/);
   assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?min-width:\s*132px;/);
+  assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?background:\s*linear-gradient\(180deg,\s*#ff922e,\s*var\(--p-mining-accent\)\);/);
+  assert.match(css, /\.p-mining-purchase-card__button\s*\{[\s\S]*?color:\s*#fff;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-purchase-card__button\s*\{[\s\S]*?min-width:\s*96px;[\s\S]*?height:\s*46px;/);
 });
 
