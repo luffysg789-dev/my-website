@@ -208,6 +208,7 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /const PMINING_SETTLED_PAYMENT_STORAGE_KEY = 'claw800:p-mining:settled-payment';/);
   assert.match(js, /function loadCachedPMiningSession\(/);
   assert.match(js, /function saveCachedPMiningSession\(/);
+  assert.match(js, /async function clearPMiningServerSession\(\) \{[\s\S]*\/api\/p-mining\/session\/logout/);
   assert.match(js, /function beginNexaLoginFlow\(/);
   assert.match(js, /email:\s*'guest@nexa\.app'/);
   assert.doesNotMatch(js, /luffysg789@gmail\.com/);
@@ -287,6 +288,7 @@ test('p-mining invite prompt waits for synced account state instead of opening d
   );
   assert.match(js, /syncAppStateFromServer\(appState,\s*bootstrap\);\s*renderAll\(appState\);\s*syncInvitePromptVisibility\(appState\);/);
   assert.match(js, /clearPendingAuthTarget\(appState\.storage\);\s*renderAll\(appState\);\s*syncInvitePromptVisibility\(appState\);\s*switchTab\(appState,\s*targetTab\);/);
+  assert.match(js, /if \(!exchanged && !appState\.nexaSession\) \{\s*if \(appState\.requiresFreshNexaAuthorization && isNexaAppEnvironment\(\)\) \{\s*await clearPMiningServerSession\(\)\.catch\(\(\) => false\);\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);\s*return;\s*\}/);
 });
 
 test('p-mining invite success feedback opens after a successful bind from the invite page too', () => {

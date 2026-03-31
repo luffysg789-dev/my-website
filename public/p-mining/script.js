@@ -1479,6 +1479,12 @@
     }
   }
 
+  async function clearPMiningServerSession() {
+    try {
+      await postJson('/api/p-mining/session/logout', {});
+    } catch {}
+  }
+
   function syncAppStateFromServer(appState, payload) {
     const profile = payload?.profile || {};
     const account = payload?.account || {};
@@ -1743,6 +1749,11 @@
       }
     }
     if (!exchanged && !appState.nexaSession) {
+      if (appState.requiresFreshNexaAuthorization && isNexaAppEnvironment()) {
+        await clearPMiningServerSession().catch(() => false);
+        await beginNexaLoginFlow(appState, 'mining').catch(() => false);
+        return;
+      }
       const serverSession = await loadServerPMiningSession();
       if (serverSession) {
         applyAuthorizedSession(appState, serverSession);
