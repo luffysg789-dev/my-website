@@ -383,7 +383,7 @@ body {
 }
 
 .p-mining-claim-ring__countdown {
-  margin-top: 18px;
+  margin-top: 0;
   font-size: clamp(2rem, 7vw, 3.5rem);
   font-weight: 700;
   letter-spacing: 0.06em;
