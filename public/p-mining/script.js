@@ -6,6 +6,7 @@
   const STORAGE_KEY_PREFIX = 'claw800:p-mining:state:';
   const NETWORK_STORAGE_KEY = 'claw800:p-mining:network-stats';
   const LOCALE_STORAGE_KEY = 'claw800:p-mining:locale';
+  const INVITE_PROMPT_DATE_STORAGE_KEY = 'claw800:p-mining:invite-prompt-date';
   const INVITE_GRAPH_STORAGE_KEY = 'claw800:p-mining:invite-graph';
   const PENDING_INVITE_BONUS_STORAGE_KEY = 'claw800:p-mining:pending-invite-bonus';
   const PMINING_SESSION_STORAGE_KEY = 'claw800:p-mining:nexa-session';
@@ -358,6 +359,27 @@
     if (!storage?.setItem) return;
     try {
       storage.setItem(LOCALE_STORAGE_KEY, locale === 'zh' ? 'zh' : 'en');
+    } catch {}
+  }
+
+  function getInvitePromptDisplayDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function getLastInvitePromptDate(storage = getPersistentStorage()) {
+    try {
+      return String(storage?.getItem?.(INVITE_PROMPT_DATE_STORAGE_KEY) || '').trim();
+    } catch {
+      return '';
+    }
+  }
+
+  function setLastInvitePromptDate(storage = getPersistentStorage(), value) {
+    try {
+      storage?.setItem?.(INVITE_PROMPT_DATE_STORAGE_KEY, String(value || '').trim());
     } catch {}
   }
 
@@ -1115,13 +1137,22 @@
   }
 
   function shouldShowInvitePrompt(appState) {
-    return Boolean(appState.nexaSession && !appState.state.boundInviteCode && !appState.isInvitePromptDismissed);
+    const todayInvitePromptDate = String(appState.todayInvitePromptDate || getInvitePromptDisplayDateKey()).trim();
+    const lastInvitePromptDate = String(appState.lastInvitePromptDate || '').trim();
+    return Boolean(
+      appState.nexaSession
+      && !appState.state.boundInviteCode
+      && !appState.isInvitePromptDismissed
+      && lastInvitePromptDate !== todayInvitePromptDate
+    );
   }
 
   function openInvitePrompt(appState) {
     if (!appState.elements.invitePromptModal) return;
     appState.elements.invitePromptInput.value = appState.state.boundInviteCode || appState.elements.inviteInput.value || '';
     appState.elements.invitePromptModal.hidden = false;
+    appState.lastInvitePromptDate = appState.todayInvitePromptDate || getInvitePromptDisplayDateKey();
+    setLastInvitePromptDate(appState.storage, appState.lastInvitePromptDate);
     showInviteError(appState, '');
   }
 
@@ -1551,6 +1582,8 @@
       nexaSession: activeSession,
       requiresFreshNexaAuthorization,
       locale: getStoredLocale(storage),
+      todayInvitePromptDate: getInvitePromptDisplayDateKey(),
+      lastInvitePromptDate: getLastInvitePromptDate(storage),
       state: loadMiningState(storage, hostUser),
       network: loadNetworkStats(storage),
       activeTab: 'mining',
@@ -1716,6 +1749,7 @@
     formatWholeNumber,
     formatPowerValue,
     getStoredLocale,
+    getInvitePromptDisplayDateKey,
     getPMiningSessionExpiryTimestamp,
     loadCachedPMiningSession,
     shouldForceFreshNexaAuthorization,

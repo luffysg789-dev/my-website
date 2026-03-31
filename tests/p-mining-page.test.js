@@ -107,7 +107,8 @@ test('p-mining mobile layout is tightened for smaller phone screens', () => {
 
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-page\s*\{[\s\S]*?padding-top:\s*12px;[\s\S]*?padding-right:\s*14px;[\s\S]*?padding-left:\s*14px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-brand__icon\s*\{[\s\S]*?width:\s*52px;[\s\S]*?height:\s*52px;/);
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-panel\s*\{[\s\S]*?gap:\s*8px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-panels\s*\{[\s\S]*?margin-top:\s*10px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-panel\s*\{[\s\S]*?gap:\s*6px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card\s*\{[\s\S]*?min-height:\s*164px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__meta\s*\{[\s\S]*?margin-top:\s*10px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__content\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/);

@@ -29,6 +29,8 @@ const {
   getPMiningSessionExpiryTimestamp,
   loadCachedPMiningSession,
   shouldForceFreshNexaAuthorization,
+  getInvitePromptDisplayDateKey,
+  shouldShowInvitePrompt,
   purchasePowerPackage,
   applyPendingInvitePurchaseBonuses,
   POWER_PURCHASE_OPTIONS,
@@ -335,6 +337,42 @@ test('shouldForceFreshNexaAuthorization keeps the current session for same-accou
         openId: 'open-id-1',
         sessionKey: 'session-key-1'
       }
+    }),
+    false
+  );
+});
+
+test('getInvitePromptDisplayDateKey normalizes the local date used for daily invite prompts', () => {
+  assert.equal(getInvitePromptDisplayDateKey(new Date('2026-04-01T08:30:00Z')), '2026-04-01');
+});
+
+test('shouldShowInvitePrompt only opens once per day for unbound logged-in users', () => {
+  assert.equal(
+    shouldShowInvitePrompt({
+      nexaSession: { openId: 'open-id-1', sessionKey: 'session-key-1' },
+      state: { boundInviteCode: '' },
+      lastInvitePromptDate: '',
+      todayInvitePromptDate: '2026-04-01'
+    }),
+    true
+  );
+
+  assert.equal(
+    shouldShowInvitePrompt({
+      nexaSession: { openId: 'open-id-1', sessionKey: 'session-key-1' },
+      state: { boundInviteCode: '' },
+      lastInvitePromptDate: '2026-04-01',
+      todayInvitePromptDate: '2026-04-01'
+    }),
+    false
+  );
+
+  assert.equal(
+    shouldShowInvitePrompt({
+      nexaSession: { openId: 'open-id-1', sessionKey: 'session-key-1' },
+      state: { boundInviteCode: '246810' },
+      lastInvitePromptDate: '',
+      todayInvitePromptDate: '2026-04-01'
     }),
     false
   );

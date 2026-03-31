@@ -692,11 +692,11 @@ body {
   }
 
   .p-mining-panels {
-    margin-top: 12px;
+    margin-top: 10px;
   }
 
   .p-mining-panel {
-    gap: 8px;
+    gap: 6px;
   }
 
   .p-mining-card {
@@ -770,7 +770,7 @@ body {
   .p-mining-two-col,
   .p-mining-records-list,
   .p-mining-purchase-grid {
-    gap: 10px;
+    gap: 8px;
   }
 
   .p-mining-stat-card__value {
