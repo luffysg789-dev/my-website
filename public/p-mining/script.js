@@ -1173,6 +1173,18 @@
     appState.elements.invitePromptSuccessModal.hidden = true;
   }
 
+  function syncInvitePromptVisibility(appState) {
+    if (!appState.elements.invitePromptModal) return;
+    if (appState.state.boundInviteCode) {
+      appState.elements.invitePromptModal.hidden = true;
+      showInviteError(appState, '');
+      return;
+    }
+    if (shouldShowInvitePrompt(appState)) {
+      openInvitePrompt(appState);
+    }
+  }
+
   function ensureInviteInputVisible(appState, input) {
     const targetInput = input || null;
     if (!targetInput?.scrollIntoView) return;
@@ -1690,9 +1702,6 @@
     attachRecordFilters(appState);
     renderAll(appState);
     switchTab(appState, 'mining');
-    if (shouldShowInvitePrompt(appState)) {
-      openInvitePrompt(appState);
-    }
     root.classList.add('is-ready');
 
     globalScope.window.setInterval(() => {
@@ -1713,9 +1722,7 @@
       if (bootstrap?.ok) {
         syncAppStateFromServer(appState, bootstrap);
         renderAll(appState);
-        if (shouldShowInvitePrompt(appState)) {
-          openInvitePrompt(appState);
-        }
+        syncInvitePromptVisibility(appState);
       }
     }
     if (!exchanged && !appState.nexaSession) {
@@ -1726,9 +1733,7 @@
         if (bootstrap?.ok) {
           syncAppStateFromServer(appState, bootstrap);
           renderAll(appState);
-          if (shouldShowInvitePrompt(appState)) {
-            openInvitePrompt(appState);
-          }
+          syncInvitePromptVisibility(appState);
         }
       } else if (isNexaAppEnvironment()) {
         await beginNexaLoginFlow(appState, 'mining').catch(() => false);

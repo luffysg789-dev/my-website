@@ -231,6 +231,7 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function shouldShowInvitePrompt\(/);
   assert.match(js, /function openInvitePrompt\(/);
   assert.match(js, /function closeInvitePrompt\(/);
+  assert.match(js, /function syncInvitePromptVisibility\(/);
   assert.match(js, /function openInviteSuccessPrompt\(/);
   assert.match(js, /function ensureInviteInputVisible\(/);
   assert.match(js, /function attachInviteInputVisibilityHandlers\(/);
@@ -245,7 +246,18 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /else if \(isNexaAppEnvironment\(\)\) \{\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);/);
   assert.match(js, /root\.classList\.add\('is-ready'\);/);
   assert.match(js, /window\.setInterval\(/);
+  assert.match(js, /if \(appState\.state\.boundInviteCode\) \{\s*appState\.elements\.invitePromptModal\.hidden = true;/);
   assert.match(js, /if \(shouldShowInvitePrompt\(appState\)\) \{\s*openInvitePrompt\(appState\);/);
+});
+
+test('p-mining invite prompt waits for synced account state instead of opening during initial app creation', () => {
+  const js = fs.readFileSync(jsPath, 'utf8');
+
+  assert.doesNotMatch(
+    js,
+    /renderAll\(appState\);\s*switchTab\(appState,\s*'mining'\);\s*if \(shouldShowInvitePrompt\(appState\)\) \{\s*openInvitePrompt\(appState\);/
+  );
+  assert.match(js, /syncAppStateFromServer\(appState,\s*bootstrap\);\s*renderAll\(appState\);\s*syncInvitePromptVisibility\(appState\);/);
 });
 
 test('p-mining script only refreshes cooldown on interval without auto-advancing network stats', () => {
