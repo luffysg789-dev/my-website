@@ -123,16 +123,19 @@ body {
   box-shadow: 0 16px 32px rgba(242, 125, 38, 0.24);
 }
 
-.p-mining-pickaxe-icon {
-  display: block;
-  width: 100%;
-  height: 100%;
+.p-mining-letter-icon {
+  display: grid;
+  place-items: center;
   color: #fff;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.06em;
 }
 
-.p-mining-pickaxe-icon--brand {
+.p-mining-letter-icon--brand {
   width: 32px;
   height: 32px;
+  font-size: 1.85rem;
 }
 
 .p-mining-brand__name {
@@ -373,9 +376,10 @@ body {
   filter: drop-shadow(0 8px 16px rgba(242, 125, 38, 0.24));
 }
 
-.p-mining-pickaxe-icon--ring {
+.p-mining-letter-icon--ring {
   width: 34px;
   height: 34px;
+  font-size: 2rem;
 }
 
 .p-mining-claim-ring__countdown {
