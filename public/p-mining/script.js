@@ -1614,6 +1614,7 @@
     const appState = {
       hostUser,
       storage,
+      cachedSession,
       nexaSession: activeSession,
       requiresFreshNexaAuthorization,
       locale: getStoredLocale(storage),
@@ -1749,12 +1750,16 @@
       }
     }
     if (!exchanged && !appState.nexaSession) {
-      if (appState.requiresFreshNexaAuthorization && isNexaAppEnvironment()) {
-        await clearPMiningServerSession().catch(() => false);
-        await beginNexaLoginFlow(appState, 'mining').catch(() => false);
-        return;
-      }
       const serverSession = await loadServerPMiningSession();
+      if (appState.requiresFreshNexaAuthorization && isNexaAppEnvironment()) {
+        const cachedOpenId = String(appState.cachedSession?.openId || '').trim();
+        const serverOpenId = String(serverSession?.openId || '').trim();
+        if (!serverOpenId || (cachedOpenId && serverOpenId !== cachedOpenId)) {
+          await clearPMiningServerSession().catch(() => false);
+          await beginNexaLoginFlow(appState, 'mining').catch(() => false);
+          return;
+        }
+      }
       if (serverSession) {
         applyAuthorizedSession(appState, serverSession);
         const bootstrap = await loadPMiningBootstrap().catch(() => null);

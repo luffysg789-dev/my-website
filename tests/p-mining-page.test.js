@@ -200,6 +200,7 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function applyTranslations\(appState\) \{[\s\S]*documentElement\.lang = appState\.locale === 'zh' \? 'zh-CN' : 'en';/);
   assert.match(js, /const appState = \{[\s\S]*locale: getStoredLocale\(storage\),[\s\S]*\};\s*setStoredLocale\(storage, appState\.locale\);/);
   assert.match(js, /const activeSession = requiresFreshNexaAuthorization \? null : cachedSession;/);
+  assert.match(js, /cachedSession,/);
   assert.match(js, /const PMINING_SESSION_STORAGE_KEY = 'claw800:p-mining:nexa-session';/);
   assert.match(js, /const MAX_NEXA_SESSION_RETENTION_MS = 30 \* 24 \* 60 \* 60 \* 1000;/);
   assert.match(js, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
@@ -288,7 +289,7 @@ test('p-mining invite prompt waits for synced account state instead of opening d
   );
   assert.match(js, /syncAppStateFromServer\(appState,\s*bootstrap\);\s*renderAll\(appState\);\s*syncInvitePromptVisibility\(appState\);/);
   assert.match(js, /clearPendingAuthTarget\(appState\.storage\);\s*renderAll\(appState\);\s*syncInvitePromptVisibility\(appState\);\s*switchTab\(appState,\s*targetTab\);/);
-  assert.match(js, /if \(!exchanged && !appState\.nexaSession\) \{\s*if \(appState\.requiresFreshNexaAuthorization && isNexaAppEnvironment\(\)\) \{\s*await clearPMiningServerSession\(\)\.catch\(\(\) => false\);\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);\s*return;\s*\}/);
+  assert.match(js, /if \(!exchanged && !appState\.nexaSession\) \{\s*const serverSession = await loadServerPMiningSession\(\);\s*if \(appState\.requiresFreshNexaAuthorization && isNexaAppEnvironment\(\)\) \{\s*const cachedOpenId = String\(appState\.cachedSession\?\.openId \|\| ''\)\.trim\(\);\s*const serverOpenId = String\(serverSession\?\.openId \|\| ''\)\.trim\(\);\s*if \(!serverOpenId \|\| \(cachedOpenId && serverOpenId !== cachedOpenId\)\) \{\s*await clearPMiningServerSession\(\)\.catch\(\(\) => false\);\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);\s*return;\s*\}\s*\}/);
 });
 
 test('p-mining invite success feedback opens after a successful bind from the invite page too', () => {
