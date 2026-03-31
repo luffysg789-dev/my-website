@@ -120,8 +120,19 @@ body {
   height: 64px;
   border-radius: 18px;
   background: linear-gradient(180deg, #ff922e, var(--p-mining-accent));
-  font-size: 28px;
   box-shadow: 0 16px 32px rgba(242, 125, 38, 0.24);
+}
+
+.p-mining-pickaxe-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+}
+
+.p-mining-pickaxe-icon--brand {
+  width: 32px;
+  height: 32px;
 }
 
 .p-mining-brand__name {
@@ -357,9 +368,14 @@ body {
 }
 
 .p-mining-claim-ring__mine-icon {
-  font-size: 3.2rem;
-  line-height: 1;
+  display: grid;
+  place-items: center;
   filter: drop-shadow(0 8px 16px rgba(242, 125, 38, 0.24));
+}
+
+.p-mining-pickaxe-icon--ring {
+  width: 34px;
+  height: 34px;
 }
 
 .p-mining-claim-ring__countdown {
@@ -744,7 +760,8 @@ body {
   }
 
   .p-mining-claim-ring__mine-icon {
-    font-size: 1.2rem;
+    width: 24px;
+    height: 24px;
   }
 
   .p-mining-claim-ring__countdown {
