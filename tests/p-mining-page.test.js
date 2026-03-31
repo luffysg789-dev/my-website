@@ -173,6 +173,7 @@ test('p-mining html includes the expected mining, invite, records, and profile s
   assert.match(html, /data-i18n="claimRecords"/);
   assert.match(html, /data-i18n="profileHeadline"/);
   assert.match(html, /data-i18n="profileCodeLabel"/);
+  assert.doesNotMatch(html, /id="pMiningProfileEmail"/);
   assert.match(html, /data-i18n="currentTotalPoints"/);
   assert.match(html, /data-i18n="totalSupplyValue"/);
   assert.match(html, /Every 4 Years \(Next\)/);
@@ -248,6 +249,7 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function handleCopyInviteCode\(/);
   assert.match(js, /function renderRecordsPanel\(/);
   assert.match(js, /function renderProfilePanel\(/);
+  assert.doesNotMatch(js, /profileEmail:\s*root\.querySelector\('#pMiningProfileEmail'\)/);
   assert.match(js, /appState\.elements\.profileUid\.textContent = appState\.state\.inviteCode \|\| '------';/);
   assert.match(js, /const AudioContextCtor = globalScope\.window\?\.AudioContext \|\| globalScope\.window\?\.webkitAudioContext;/);
   assert.match(js, /function playClaimSuccessSound\(/);

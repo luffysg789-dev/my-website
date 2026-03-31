@@ -1111,7 +1111,6 @@
   }
 
   function renderProfilePanel(appState) {
-    appState.elements.profileEmail.textContent = appState.hostUser.email;
     appState.elements.profileUid.textContent = appState.state.inviteCode || '------';
     appState.elements.profileBalance.textContent = `${formatMiningNumber(appState.state.balance)} P`;
     appState.elements.profilePower.textContent = formatPowerValue(appState.state.power);
@@ -1661,7 +1660,6 @@
         invitePromptSuccessModal: root.querySelector('#pMiningInvitePromptSuccessModal'),
         invitePromptSuccessClose: root.querySelector('#pMiningInvitePromptSuccessClose'),
         recordsList: root.querySelector('#pMiningRecordsList'),
-        profileEmail: root.querySelector('#pMiningProfileEmail'),
         profileUid: root.querySelector('#pMiningProfileUid'),
         profileBalance: root.querySelector('#pMiningProfileBalance'),
         profilePower: root.querySelector('#pMiningProfilePower'),
