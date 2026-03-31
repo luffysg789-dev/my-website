@@ -305,7 +305,7 @@ body {
 .p-mining-balance-card__value {
   position: relative;
   z-index: 1;
-  font-size: clamp(3rem, 11vw, 5.6rem);
+  font-size: clamp(2.6rem, 9.6vw, 4.8rem);
   font-weight: 800;
   line-height: 0.95;
   color: var(--p-mining-accent);
@@ -746,7 +746,7 @@ body {
   }
 
   .p-mining-balance-card__value {
-    font-size: clamp(2.15rem, 9vw, 3.5rem);
+    font-size: clamp(1.9rem, 8vw, 3rem);
   }
 
   .p-mining-balance-card__meta {

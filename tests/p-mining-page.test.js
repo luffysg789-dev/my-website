@@ -113,7 +113,7 @@ test('p-mining mobile layout is tightened for smaller phone screens', () => {
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__meta\s*\{[\s\S]*?margin-top:\s*10px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__content\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__meta\s*\{[\s\S]*?gap:\s*10px;/);
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(2\.15rem,\s*9vw,\s*3\.5rem\);/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.9rem,\s*8vw,\s*3rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim-ring\s*\{[\s\S]*?width:\s*min\(24vw,\s*108px\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-card\s*\{[\s\S]*?padding:\s*14px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.04rem,\s*3\.6vw,\s*1\.46rem\);/);
@@ -131,7 +131,7 @@ test('p-mining mobile stats stay in a compact two-column dashboard layout', () =
 test('p-mining mobile typography scales down across all tabs for a denser phone layout', () => {
   const css = fs.readFileSync(cssPath, 'utf8');
 
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(2\.15rem,\s*9vw,\s*3\.5rem\);/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.9rem,\s*8vw,\s*3rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-metric\s*\{[\s\S]*?font-size:\s*clamp\(1\.08rem,\s*4vw,\s*1\.55rem\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim-ring__countdown\s*\{[\s\S]*?font-size:\s*clamp\(0\.88rem,\s*3vw,\s*1\.15rem\);/);
   assert.match(css, /\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.38rem,\s*4\.2vw,\s*2rem\);/);
