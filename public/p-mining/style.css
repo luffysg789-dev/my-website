@@ -160,6 +160,76 @@ body {
   display: none;
 }
 
+.p-mining-modal[hidden] {
+  display: none;
+}
+
+.p-mining-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.p-mining-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.64);
+  backdrop-filter: blur(8px);
+}
+
+.p-mining-modal__dialog {
+  position: relative;
+  width: min(calc(100vw - 32px), 420px);
+  margin: min(14vh, 108px) auto 0;
+  padding: 22px;
+  border: 1px solid var(--p-mining-border);
+  border-radius: 28px;
+  background: rgba(24, 24, 24, 0.94);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(24px);
+}
+
+.p-mining-modal__dialog--success {
+  text-align: center;
+}
+
+.p-mining-modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--p-mining-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--p-mining-text);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.p-mining-modal__title {
+  margin: 0 0 10px;
+  padding-right: 40px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.p-mining-modal__copy {
+  margin: 0 0 16px;
+  color: var(--p-mining-muted);
+  line-height: 1.5;
+}
+
+.p-mining-invite-form--modal {
+  align-items: stretch;
+}
+
+.p-mining-modal__action {
+  width: 100%;
+  margin-top: 6px;
+}
+
 .p-mining-card {
   position: relative;
   overflow: hidden;
@@ -734,6 +804,22 @@ body {
     font-size: 0.86rem;
   }
 
+  .p-mining-modal__dialog {
+    width: min(calc(100vw - 24px), 388px);
+    margin-top: min(12vh, 88px);
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .p-mining-modal__title {
+    font-size: 1.18rem;
+  }
+
+  .p-mining-modal__copy {
+    font-size: 0.92rem;
+    margin-bottom: 14px;
+  }
+
   .p-mining-record-filters {
     grid-template-columns: 1fr;
   }
@@ -832,6 +918,19 @@ body {
   .p-mining-purchase-card,
   .p-mining-record-card {
     border-radius: 18px;
+  }
+
+  .p-mining-modal__dialog {
+    width: calc(100vw - 20px);
+    margin-top: 76px;
+    padding: 16px;
+  }
+
+  .p-mining-modal__close {
+    top: 12px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
   }
 }
 

@@ -183,10 +183,6 @@
               <span data-i18n="currentPower">Your Power</span>
               <strong id="pMiningProfilePower">10.0</strong>
             </div>
-            <div class="p-mining-profile-list__row">
-              <span data-i18n="bindStatus">Bind Status</span>
-              <strong id="pMiningProfileBindStatus">未绑定</strong>
-            </div>
           </article>
 
           <button id="pMiningLogoutButton" class="p-mining-logout-button" type="button" data-i18n="logoutButton">Log Out</button>
@@ -200,6 +196,29 @@
         <button class="p-mining-nav__item" type="button" data-tab-target="records" data-i18n="tabRecords">Records</button>
         <button class="p-mining-nav__item" type="button" data-tab-target="profile" data-i18n="tabProfile">Profile</button>
       </nav>
+
+      <div id="pMiningInvitePromptModal" class="p-mining-modal" hidden>
+        <div class="p-mining-modal__backdrop" data-modal-close="invite-prompt"></div>
+        <div class="p-mining-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="pMiningInvitePromptTitle">
+          <button id="pMiningInvitePromptClose" class="p-mining-modal__close" type="button" aria-label="Close">×</button>
+          <h2 id="pMiningInvitePromptTitle" class="p-mining-modal__title" data-i18n="invitePromptTitle">Enter Invite Code</h2>
+          <p class="p-mining-modal__copy" data-i18n="invitePromptCopy">Bind a friend's code to unlock +10 power.</p>
+          <div class="p-mining-invite-form p-mining-invite-form--modal">
+            <input id="pMiningInvitePromptInput" class="p-mining-text-input" type="text" placeholder="Enter a friend's code" data-i18n-placeholder="invitePlaceholder" />
+            <button id="pMiningInvitePromptSubmit" class="p-mining-submit-button" type="button" data-i18n="invitePromptAction">Bind</button>
+          </div>
+          <p id="pMiningInvitePromptError" class="p-mining-error" hidden></p>
+        </div>
+      </div>
+
+      <div id="pMiningInvitePromptSuccessModal" class="p-mining-modal" hidden>
+        <div class="p-mining-modal__backdrop" data-modal-close="invite-success"></div>
+        <div class="p-mining-modal__dialog p-mining-modal__dialog--success" role="dialog" aria-modal="true" aria-labelledby="pMiningInvitePromptSuccessTitle">
+          <h2 id="pMiningInvitePromptSuccessTitle" class="p-mining-modal__title" data-i18n="invitePromptSuccessTitle">Power Boosted</h2>
+          <p class="p-mining-modal__copy" data-i18n="invitePromptSuccessCopy">Invite linked successfully. Power +10.</p>
+          <button id="pMiningInvitePromptSuccessClose" class="p-mining-submit-button p-mining-modal__action" type="button" data-i18n="invitePromptSuccessAction">OK</button>
+        </div>
+      </div>
     </main>
 
     <script src="/games-config.js"></script>

@@ -53,6 +53,11 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /id="pMiningPurchasePanel"/);
   assert.match(html, /id="pMiningPurchaseStatus"/);
   assert.doesNotMatch(html, /id="pMiningPurchaseFallback"/);
+  assert.match(html, /id="pMiningInvitePromptModal"/);
+  assert.match(html, /id="pMiningInvitePromptClose"/);
+  assert.match(html, /id="pMiningInvitePromptSubmit"/);
+  assert.match(html, /id="pMiningInvitePromptSuccessModal"/);
+  assert.match(html, /id="pMiningInvitePromptSuccessClose"/);
   assert.match(html, /data-purchase-tier="starter"/);
   assert.match(html, /data-purchase-tier="boost"/);
   assert.match(html, /\/games-config\.js/);
@@ -86,6 +91,8 @@ test('p-mining css includes dark glass tokens, bottom nav, and circular claim la
   assert.match(css, /\.p-mining-header__actions\s*\{[\s\S]*margin-left:\s*auto;/);
   assert.match(css, /\.p-mining-host-status\s*\{[\s\S]*border-radius:\s*999px;/);
   assert.match(css, /\.p-mining-locale-toggle__button\.is-active/);
+  assert.match(css, /\.p-mining-modal\[hidden\]\s*\{[\s\S]*display:\s*none;/);
+  assert.match(css, /\.p-mining-modal__dialog\s*\{/);
   assert.match(css, /backdrop-filter:\s*blur\(/);
   assert.match(css, /padding-bottom:\s*calc\(.*env\(safe-area-inset-bottom\)/);
 });
@@ -214,6 +221,10 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function renderClaimState\(/);
   assert.match(js, /function handleClaimButtonClick\(/);
   assert.match(js, /function handleInviteSubmit\(/);
+  assert.match(js, /function shouldShowInvitePrompt\(/);
+  assert.match(js, /function openInvitePrompt\(/);
+  assert.match(js, /function closeInvitePrompt\(/);
+  assert.match(js, /function openInviteSuccessPrompt\(/);
   assert.match(js, /function handleCopyInviteCode\(/);
   assert.match(js, /function renderRecordsPanel\(/);
   assert.match(js, /function renderProfilePanel\(/);
@@ -223,6 +234,7 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /else if \(isNexaAppEnvironment\(\)\) \{\s*await beginNexaLoginFlow\(appState,\s*'mining'\)\.catch\(\(\) => false\);/);
   assert.match(js, /root\.classList\.add\('is-ready'\);/);
   assert.match(js, /window\.setInterval\(/);
+  assert.match(js, /if \(shouldShowInvitePrompt\(appState\)\) \{\s*openInvitePrompt\(appState\);/);
 });
 
 test('p-mining script only refreshes cooldown on interval without auto-advancing network stats', () => {

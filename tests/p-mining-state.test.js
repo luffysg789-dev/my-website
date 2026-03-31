@@ -28,6 +28,7 @@ const {
   getStoredLocale,
   getPMiningSessionExpiryTimestamp,
   loadCachedPMiningSession,
+  shouldForceFreshNexaAuthorization,
   purchasePowerPackage,
   applyPendingInvitePurchaseBonuses,
   POWER_PURCHASE_OPTIONS,
@@ -299,6 +300,44 @@ test('loadCachedPMiningSession returns null when the saved nexa session is expir
   };
 
   assert.equal(loadCachedPMiningSession(storage), null);
+});
+
+test('shouldForceFreshNexaAuthorization ignores cached session when reopening inside Nexa without a new auth code', () => {
+  assert.equal(
+    shouldForceFreshNexaAuthorization({
+      isNexaEnvironment: true,
+      hasAuthCode: false,
+      cachedSession: {
+        openId: 'open-id-1',
+        sessionKey: 'session-key-1'
+      }
+    }),
+    true
+  );
+
+  assert.equal(
+    shouldForceFreshNexaAuthorization({
+      isNexaEnvironment: true,
+      hasAuthCode: true,
+      cachedSession: {
+        openId: 'open-id-1',
+        sessionKey: 'session-key-1'
+      }
+    }),
+    false
+  );
+
+  assert.equal(
+    shouldForceFreshNexaAuthorization({
+      isNexaEnvironment: false,
+      hasAuthCode: false,
+      cachedSession: {
+        openId: 'open-id-1',
+        sessionKey: 'session-key-1'
+      }
+    }),
+    false
+  );
 });
 
 test('buildNexaPaymentUrl serializes Nexa order payload for payment deep link', () => {

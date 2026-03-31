@@ -67,13 +67,18 @@
       powerPurchaseAction: 'Buy Now',
       enterInviteCode: 'Enter Invite Code',
       invitePlaceholder: "Enter a friend's code",
+      invitePromptTitle: 'Enter Invite Code',
+      invitePromptCopy: "Bind a friend's code to unlock +10 power.",
+      invitePromptAction: 'Bind',
+      invitePromptSuccessTitle: 'Power Boosted',
+      invitePromptSuccessCopy: 'Invite linked successfully. Power +10.',
+      invitePromptSuccessAction: 'OK',
       invitedUsers: 'Invites',
       invitePowerBonus: 'Power Bonus',
       claimRecords: 'Claims',
       inviteRecords: 'Invites',
       powerChanges: 'Power',
       currentTotalPoints: 'Current P',
-      bindStatus: 'Bind Status',
       logoutButton: 'Log Out',
       tabMining: 'Mining',
       tabInvite: 'Invite',
@@ -86,8 +91,6 @@
       claimTitle: 'Claim Reward',
       inviteTitle: 'Invite Linked',
       powerTitle: 'Power Update',
-      bindBound: 'Bound',
-      bindUnbound: 'Unbound',
       reasonInitialPower: 'Starting Power',
       reasonInviteReward: 'Invite Bonus',
       reasonPurchasePower: 'Power Purchase',
@@ -127,13 +130,18 @@
       powerPurchaseAction: '立即购买',
       enterInviteCode: '填写邀请码',
       invitePlaceholder: '输入好友邀请码',
+      invitePromptTitle: '填写邀请码',
+      invitePromptCopy: '绑定好友邀请码后，立即获得 +10 算力。',
+      invitePromptAction: '立即绑定',
+      invitePromptSuccessTitle: '算力加成成功',
+      invitePromptSuccessCopy: '邀请码绑定成功，算力 +10。',
+      invitePromptSuccessAction: '我知道了',
       invitedUsers: '已邀请人数',
       invitePowerBonus: '邀请算力加成',
       claimRecords: '领取记录',
       inviteRecords: '邀请记录',
       powerChanges: '算力变动',
       currentTotalPoints: '当前总积分',
-      bindStatus: '绑定状态',
       logoutButton: '退出登录',
       tabMining: '挖矿',
       tabInvite: '邀请',
@@ -146,8 +154,6 @@
       claimTitle: '挖矿领取',
       inviteTitle: '邀请绑定',
       powerTitle: '算力变动',
-      bindBound: '已绑定',
-      bindUnbound: '未绑定',
       reasonInitialPower: '初始算力',
       reasonInviteReward: '邀请奖励',
       reasonPurchasePower: '购买算力',
@@ -797,6 +803,12 @@
     globalScope.window.history.replaceState({}, globalScope.document.title, url.toString());
   }
 
+  function hasNexaEnvironmentMarker() {
+    const userAgent = String(globalScope.window.navigator?.userAgent || '').trim();
+    const referrer = String(globalScope.document?.referrer || '').trim();
+    return /nexa/i.test(userAgent) || /nexa/i.test(referrer);
+  }
+
   async function postJson(url, body) {
     const response = await globalScope.fetch(url, {
       method: 'POST',
@@ -831,10 +843,12 @@
   }
 
   function isNexaAppEnvironment() {
-    const userAgent = String(globalScope.window.navigator?.userAgent || '').trim();
-    const referrer = String(globalScope.document?.referrer || '').trim();
-    const hasNexaMarker = /nexa/i.test(userAgent) || /nexa/i.test(referrer);
+    const hasNexaMarker = hasNexaEnvironmentMarker();
     return Boolean(hasNexaMarker || loadCachedPMiningSession());
+  }
+
+  function shouldForceFreshNexaAuthorization({ isNexaEnvironment, hasAuthCode, cachedSession }) {
+    return Boolean(isNexaEnvironment && !hasAuthCode && cachedSession?.openId && cachedSession?.sessionKey);
   }
 
   function getClaimUiState({ lastClaimAt, now, isProcessing }) {
@@ -1071,7 +1085,6 @@
     appState.elements.profileUid.textContent = `UID: ${appState.hostUser.uid}`;
     appState.elements.profileBalance.textContent = `${formatMiningNumber(appState.state.balance)} P`;
     appState.elements.profilePower.textContent = formatPowerValue(appState.state.power);
-    appState.elements.profileBindStatus.textContent = appState.state.boundInviteCode ? t(appState.locale, 'bindBound') : t(appState.locale, 'bindUnbound');
   }
 
   function renderAll(appState) {
@@ -1087,10 +1100,46 @@
     if (!message) {
       appState.elements.inviteError.hidden = true;
       appState.elements.inviteError.textContent = '';
+      if (appState.elements.invitePromptError) {
+        appState.elements.invitePromptError.hidden = true;
+        appState.elements.invitePromptError.textContent = '';
+      }
       return;
     }
     appState.elements.inviteError.hidden = false;
     appState.elements.inviteError.textContent = message;
+    if (appState.elements.invitePromptError) {
+      appState.elements.invitePromptError.hidden = false;
+      appState.elements.invitePromptError.textContent = message;
+    }
+  }
+
+  function shouldShowInvitePrompt(appState) {
+    return Boolean(appState.nexaSession && !appState.state.boundInviteCode && !appState.isInvitePromptDismissed);
+  }
+
+  function openInvitePrompt(appState) {
+    if (!appState.elements.invitePromptModal) return;
+    appState.elements.invitePromptInput.value = appState.state.boundInviteCode || appState.elements.inviteInput.value || '';
+    appState.elements.invitePromptModal.hidden = false;
+    showInviteError(appState, '');
+  }
+
+  function closeInvitePrompt(appState) {
+    if (!appState.elements.invitePromptModal) return;
+    appState.isInvitePromptDismissed = true;
+    appState.elements.invitePromptModal.hidden = true;
+    showInviteError(appState, '');
+  }
+
+  function openInviteSuccessPrompt(appState) {
+    if (!appState.elements.invitePromptSuccessModal) return;
+    appState.elements.invitePromptSuccessModal.hidden = false;
+  }
+
+  function closeInviteSuccessPrompt(appState) {
+    if (!appState.elements.invitePromptSuccessModal) return;
+    appState.elements.invitePromptSuccessModal.hidden = true;
   }
 
   async function ensureClaimAudioContext(appState) {
@@ -1176,11 +1225,23 @@
       return;
     }
     try {
+      const inviteCode = String(appState.elements.invitePromptModal?.hidden === false
+        ? appState.elements.invitePromptInput.value
+        : appState.elements.inviteInput.value);
       const response = await postJson('/api/p-mining/invite/bind', {
-        inviteCode: appState.elements.inviteInput.value
+        inviteCode
       });
       if (response?.ok) {
         syncAppStateFromServer(appState, response);
+        appState.isInvitePromptDismissed = false;
+        appState.elements.inviteInput.value = appState.state.boundInviteCode || '';
+        if (appState.elements.invitePromptInput) {
+          appState.elements.invitePromptInput.value = appState.state.boundInviteCode || '';
+        }
+        if (appState.elements.invitePromptModal?.hidden === false) {
+          appState.elements.invitePromptModal.hidden = true;
+          openInviteSuccessPrompt(appState);
+        }
       }
       showInviteError(appState, '');
       renderAll(appState);
@@ -1440,11 +1501,21 @@
   function createBrowserApp(root) {
     const storage = getPersistentStorage();
     const cachedSession = loadCachedPMiningSession(storage);
-    const hostUser = cachedSession ? createHostUserFromSession(cachedSession) : getMockNexaUser();
+    const requiresFreshNexaAuthorization = shouldForceFreshNexaAuthorization({
+      isNexaEnvironment: hasNexaEnvironmentMarker(),
+      hasAuthCode: Boolean(extractAuthCodeFromUrl()),
+      cachedSession
+    });
+    if (requiresFreshNexaAuthorization) {
+      clearCachedPMiningSession(storage);
+    }
+    const activeSession = requiresFreshNexaAuthorization ? null : cachedSession;
+    const hostUser = activeSession ? createHostUserFromSession(activeSession) : getMockNexaUser();
     const appState = {
       hostUser,
       storage,
-      nexaSession: cachedSession,
+      nexaSession: activeSession,
+      requiresFreshNexaAuthorization,
       locale: getStoredLocale(storage),
       state: loadMiningState(storage, hostUser),
       network: loadNetworkStats(storage),
@@ -1454,6 +1525,7 @@
       balanceAnimationFrame: null,
       hasAnimatedBalance: false,
       isProcessing: false,
+      isInvitePromptDismissed: false,
       isPurchaseBusy: false,
       activePurchaseTier: '',
       claimAudioContext: null,
@@ -1490,12 +1562,18 @@
         inviteInput: root.querySelector('#pMiningInviteInput'),
         inviteSubmitButton: root.querySelector('#pMiningInviteSubmitButton'),
         inviteError: root.querySelector('#pMiningInviteError'),
+        invitePromptModal: root.querySelector('#pMiningInvitePromptModal'),
+        invitePromptClose: root.querySelector('#pMiningInvitePromptClose'),
+        invitePromptInput: root.querySelector('#pMiningInvitePromptInput'),
+        invitePromptSubmit: root.querySelector('#pMiningInvitePromptSubmit'),
+        invitePromptError: root.querySelector('#pMiningInvitePromptError'),
+        invitePromptSuccessModal: root.querySelector('#pMiningInvitePromptSuccessModal'),
+        invitePromptSuccessClose: root.querySelector('#pMiningInvitePromptSuccessClose'),
         recordsList: root.querySelector('#pMiningRecordsList'),
         profileEmail: root.querySelector('#pMiningProfileEmail'),
         profileUid: root.querySelector('#pMiningProfileUid'),
         profileBalance: root.querySelector('#pMiningProfileBalance'),
         profilePower: root.querySelector('#pMiningProfilePower'),
-        profileBindStatus: root.querySelector('#pMiningProfileBindStatus'),
         copyInviteButton: root.querySelector('#pMiningCopyInviteButton'),
         logoutButton: root.querySelector('#pMiningLogoutButton')
       }
@@ -1513,6 +1591,15 @@
     appState.elements.claimButton?.addEventListener('touchstart', () => warmClaimAudio(appState), { passive: true });
     appState.elements.claimButton?.addEventListener('click', () => handleClaimButtonClick(appState).catch(() => {}));
     appState.elements.inviteSubmitButton?.addEventListener('click', () => handleInviteSubmit(appState).catch(() => {}));
+    appState.elements.invitePromptSubmit?.addEventListener('click', () => handleInviteSubmit(appState).catch(() => {}));
+    appState.elements.invitePromptClose?.addEventListener('click', () => closeInvitePrompt(appState));
+    root.querySelectorAll('[data-modal-close="invite-prompt"]').forEach((node) => {
+      node.addEventListener('click', () => closeInvitePrompt(appState));
+    });
+    appState.elements.invitePromptSuccessClose?.addEventListener('click', () => closeInviteSuccessPrompt(appState));
+    root.querySelectorAll('[data-modal-close="invite-success"]').forEach((node) => {
+      node.addEventListener('click', () => closeInviteSuccessPrompt(appState));
+    });
     appState.elements.copyInviteButton?.addEventListener('click', () => handleCopyInviteCode(appState));
     appState.elements.purchaseButtons.forEach((button) => {
       button.addEventListener('click', () => {
@@ -1535,6 +1622,9 @@
     attachRecordFilters(appState);
     renderAll(appState);
     switchTab(appState, 'mining');
+    if (shouldShowInvitePrompt(appState)) {
+      openInvitePrompt(appState);
+    }
     root.classList.add('is-ready');
 
     globalScope.window.setInterval(() => {
@@ -1550,11 +1640,19 @@
     if (!root) return;
     const appState = createBrowserApp(root);
     const exchanged = await exchangePMiningSessionFromUrlCode(appState);
+    if (!exchanged && appState.requiresFreshNexaAuthorization) {
+      await beginNexaLoginFlow(appState, readPendingAuthTarget(appState.storage) || 'mining').catch(() => false);
+      await settlePendingPaymentOrder(appState).catch(() => false);
+      return;
+    }
     if (!exchanged && appState.nexaSession) {
       const bootstrap = await loadPMiningBootstrap().catch(() => null);
       if (bootstrap?.ok) {
         syncAppStateFromServer(appState, bootstrap);
         renderAll(appState);
+        if (shouldShowInvitePrompt(appState)) {
+          openInvitePrompt(appState);
+        }
       }
     }
     if (!exchanged && !appState.nexaSession) {
@@ -1565,6 +1663,9 @@
         if (bootstrap?.ok) {
           syncAppStateFromServer(appState, bootstrap);
           renderAll(appState);
+          if (shouldShowInvitePrompt(appState)) {
+            openInvitePrompt(appState);
+          }
         }
       } else if (isNexaAppEnvironment()) {
         await beginNexaLoginFlow(appState, 'mining').catch(() => false);
@@ -1587,6 +1688,7 @@
     getStoredLocale,
     getPMiningSessionExpiryTimestamp,
     loadCachedPMiningSession,
+    shouldForceFreshNexaAuthorization,
     POWER_PURCHASE_OPTIONS,
     calculateClaimReward,
     calculateEstimatedTodayOutput,
@@ -1607,10 +1709,14 @@
     loadNetworkStats,
     saveNetworkStats,
     getClaimUiState,
-    applyTranslations,
-    toggleLanguage,
-    switchTab,
-    syncAppStateFromServer,
+        applyTranslations,
+        toggleLanguage,
+        switchTab,
+        shouldShowInvitePrompt,
+        openInvitePrompt,
+        closeInvitePrompt,
+        openInviteSuccessPrompt,
+        syncAppStateFromServer,
     loadPMiningBootstrap,
     renderClaimState,
     handleClaimButtonClick,
