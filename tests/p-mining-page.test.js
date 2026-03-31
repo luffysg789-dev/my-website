@@ -172,8 +172,10 @@ test('p-mining html includes the expected mining, invite, records, and profile s
   assert.match(html, /data-i18n="inviteFriends"/);
   assert.match(html, /data-i18n="claimRecords"/);
   assert.match(html, /data-i18n="currentTotalPoints"/);
+  assert.match(html, /data-i18n="totalSupplyValue"/);
   assert.match(html, /Every 4 Years \(Next\)/);
   assert.match(html, /P is Pay，P is People，P没有用，是我们的见证，当参与的人数超过 1000 万人时，说不定是一场伟大的胜利。/);
+  assert.doesNotMatch(html, />2100 亿</);
 });
 
 test('p-mining script includes the expected UI hooks', () => {
@@ -221,6 +223,8 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function loadPMiningBootstrap\(/);
   assert.match(js, /function toggleLanguage\(/);
   assert.match(js, /function applyTranslations\(/);
+  assert.match(js, /totalSupplyValue:\s*'210B'/);
+  assert.match(js, /totalSupplyValue:\s*'2100 亿'/);
   assert.match(js, /function switchTab\(/);
   assert.match(js, /function animateBalanceValue\(/);
   assert.match(js, /globalScope\.window\?\.requestAnimationFrame\?\.bind\(globalScope\.window\)/);
@@ -258,6 +262,19 @@ test('p-mining invite prompt waits for synced account state instead of opening d
     /renderAll\(appState\);\s*switchTab\(appState,\s*'mining'\);\s*if \(shouldShowInvitePrompt\(appState\)\) \{\s*openInvitePrompt\(appState\);/
   );
   assert.match(js, /syncAppStateFromServer\(appState,\s*bootstrap\);\s*renderAll\(appState\);\s*syncInvitePromptVisibility\(appState\);/);
+});
+
+test('p-mining invite success feedback opens after a successful bind from the invite page too', () => {
+  const js = fs.readFileSync(jsPath, 'utf8');
+
+  assert.match(
+    js,
+    /if \(appState\.elements\.invitePromptModal\?\.hidden === false\) \{\s*appState\.elements\.invitePromptModal\.hidden = true;\s*\}/
+  );
+  assert.match(
+    js,
+    /if \(response\?\.ok\) \{[\s\S]*?syncAppStateFromServer\(appState,\s*response\);[\s\S]*?openInviteSuccessPrompt\(appState\);/
+  );
 });
 
 test('p-mining script only refreshes cooldown on interval without auto-advancing network stats', () => {

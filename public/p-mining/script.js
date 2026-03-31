@@ -52,6 +52,7 @@
       halvingCycle: 'Halving Cycle',
       nextHalving: 'Every 4 Years (Next)',
       totalSupply: 'Supply',
+      totalSupplyValue: '210B',
       estimatedFinish: 'Est. Finish',
       manifesto: 'P is Pay, P is People. P may have no utility, but it stands as our witness. If participation surpasses 10 million people, it might become a great victory.',
       inviteFriends: 'Invite Friends',
@@ -115,6 +116,7 @@
       halvingCycle: '当前减半周期',
       nextHalving: '每四年减半（下次）',
       totalSupply: '总发行量',
+      totalSupplyValue: '2100 亿',
       estimatedFinish: '预计挖完时间',
       manifesto: 'P is Pay，P is People，P没有用，是我们的见证，当参与的人数超过 1000 万人时，说不定是一场伟大的胜利。',
       inviteFriends: '邀请好友',
@@ -1320,8 +1322,8 @@
         }
         if (appState.elements.invitePromptModal?.hidden === false) {
           appState.elements.invitePromptModal.hidden = true;
-          openInviteSuccessPrompt(appState);
         }
+        openInviteSuccessPrompt(appState);
       }
       showInviteError(appState, '');
       renderAll(appState);
