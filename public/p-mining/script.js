@@ -878,7 +878,9 @@
   }
 
   function shouldForceFreshNexaAuthorization({ isNexaEnvironment, hasAuthCode, cachedSession }) {
-    return false;
+    if (!isNexaEnvironment) return false;
+    if (hasAuthCode) return false;
+    return Boolean(String(cachedSession?.openId || '').trim() && String(cachedSession?.sessionKey || '').trim());
   }
 
   function getClaimUiState({ lastClaimAt, now, isProcessing }) {
@@ -1601,7 +1603,7 @@
       hasAuthCode: Boolean(extractAuthCodeFromUrl()),
       cachedSession
     });
-    const activeSession = cachedSession;
+    const activeSession = requiresFreshNexaAuthorization ? null : cachedSession;
     const hostUser = activeSession ? createHostUserFromSession(activeSession) : getMockNexaUser();
     const appState = {
       hostUser,
