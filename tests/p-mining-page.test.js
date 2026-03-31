@@ -41,6 +41,9 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /data-tab="records"/);
   assert.match(html, /data-tab="profile"/);
   assert.match(html, /id="pMiningClaimButton"/);
+  assert.match(html, /class="p-mining-balance-card__content"/);
+  assert.match(html, /class="p-mining-balance-card__main"/);
+  assert.match(html, /class="p-mining-balance-card__aside"/);
   assert.match(html, /class="p-mining-claim-ring"/);
   assert.match(html, /class="p-mining-claim-ring__mine-icon"/);
   assert.match(html, /id="pMiningClaimCountdown">60</);
@@ -81,6 +84,8 @@ test('p-mining css includes dark glass tokens, bottom nav, and circular claim la
   assert.match(css, /--p-mining-accent:\s*#F27D26/i);
   assert.match(css, /--p-mining-power:\s*#/);
   assert.match(css, /\.p-mining-balance-card\s*\{/);
+  assert.match(css, /\.p-mining-balance-card__content\s*\{/);
+  assert.match(css, /\.p-mining-balance-card__aside\s*\{/);
   assert.match(css, /\.p-mining-claim-ring\s*\{/);
   assert.match(css, /\.p-mining-claim-ring__countdown\s*\{[\s\S]*color:\s*var\(--p-mining-text\);/);
   assert.match(css, /\.p-mining-nav\s*\{/);
@@ -105,9 +110,10 @@ test('p-mining mobile layout is tightened for smaller phone screens', () => {
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-panel\s*\{[\s\S]*?gap:\s*8px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card\s*\{[\s\S]*?min-height:\s*164px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__meta\s*\{[\s\S]*?margin-top:\s*10px;/);
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim\s*\{[\s\S]*?margin-top:\s*-4px;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__content\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__meta\s*\{[\s\S]*?gap:\s*10px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-balance-card__value\s*\{[\s\S]*?font-size:\s*clamp\(2\.15rem,\s*9vw,\s*3\.5rem\);/);
-  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim-ring\s*\{[\s\S]*?width:\s*min\(29vw,\s*132px\);/);
+  assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-claim-ring\s*\{[\s\S]*?width:\s*min\(24vw,\s*108px\);/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-card\s*\{[\s\S]*?padding:\s*14px;/);
   assert.match(css, /@media \(max-width:\s*720px\)[\s\S]*?\.p-mining-stat-card__value\s*\{[\s\S]*?font-size:\s*clamp\(1\.04rem,\s*3\.6vw,\s*1\.46rem\);/);
 });

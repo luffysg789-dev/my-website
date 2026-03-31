@@ -251,6 +251,25 @@ body {
   min-height: 228px;
 }
 
+.p-mining-balance-card__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.p-mining-balance-card__main {
+  min-width: 0;
+}
+
+.p-mining-balance-card__aside {
+  display: grid;
+  align-items: center;
+  justify-items: end;
+}
+
 .p-mining-balance-card__watermark {
   position: absolute;
   right: 12px;
@@ -282,10 +301,11 @@ body {
 .p-mining-balance-card__meta {
   gap: 16px;
   margin-top: 20px;
+  justify-content: flex-start;
 }
 
 .p-mining-balance-card__meta > div {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -699,12 +719,18 @@ body {
     font-size: 7rem;
   }
 
+  .p-mining-balance-card__content {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+  }
+
   .p-mining-balance-card__value {
     font-size: clamp(2.15rem, 9vw, 3.5rem);
   }
 
   .p-mining-balance-card__meta {
-    gap: 12px;
+    gap: 10px;
     margin-top: 10px;
   }
 
@@ -712,13 +738,8 @@ body {
     font-size: clamp(1.08rem, 4vw, 1.55rem);
   }
 
-  .p-mining-claim {
-    margin-top: -4px;
-    padding: 0;
-  }
-
   .p-mining-claim-ring {
-    width: min(29vw, 132px);
+    width: min(24vw, 108px);
     padding: 5px;
   }
 
@@ -912,7 +933,11 @@ body {
   }
 
   .p-mining-claim-ring {
-    width: min(36vw, 124px);
+    width: min(27vw, 96px);
+  }
+
+  .p-mining-balance-card__content {
+    gap: 10px;
   }
 
   .p-mining-purchase-card,
@@ -945,7 +970,7 @@ body {
   }
 
   .p-mining-claim-ring {
-    width: min(40vw, 112px);
+    width: min(29vw, 88px);
     padding: 4px;
   }
 
@@ -989,7 +1014,6 @@ body {
   }
 
   .p-mining-panel[data-tab="mining"] .p-mining-balance-card,
-  .p-mining-panel[data-tab="mining"] .p-mining-claim,
   .p-mining-panel[data-tab="mining"] .p-mining-rule-card {
     grid-column: 1;
   }
@@ -997,10 +1021,6 @@ body {
   .p-mining-panel[data-tab="mining"] .p-mining-stats-grid {
     grid-column: 2;
     grid-row: 1 / span 3;
-  }
-
-  .p-mining-claim {
-    justify-self: start;
   }
 
   .p-mining-claim-ring {

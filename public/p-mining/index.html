@@ -31,29 +31,32 @@
         <section class="p-mining-panel is-active" data-tab="mining">
           <article class="p-mining-card p-mining-balance-card">
             <div class="p-mining-balance-card__watermark" aria-hidden="true">⛏️</div>
-            <p class="p-mining-card__label" data-i18n="currentHoldings">Current P</p>
-            <div class="p-mining-balance-card__value" id="pMiningBalanceValue">0.0</div>
-            <div class="p-mining-balance-card__meta">
-              <div>
-                <p class="p-mining-card__label" data-i18n="currentPower">Your Power</p>
-                <div class="p-mining-metric p-mining-metric--power" id="pMiningPowerValue">10.0</div>
+            <div class="p-mining-balance-card__content">
+              <div class="p-mining-balance-card__main">
+                <p class="p-mining-card__label" data-i18n="currentHoldings">Current P</p>
+                <div class="p-mining-balance-card__value" id="pMiningBalanceValue">0.0</div>
+                <div class="p-mining-balance-card__meta">
+                  <div>
+                    <p class="p-mining-card__label" data-i18n="currentPower">Your Power</p>
+                    <div class="p-mining-metric p-mining-metric--power" id="pMiningPowerValue">10.0</div>
+                  </div>
+                  <div>
+                    <p class="p-mining-card__label" data-i18n="estimatedPerMinute">Est. P / Min</p>
+                    <div class="p-mining-metric" id="pMiningRewardPerMinute">49942.9</div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p class="p-mining-card__label" data-i18n="estimatedPerMinute">Est. P / Min</p>
-                <div class="p-mining-metric" id="pMiningRewardPerMinute">49942.9</div>
+              <div class="p-mining-balance-card__aside">
+                <button id="pMiningClaimButton" class="p-mining-claim-ring" type="button" aria-label="领取 P">
+                  <span class="p-mining-claim-ring__inner">
+                    <span class="p-mining-claim-ring__mine-icon" aria-hidden="true">⛏️</span>
+                    <span class="p-mining-claim-ring__countdown" id="pMiningClaimCountdown">60</span>
+                    <span class="p-mining-claim-ring__hint" id="pMiningClaimHint">点击领取</span>
+                  </span>
+                </button>
               </div>
             </div>
           </article>
-
-          <section class="p-mining-claim">
-            <button id="pMiningClaimButton" class="p-mining-claim-ring" type="button" aria-label="领取 P">
-              <span class="p-mining-claim-ring__inner">
-                <span class="p-mining-claim-ring__mine-icon" aria-hidden="true">⛏️</span>
-                <span class="p-mining-claim-ring__countdown" id="pMiningClaimCountdown">60</span>
-                <span class="p-mining-claim-ring__hint" id="pMiningClaimHint">点击领取</span>
-              </span>
-            </button>
-          </section>
 
           <section id="pMiningStatsGrid" class="p-mining-stats-grid">
             <article class="p-mining-card p-mining-stat-card">
