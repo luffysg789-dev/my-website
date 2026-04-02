@@ -253,6 +253,9 @@ db.exec(`
     risk_reason TEXT NOT NULL DEFAULT '',
     last_risk_at INTEGER NOT NULL DEFAULT 0,
     mining_ban_until INTEGER NOT NULL DEFAULT 0,
+    claim_streak_count INTEGER NOT NULL DEFAULT 0,
+    last_claim_success_at INTEGER NOT NULL DEFAULT 0,
+    human_check_required INTEGER NOT NULL DEFAULT 0,
     last_claim_at INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -275,6 +278,18 @@ if (!hasPMiningLastRiskAt) {
 const hasPMiningMiningBanUntil = db.prepare("SELECT 1 FROM pragma_table_info('p_mining_users') WHERE name = 'mining_ban_until'").get();
 if (!hasPMiningMiningBanUntil) {
   db.exec("ALTER TABLE p_mining_users ADD COLUMN mining_ban_until INTEGER NOT NULL DEFAULT 0");
+}
+const hasPMiningClaimStreakCount = db.prepare("SELECT 1 FROM pragma_table_info('p_mining_users') WHERE name = 'claim_streak_count'").get();
+if (!hasPMiningClaimStreakCount) {
+  db.exec("ALTER TABLE p_mining_users ADD COLUMN claim_streak_count INTEGER NOT NULL DEFAULT 0");
+}
+const hasPMiningLastClaimSuccessAt = db.prepare("SELECT 1 FROM pragma_table_info('p_mining_users') WHERE name = 'last_claim_success_at'").get();
+if (!hasPMiningLastClaimSuccessAt) {
+  db.exec("ALTER TABLE p_mining_users ADD COLUMN last_claim_success_at INTEGER NOT NULL DEFAULT 0");
+}
+const hasPMiningHumanCheckRequired = db.prepare("SELECT 1 FROM pragma_table_info('p_mining_users') WHERE name = 'human_check_required'").get();
+if (!hasPMiningHumanCheckRequired) {
+  db.exec("ALTER TABLE p_mining_users ADD COLUMN human_check_required INTEGER NOT NULL DEFAULT 0");
 }
 
 db.exec(`

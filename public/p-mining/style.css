@@ -73,6 +73,7 @@ body {
 
 .p-mining-brand {
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .p-mining-header {
@@ -84,7 +85,7 @@ body {
 
 .p-mining-header__actions {
   margin-left: auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -145,18 +146,19 @@ body {
 }
 
 .p-mining-host-status {
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 8px 12px;
   border: 1px solid var(--p-mining-border);
   border-radius: 999px;
   background: rgba(28, 28, 28, 0.86);
   color: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(18px);
+  white-space: nowrap;
 }
 
 .p-mining-host-status__dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #16c45b;
 }

@@ -54,6 +54,9 @@ const PMINING_RISK_SCORE_THRESHOLD = 120;
 const PMINING_RISK_INCREMENT_EARLY_COOLDOWN = 40;
 const PMINING_RISK_COOLDOWN_WINDOW_MS = 3000;
 const PMINING_RISK_SCORE_DECAY_MS = 24 * 60 * 60 * 1000;
+const PMINING_HUMAN_CHECK_STREAK_THRESHOLD = 10;
+const PMINING_HUMAN_CHECK_MIN_INTERVAL_MS = PMINING_CLAIM_COOLDOWN_MS;
+const PMINING_HUMAN_CHECK_MAX_INTERVAL_MS = 75 * 1000;
 const PMINING_MAX_RECORDS = 20;
 const nexaTipOrders = new Map();
 const PMINING_PAYMENT_CURRENCY = 'USDT';
@@ -795,12 +798,18 @@ function formatPMiningAccountRow(row) {
     riskScore: Math.max(0, Number(row?.risk_score || 0) || 0),
     riskReason: String(row?.risk_reason || '').trim(),
     miningBanUntil: Math.max(0, Number(row?.mining_ban_until || 0) || 0),
+    claimStreakCount: Math.max(0, Number(row?.claim_streak_count || 0) || 0),
+    needHumanCheck: Boolean(Number(row?.human_check_required || 0) || 0),
     lastClaimAt: Math.max(0, Number(row?.last_claim_at || 0) || 0)
   };
 }
 
 function buildPMiningBanMessage() {
   return '账号存在异常操作，已限制挖矿 7 天';
+}
+
+function buildPMiningHumanCheckMessage() {
+  return '检测到连续高频挖矿，请点击确定后继续挖矿';
 }
 
 function applyPMiningRiskStrike(account, {
@@ -968,6 +977,12 @@ const applyPMiningClaim = db.transaction((payload) => {
       message: buildPMiningBanMessage()
     };
   }
+  if (Number(account.human_check_required || 0) > 0) {
+    return {
+      kind: 'human_check_required',
+      message: buildPMiningHumanCheckMessage()
+    };
+  }
   const lastClaimAt = Math.max(0, Number(account.last_claim_at || 0) || 0);
   if (now - lastClaimAt < PMINING_CLAIM_COOLDOWN_MS) {
     if (now - lastClaimAt <= PMINING_RISK_COOLDOWN_WINDOW_MS) {
@@ -991,9 +1006,22 @@ const applyPMiningClaim = db.transaction((payload) => {
   const network = buildPMiningNetworkStats();
   const reward = roundPMiningValue((Math.max(0, Number(account.power || 0)) / Math.max(1, Number(network.todayPower || 1))) * (PMINING_DAILY_CAP / 1440));
   const nextBalance = roundPMiningValue(Number(account.balance_p || 0) + reward);
-  updatePMiningClaimStateStmt.run(nextBalance, now, payload.userId);
+  const lastClaimSuccessAt = Math.max(0, Number(account.last_claim_success_at || 0) || 0);
+  const claimGapMs = lastClaimSuccessAt > 0 ? now - lastClaimSuccessAt : 0;
+  const nextClaimStreakCount = claimGapMs >= PMINING_HUMAN_CHECK_MIN_INTERVAL_MS && claimGapMs <= PMINING_HUMAN_CHECK_MAX_INTERVAL_MS
+    ? Math.max(0, Number(account.claim_streak_count || 0) || 0) + 1
+    : 1;
+  const nextHumanCheckRequired = nextClaimStreakCount >= PMINING_HUMAN_CHECK_STREAK_THRESHOLD ? 1 : 0;
+  updatePMiningClaimStateStmt.run(nextBalance, now, nextClaimStreakCount, now, nextHumanCheckRequired, payload.userId);
   insertPMiningClaimRecordStmt.run(payload.userId, reward, Math.max(0, Number(account.power || 0)));
   return { kind: 'claimed', reward };
+});
+
+const confirmPMiningHumanCheck = db.transaction((payload) => {
+  const account = selectPMiningUserByUserIdStmt.get(payload.userId);
+  if (!account) return { kind: 'account_not_found' };
+  updatePMiningHumanCheckStateStmt.run(0, 0, payload.userId);
+  return { kind: 'confirmed' };
 });
 
 const bindPMiningInviteCode = db.transaction((payload) => {
@@ -2634,6 +2662,13 @@ app.post('/api/p-mining/claim', (req, res) => {
         banUntil: Number(result.banUntil || 0) || 0
       });
     }
+    if (result.kind === 'human_check_required') {
+      return res.status(428).json({
+        ok: false,
+        error: 'HUMAN_CHECK_REQUIRED',
+        message: String(result.message || buildPMiningHumanCheckMessage())
+      });
+    }
     if (result.kind !== 'claimed') {
       return res.status(404).json({ ok: false, error: 'ACCOUNT_NOT_FOUND' });
     }
@@ -2645,6 +2680,26 @@ app.post('/api/p-mining/claim', (req, res) => {
   } catch (error) {
     const statusCode = Number(error?.statusCode || 500) || 500;
     return res.status(statusCode).json({ ok: false, error: String(error?.message || 'CLAIM_FAILED') });
+  }
+});
+
+app.post('/api/p-mining/human-check/confirm', (req, res) => {
+  try {
+    const session = requirePMiningSession(req);
+    const ensured = ensurePMiningUserAccount(session);
+    const result = confirmPMiningHumanCheck({
+      userId: ensured.user.id
+    });
+    if (result.kind !== 'confirmed') {
+      return res.status(404).json({ ok: false, error: 'ACCOUNT_NOT_FOUND' });
+    }
+    return res.json({
+      ok: true,
+      ...buildPMiningBootstrapPayload(session)
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 500) || 500;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'HUMAN_CHECK_CONFIRM_FAILED') });
   }
 });
 
@@ -2885,6 +2940,9 @@ const selectPMiningUserByUserIdStmt = db.prepare(`
     risk_reason,
     last_risk_at,
     mining_ban_until,
+    claim_streak_count,
+    last_claim_success_at,
+    human_check_required,
     last_claim_at
   FROM p_mining_users
   WHERE user_id = ?
@@ -2902,15 +2960,18 @@ const selectPMiningUserByInviteCodeStmt = db.prepare(`
     risk_reason,
     last_risk_at,
     mining_ban_until,
+    claim_streak_count,
+    last_claim_success_at,
+    human_check_required,
     last_claim_at
   FROM p_mining_users
   WHERE invite_code = ?
 `);
 const insertPMiningUserStmt = db.prepare(`
   INSERT INTO p_mining_users (
-    user_id, invite_code, balance_p, power, invite_count, invite_power_bonus, risk_score, risk_reason, last_risk_at, mining_ban_until, last_claim_at
+    user_id, invite_code, balance_p, power, invite_count, invite_power_bonus, risk_score, risk_reason, last_risk_at, mining_ban_until, claim_streak_count, last_claim_success_at, human_check_required, last_claim_at
   )
-  VALUES (?, ?, 0, 10, 0, 0, 0, '', 0, 0, 0)
+  VALUES (?, ?, 0, 10, 0, 0, 0, '', 0, 0, 0, 0, 0, 0)
 `);
 const updatePMiningInviteCodeStmt = db.prepare(`
   UPDATE p_mining_users
@@ -2919,12 +2980,17 @@ const updatePMiningInviteCodeStmt = db.prepare(`
 `);
 const updatePMiningClaimStateStmt = db.prepare(`
   UPDATE p_mining_users
-  SET balance_p = ?, last_claim_at = ?, updated_at = datetime('now')
+  SET balance_p = ?, last_claim_at = ?, claim_streak_count = ?, last_claim_success_at = ?, human_check_required = ?, updated_at = datetime('now')
   WHERE user_id = ?
 `);
 const updatePMiningRiskStateStmt = db.prepare(`
   UPDATE p_mining_users
   SET risk_score = ?, risk_reason = ?, last_risk_at = ?, mining_ban_until = ?, updated_at = datetime('now')
+  WHERE user_id = ?
+`);
+const updatePMiningHumanCheckStateStmt = db.prepare(`
+  UPDATE p_mining_users
+  SET claim_streak_count = ?, human_check_required = ?, updated_at = datetime('now')
   WHERE user_id = ?
 `);
 const updatePMiningBoundInviteCodeStmt = db.prepare(`

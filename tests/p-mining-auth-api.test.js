@@ -343,6 +343,51 @@ test('p-mining abnormal repeated claim attempts trigger a 7-day mining ban', asy
   }
 });
 
+test('p-mining requires a human confirmation after 10 minute-paced successful claims', async () => {
+  const harness = createHarness();
+  const realNow = Date.now;
+
+  try {
+    let now = 1720000000000;
+    Date.now = () => now;
+
+    const syncResponse = await harness.request('POST', '/api/p-mining/session', {
+      openId: 'p-mining-open-id-human-check',
+      sessionKey: 'p-mining-session-key-human-check',
+      nickname: 'Human Check Miner'
+    });
+    const serialized = JSON.parse(syncResponse.headers['set-cookie'][0]);
+    const cookies = {
+      [serialized.name]: serialized.value
+    };
+
+    for (let claimIndex = 0; claimIndex < 10; claimIndex += 1) {
+      const claimResponse = await harness.request('POST', '/api/p-mining/claim', {}, { cookies });
+      assert.equal(claimResponse.statusCode, 200);
+      now += 60 * 1000;
+    }
+
+    const bootstrapResponse = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });
+    assert.equal(bootstrapResponse.statusCode, 200);
+    assert.equal(bootstrapResponse.body.account.needHumanCheck, true);
+    assert.equal(bootstrapResponse.body.account.claimStreakCount, 10);
+
+    const blockedClaimResponse = await harness.request('POST', '/api/p-mining/claim', {}, { cookies });
+    assert.equal(blockedClaimResponse.statusCode, 428);
+    assert.equal(blockedClaimResponse.body.ok, false);
+    assert.equal(blockedClaimResponse.body.error, 'HUMAN_CHECK_REQUIRED');
+
+    const confirmResponse = await harness.request('POST', '/api/p-mining/human-check/confirm', {}, { cookies });
+    assert.equal(confirmResponse.statusCode, 200);
+    assert.equal(confirmResponse.body.ok, true);
+    assert.equal(confirmResponse.body.account.needHumanCheck, false);
+    assert.equal(confirmResponse.body.account.claimStreakCount, 0);
+  } finally {
+    Date.now = realNow;
+    harness.cleanup();
+  }
+});
+
 test('p-mining invite bind updates inviter and invitee accounts on the backend', async () => {
   const harness = createHarness();
 

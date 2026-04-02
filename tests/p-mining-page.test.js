@@ -63,6 +63,9 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /id="pMiningInvitePromptSubmit" class="p-mining-submit-button" type="button"[^>]*>✅</);
   assert.match(html, /id="pMiningInvitePromptSuccessModal"/);
   assert.match(html, /id="pMiningInvitePromptSuccessClose"/);
+  assert.match(html, /id="pMiningHumanCheckModal"/);
+  assert.match(html, /id="pMiningHumanCheckConfirm"/);
+  assert.doesNotMatch(html, /id="pMiningHumanCheckClose"/);
   assert.match(html, /data-purchase-tier="starter"/);
   assert.match(html, /data-purchase-tier="boost"/);
   assert.match(html, /\/games-config\.js/);
@@ -258,6 +261,12 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function openInvitePrompt\(/);
   assert.match(js, /function closeInvitePrompt\(/);
   assert.match(js, /function syncInvitePromptVisibility\(/);
+  assert.match(js, /function openHumanCheckPrompt\(/);
+  assert.match(js, /function closeHumanCheckPrompt\(/);
+  assert.match(js, /function syncHumanCheckVisibility\(/);
+  assert.match(js, /\/api\/p-mining\/human-check\/confirm/);
+  assert.match(js, /if \(appState\.state\.needHumanCheck\) \{\s*openHumanCheckPrompt\(appState\);\s*return;\s*\}/);
+  assert.match(js, /if \(String\(error\?\.message \|\| ''\)\.includes\('HUMAN_CHECK_REQUIRED'\)\) \{\s*openHumanCheckPrompt\(appState\);/);
   assert.match(js, /function openInviteSuccessPrompt\(/);
   assert.match(js, /function ensureInviteInputVisible\(/);
   assert.match(js, /function attachInviteInputVisibilityHandlers\(/);

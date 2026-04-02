@@ -77,6 +77,9 @@
       invitePromptSuccessTitle: 'Power Boosted',
       invitePromptSuccessCopy: 'Invite linked successfully. Power +10.',
       invitePromptSuccessAction: 'OK',
+      humanCheckTitle: 'Confirm You Are Here',
+      humanCheckCopy: 'We detected continuous mining activity. Tap confirm to keep mining.',
+      humanCheckAction: 'Confirm',
       invitedUsers: 'Invites',
       invitePowerBonus: 'Power Bonus',
       claimRecords: 'Claims',
@@ -143,6 +146,9 @@
       invitePromptSuccessTitle: '算力加成成功',
       invitePromptSuccessCopy: '邀请码绑定成功，算力 +10。',
       invitePromptSuccessAction: '我知道了',
+      humanCheckTitle: '请确认是你本人',
+      humanCheckCopy: '检测到你连续高频挖矿，请点击确定后继续挖矿。',
+      humanCheckAction: '确定',
       invitedUsers: '已邀请人数',
       invitePowerBonus: '邀请算力加成',
       claimRecords: '领取记录',
@@ -451,6 +457,8 @@
       boundInviteCode: '',
       inviteCount: 0,
       invitePowerBonus: 0,
+      claimStreakCount: 0,
+      needHumanCheck: false,
       claimRecords: [],
       inviteRecords: [],
       powerChanges: [
@@ -1130,6 +1138,7 @@
     renderPurchasePanel(appState);
     renderRecordsPanel(appState);
     renderProfilePanel(appState);
+    syncHumanCheckVisibility(appState);
   }
 
   function showInviteError(appState, message) {
@@ -1197,6 +1206,25 @@
     if (shouldShowInvitePrompt(appState)) {
       openInvitePrompt(appState);
     }
+  }
+
+  function openHumanCheckPrompt(appState) {
+    if (!appState.elements.humanCheckModal) return;
+    appState.elements.humanCheckModal.hidden = false;
+  }
+
+  function closeHumanCheckPrompt(appState) {
+    if (!appState.elements.humanCheckModal) return;
+    appState.elements.humanCheckModal.hidden = true;
+  }
+
+  function syncHumanCheckVisibility(appState) {
+    if (!appState.elements.humanCheckModal) return;
+    if (appState.state.needHumanCheck) {
+      openHumanCheckPrompt(appState);
+      return;
+    }
+    closeHumanCheckPrompt(appState);
   }
 
   function ensureInviteInputVisible(appState, input) {
@@ -1293,6 +1321,10 @@
       renderClaimState(appState);
       return;
     }
+    if (appState.state.needHumanCheck) {
+      openHumanCheckPrompt(appState);
+      return;
+    }
     if (!appState.nexaSession) {
       await beginNexaLoginFlow(appState, 'mining');
       return;
@@ -1314,9 +1346,28 @@
       if (String(error?.message || '').includes('MINING_BANNED')) {
         globalScope.window.alert(String(error?.displayMessage || error?.message || ''));
       }
+      if (String(error?.message || '').includes('HUMAN_CHECK_REQUIRED')) {
+        openHumanCheckPrompt(appState);
+        appState.state.needHumanCheck = true;
+      }
       renderClaimState(appState);
     } finally {
       appState.isProcessing = false;
+    }
+  }
+
+  async function handleHumanCheckConfirm(appState) {
+    if (appState.isHumanCheckSubmitting) return;
+    appState.isHumanCheckSubmitting = true;
+    try {
+      const response = await confirmPMiningHumanCheck();
+      if (response?.ok) {
+        syncAppStateFromServer(appState, response);
+        closeHumanCheckPrompt(appState);
+        renderAll(appState);
+      }
+    } finally {
+      appState.isHumanCheckSubmitting = false;
     }
   }
 
@@ -1371,6 +1422,10 @@
     return postJson('/api/p-mining/payment/query', {
       orderNo: String(orderNo || '').trim()
     });
+  }
+
+  async function confirmPMiningHumanCheck() {
+    return postJson('/api/p-mining/human-check/confirm', {});
   }
 
   async function pollPMiningPaymentOrder(orderNo) {
@@ -1511,6 +1566,8 @@
       boundInviteCode: String(account.boundInviteCode || '').trim(),
       inviteCount: Number(account.inviteCount || 0) || 0,
       invitePowerBonus: Number(account.invitePowerBonus || 0) || 0,
+      claimStreakCount: Number(account.claimStreakCount || 0) || 0,
+      needHumanCheck: Boolean(account.needHumanCheck),
       claimRecords: Array.isArray(records.claims) ? records.claims : [],
       inviteRecords: Array.isArray(records.invites) ? records.invites : [],
       powerChanges: Array.isArray(records.power) ? records.power : [],
@@ -1632,6 +1689,7 @@
       balanceAnimationFrame: null,
       hasAnimatedBalance: false,
       isProcessing: false,
+      isHumanCheckSubmitting: false,
       isInvitePromptDismissed: false,
       isPurchaseBusy: false,
       activePurchaseTier: '',
@@ -1676,6 +1734,8 @@
         invitePromptError: root.querySelector('#pMiningInvitePromptError'),
         invitePromptSuccessModal: root.querySelector('#pMiningInvitePromptSuccessModal'),
         invitePromptSuccessClose: root.querySelector('#pMiningInvitePromptSuccessClose'),
+        humanCheckModal: root.querySelector('#pMiningHumanCheckModal'),
+        humanCheckConfirm: root.querySelector('#pMiningHumanCheckConfirm'),
         recordsList: root.querySelector('#pMiningRecordsList'),
         profileUid: root.querySelector('#pMiningProfileUid'),
         profileBalance: root.querySelector('#pMiningProfileBalance'),
@@ -1707,6 +1767,7 @@
     root.querySelectorAll('[data-modal-close="invite-success"]').forEach((node) => {
       node.addEventListener('click', () => closeInviteSuccessPrompt(appState));
     });
+    appState.elements.humanCheckConfirm?.addEventListener('click', () => handleHumanCheckConfirm(appState).catch(() => {}));
     appState.elements.copyInviteButton?.addEventListener('click', () => handleCopyInviteCode(appState));
     appState.elements.purchaseButtons.forEach((button) => {
       button.addEventListener('click', () => {

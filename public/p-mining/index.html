@@ -16,12 +16,12 @@
             <span class="p-mining-letter-icon p-mining-letter-icon--brand">P</span>
           </div>
           <div class="p-mining-brand__name">P-Mining</div>
-        </div>
-        <div class="p-mining-header__actions">
           <div class="p-mining-host-status" id="pMiningHostStatus">
             <span class="p-mining-host-status__dot" aria-hidden="true"></span>
             <span data-i18n="networkOnline">Online</span>
           </div>
+        </div>
+        <div class="p-mining-header__actions">
           <div class="p-mining-locale-toggle" aria-label="language switcher">
             <button class="p-mining-locale-toggle__button" type="button" data-locale-toggle="en">EN</button>
             <button class="p-mining-locale-toggle__button" type="button" data-locale-toggle="zh">中</button>
@@ -222,6 +222,15 @@
           <h2 id="pMiningInvitePromptSuccessTitle" class="p-mining-modal__title" data-i18n="invitePromptSuccessTitle">Power Boosted</h2>
           <p class="p-mining-modal__copy" data-i18n="invitePromptSuccessCopy">Invite linked successfully. Power +10.</p>
           <button id="pMiningInvitePromptSuccessClose" class="p-mining-submit-button p-mining-modal__action" type="button" data-i18n="invitePromptSuccessAction">OK</button>
+        </div>
+      </div>
+
+      <div id="pMiningHumanCheckModal" class="p-mining-modal" hidden>
+        <div class="p-mining-modal__backdrop"></div>
+        <div class="p-mining-modal__dialog p-mining-modal__dialog--success" role="dialog" aria-modal="true" aria-labelledby="pMiningHumanCheckTitle">
+          <h2 id="pMiningHumanCheckTitle" class="p-mining-modal__title" data-i18n="humanCheckTitle">Confirm You Are Here</h2>
+          <p class="p-mining-modal__copy" data-i18n="humanCheckCopy">We detected continuous mining activity. Tap confirm to keep mining.</p>
+          <button id="pMiningHumanCheckConfirm" class="p-mining-submit-button p-mining-modal__action" type="button" data-i18n="humanCheckAction">Confirm</button>
         </div>
       </div>
     </main>
