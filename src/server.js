@@ -64,12 +64,12 @@ const PMINING_POWER_PAYMENT_OPTIONS = {
   starter: {
     tier: 'starter',
     amount: '10.00',
-    power: 100
+    power: 10
   },
   boost: {
     tier: 'boost',
     amount: '80.00',
-    power: 1000
+    power: 100
   }
 };
 const pMiningPaymentOrders = new Map();

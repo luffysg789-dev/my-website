@@ -219,9 +219,9 @@ test('purchasePowerPackage adds purchased power and records the purchase reason'
     purchasedAt: 1710000000000
   });
 
-  assert.equal(POWER_PURCHASE_OPTIONS.starter.power, 100);
-  assert.equal(next.power, 110);
-  assert.equal(next.powerChanges[0].delta, 100);
+  assert.equal(POWER_PURCHASE_OPTIONS.starter.power, 10);
+  assert.equal(next.power, 20);
+  assert.equal(next.powerChanges[0].delta, 10);
   assert.equal(next.powerChanges[0].reason, '购买算力');
   assert.equal(next.powerChanges[0].usdtAmount, 10);
 });
@@ -231,15 +231,15 @@ test('applyPendingInvitePurchaseBonuses credits 10 percent referral power and lo
   const next = applyPendingInvitePurchaseBonuses(baseState, [
     {
       sourceUid: 'invitee_1',
-      purchasedPower: 1000,
-      bonusPower: 100,
+      purchasedPower: 100,
+      bonusPower: 10,
       createdAt: 1710000000000
     }
   ]);
 
-  assert.equal(next.power, 110);
-  assert.equal(next.invitePowerBonus, 100);
-  assert.equal(next.powerChanges[0].delta, 100);
+  assert.equal(next.power, 20);
+  assert.equal(next.invitePowerBonus, 10);
+  assert.equal(next.powerChanges[0].delta, 10);
   assert.equal(next.powerChanges[0].reason, '邀请分成');
 });
 

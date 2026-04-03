@@ -28,13 +28,13 @@
   const POWER_PURCHASE_OPTIONS = {
     starter: {
       id: 'starter',
-      power: 100,
+      power: 10,
       usdtAmount: 10,
       amount: '10.00'
     },
     boost: {
       id: 'boost',
-      power: 1000,
+      power: 100,
       usdtAmount: 80,
       amount: '80.00'
     }
@@ -66,8 +66,8 @@
       powerStore: 'Power Store',
       purchaseCreateFailed: 'Unable to create the payment order right now.',
       purchaseOpening: 'Opening Nexa Pay...',
-      powerPackageStarter: '+100 Power / 10 USDT',
-      powerPackageBoost: '+1000 Power / 80 USDT',
+      powerPackageStarter: '+10 Power / 10 USDT',
+      powerPackageBoost: '+100 Power / 80 USDT',
       powerPurchaseAction: 'Buy Now',
       enterInviteCode: 'Enter Invite Code',
       invitePlaceholder: "Enter a friend's code",
@@ -135,8 +135,8 @@
       powerStore: '购买算力',
       purchaseCreateFailed: '当前无法创建支付订单，请稍后重试。',
       purchaseOpening: '正在打开 Nexa Pay...',
-      powerPackageStarter: '+100 算力 / 10 USDT',
-      powerPackageBoost: '+1000 算力 / 80 USDT',
+      powerPackageStarter: '+10 算力 / 10 USDT',
+      powerPackageBoost: '+100 算力 / 80 USDT',
       powerPurchaseAction: '立即购买',
       enterInviteCode: '填写邀请码',
       invitePlaceholder: '输入好友邀请码',

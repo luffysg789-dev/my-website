@@ -460,7 +460,7 @@ test('p-mining payment create returns a Nexa order payload for supported power t
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.ok, true);
     assert.equal(response.body.tier, 'starter');
-    assert.equal(response.body.power, 100);
+    assert.equal(response.body.power, 10);
     assert.equal(response.body.amount, '10.00');
     assert.equal(response.body.currency, 'USDT');
     assert.equal(response.body.orderNo, 'nexa-paid-order-1');
@@ -613,12 +613,12 @@ test('p-mining successful payment query settles purchased power and inviter shar
     assert.equal(settleOrder.body.status, 'SUCCESS');
 
     const buyerAfter = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies: buyerCookies });
-    assert.equal(buyerAfter.body.account.power, 1020);
+    assert.equal(buyerAfter.body.account.power, 120);
     assert.equal(buyerAfter.body.records.power[0].reason, '购买算力');
 
     const inviterAfter = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies: inviterCookies });
-    assert.equal(inviterAfter.body.account.power, 120);
-    assert.equal(inviterAfter.body.account.invitePowerBonus, 110);
+    assert.equal(inviterAfter.body.account.power, 30);
+    assert.equal(inviterAfter.body.account.invitePowerBonus, 20);
     assert.equal(inviterAfter.body.records.power[0].reason, '邀请分成');
   } finally {
     harness.cleanup();
