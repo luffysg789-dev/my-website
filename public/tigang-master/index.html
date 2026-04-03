@@ -12,26 +12,26 @@
     <main class="tigang-page" data-tigang-app>
       <section class="tigang-shell">
         <header class="tigang-header">
-          <div>
-            <p id="gamePageSubtitle" class="tigang-subtitle">开始提肛、松开记录，每天 5 次圆圈变绿。</p>
+          <nav class="tigang-nav">
+            <button class="tigang-nav__item is-active" type="button" data-tab-target="home" data-i18n="navHome">提肛</button>
+            <button class="tigang-nav__item" type="button" data-tab-target="records" data-i18n="navRecords">记录</button>
+          </nav>
+          <div class="tigang-language-toggle" id="tigangLanguageToggle" aria-label="语言切换">
+            <button class="tigang-language-toggle__button is-active" type="button" data-language="zh">中</button>
+            <button class="tigang-language-toggle__button" type="button" data-language="en">EN</button>
           </div>
         </header>
-
-        <nav class="tigang-nav">
-          <button class="tigang-nav__item is-active" type="button" data-tab-target="home">提肛</button>
-          <button class="tigang-nav__item" type="button" data-tab-target="records">记录</button>
-        </nav>
 
         <section class="tigang-panels">
           <section class="tigang-panel is-active" data-tab="home">
             <article class="tigang-card tigang-hero-card">
               <div class="tigang-goal-row">
                 <div>
-                  <p class="tigang-label">今日次数</p>
+                  <p class="tigang-label" data-i18n="todayCountLabel">今日次数</p>
                   <strong id="tigangTodayCount">0</strong>
                 </div>
                 <div>
-                  <p class="tigang-label">目标</p>
+                  <p class="tigang-label" data-i18n="goalLabel">目标</p>
                   <strong id="tigangTodayGoal">5</strong>
                 </div>
               </div>
@@ -47,8 +47,8 @@
             <article class="tigang-card">
               <div class="tigang-record-head">
                 <div>
-                  <p class="tigang-label">最近记录</p>
-                  <h2>最近 5 次</h2>
+                  <p class="tigang-label" data-i18n="recentLabel">最近记录</p>
+                  <h2 data-i18n="recentFiveTitle">最近 5 次</h2>
                 </div>
               </div>
               <div id="tigangRecentList" class="tigang-record-list"></div>
@@ -59,8 +59,8 @@
             <article class="tigang-card">
               <div class="tigang-record-head">
                 <div>
-                  <p class="tigang-label">最近记录</p>
-                  <h2>打卡历史</h2>
+                  <p class="tigang-label" data-i18n="historyLabel">最近记录</p>
+                  <h2 data-i18n="historyTitle">打卡历史</h2>
                 </div>
               </div>
               <div id="tigangRecordList" class="tigang-record-list"></div>

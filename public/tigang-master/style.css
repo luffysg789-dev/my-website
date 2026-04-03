@@ -53,7 +53,7 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .tigang-eyebrow,
@@ -73,7 +73,6 @@ body {
   margin-bottom: 10px;
 }
 
-.tigang-subtitle,
 .tigang-helper,
 .tigang-record-item__meta {
   margin: 6px 0 0;
@@ -90,10 +89,13 @@ body {
 }
 
 .tigang-nav {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 6px;
   gap: 6px;
+  width: auto;
+  min-width: 180px;
+  flex: 1 1 auto;
 }
 
 .tigang-nav__item {
@@ -109,6 +111,31 @@ body {
 .tigang-nav__item.is-active {
   color: var(--tigang-text);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.tigang-language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--tigang-line);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tigang-language-toggle__button {
+  border: 0;
+  background: transparent;
+  color: var(--tigang-muted);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.tigang-language-toggle__button.is-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--tigang-text);
 }
 
 .tigang-panels,
@@ -133,7 +160,7 @@ body {
 }
 
 .tigang-action-button {
-  width: min(72vw, 330px);
+  width: min(36vw, 165px);
   aspect-ratio: 1 / 1;
   margin: 18px auto 12px;
   border-radius: 50%;
@@ -145,6 +172,10 @@ body {
   color: #fff;
   box-shadow: 0 26px 40px rgba(216, 77, 77, 0.28);
   transition: transform 140ms ease, box-shadow 140ms ease, background 180ms ease;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .tigang-action-button.is-active {
@@ -158,12 +189,12 @@ body {
 }
 
 .tigang-action-button__timer {
-  font-size: clamp(2rem, 8vw, 3.4rem);
+  font-size: clamp(1.2rem, 4.4vw, 2rem);
   font-weight: 800;
 }
 
 .tigang-action-button__status {
-  font-size: clamp(1rem, 3.8vw, 1.28rem);
+  font-size: clamp(0.8rem, 2.2vw, 0.98rem);
   font-weight: 700;
 }
 
@@ -207,8 +238,21 @@ body {
     padding: 14px;
   }
 
+  .tigang-header {
+    gap: 8px;
+  }
+
+  .tigang-nav {
+    min-width: 0;
+  }
+
+  .tigang-language-toggle__button {
+    padding: 7px 10px;
+    font-size: 0.84rem;
+  }
+
   .tigang-action-button {
-    width: min(76vw, 292px);
+    width: min(38vw, 146px);
     margin: 14px auto 10px;
   }
 

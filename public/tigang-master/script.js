@@ -1,12 +1,69 @@
 (function createTigangMasterModule(globalScope) {
   const TIGANG_STORAGE_KEY = 'claw800:tigang-master:records';
   const TIGANG_SESSION_STORAGE_KEY = 'claw800:tigang-master:nexa-session';
+  const TIGANG_LANGUAGE_STORAGE_KEY = 'claw800:tigang-master:language';
   const TIGANG_SESSION_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
   const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
   const NEXA_API_KEY = 'NEXA2033522880098676737';
   const DAILY_GOAL_COUNT = 5;
   const FIRST_DAILY_CHEER_TEXT = '哇，你太棒了。坚持哦。';
   const DAILY_GOAL_CHEER_TEXT = '哇，恭喜你又健康了，希望你分享给更多朋友，一起健康。';
+  const TRANSLATIONS = {
+    zh: {
+      pageTitle: '提肛大师',
+      subtitle: '开始提肛、松开记录，每天 5 次圆圈变绿。',
+      navHome: '提肛',
+      navRecords: '记录',
+      todayCountLabel: '今日次数',
+      goalLabel: '目标',
+      recentLabel: '最近记录',
+      recentFiveTitle: '最近 5 次',
+      historyLabel: '最近记录',
+      historyTitle: '打卡历史',
+      idleStatus: '按住开始',
+      pressingStatus: '开始提肛',
+      completeStatus: '今日达标',
+      progressComplete: '今天已经完成 5 次以上，圆圈已变绿。',
+      progressRemaining(count) {
+        return `今天还差 ${count} 次达成绿色状态。`;
+      },
+      noRecent: '还没有最近记录',
+      noRecords: '今天还没有记录',
+      startHint: '按住红色圆圈开始第一组练习。',
+      recordItem(ordinal, seconds) {
+        return `第 ${ordinal || 1} 次 · ${seconds}s`;
+      },
+      firstDailyCheer: FIRST_DAILY_CHEER_TEXT,
+      dailyGoalCheer: DAILY_GOAL_CHEER_TEXT
+    },
+    en: {
+      pageTitle: 'Kegel Master',
+      subtitle: 'Start squeezing, release to save. Hit 5 times a day to turn the circle green.',
+      navHome: 'Squeeze',
+      navRecords: 'Records',
+      todayCountLabel: 'Today',
+      goalLabel: 'Goal',
+      recentLabel: 'Recent',
+      recentFiveTitle: 'Latest 5',
+      historyLabel: 'History',
+      historyTitle: 'Check-in History',
+      idleStatus: 'Hold to Start',
+      pressingStatus: 'Start Squeeze',
+      completeStatus: 'Goal Reached',
+      progressComplete: 'You have finished 5 or more times today. The circle is green now.',
+      progressRemaining(count) {
+        return `${count} more times to unlock the green circle today.`;
+      },
+      noRecent: 'No recent records yet',
+      noRecords: 'No records yet today',
+      startHint: 'Hold the red circle to begin your first set.',
+      recordItem(ordinal, seconds) {
+        return `No. ${ordinal || 1} · ${seconds}s`;
+      },
+      firstDailyCheer: 'Wow, you are amazing. Keep it up.',
+      dailyGoalCheer: 'Wow, congratulations on getting healthier again. Hope you share it with more friends and stay healthy together.'
+    }
+  };
 
   function getStorage() {
     try {
@@ -21,6 +78,24 @@
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  function normalizeLanguage(language) {
+    return String(language || '').trim().toLowerCase() === 'en' ? 'en' : 'zh';
+  }
+
+  function loadLanguage(storage = getStorage()) {
+    try {
+      return normalizeLanguage(storage?.getItem?.(TIGANG_LANGUAGE_STORAGE_KEY));
+    } catch {
+      return 'zh';
+    }
+  }
+
+  function saveLanguage(storage = getStorage(), language) {
+    try {
+      storage?.setItem?.(TIGANG_LANGUAGE_STORAGE_KEY, normalizeLanguage(language));
+    } catch {}
   }
 
   function loadTigangRecords(storage = getStorage()) {
@@ -92,12 +167,12 @@
     });
   }
 
-  function renderRecordItem(item, ordinalMap) {
+  function renderRecordItem(item, ordinalMap, copy) {
     const recordKey = String(item?.id || item?.createdAt || '');
     const ordinal = Number(ordinalMap?.get(recordKey) || 0);
     return `
       <article class="tigang-record-item">
-        <p class="tigang-record-item__title">第 ${ordinal || 1} 次 · ${String(item.durationSeconds || 0)}s</p>
+        <p class="tigang-record-item__title">${copy.recordItem(ordinal, String(item.durationSeconds || 0))}</p>
         <p class="tigang-record-item__meta">${formatRecordTime(item.createdAt)}</p>
       </article>
     `;
@@ -217,24 +292,26 @@
   }
 
   function renderRecentRecords(appState) {
+    const copy = TRANSLATIONS[appState.language];
     const list = appState.elements.recentList;
     if (!list) return;
     if (!appState.records.length) {
-      list.innerHTML = '<article class="tigang-record-item"><p class="tigang-record-item__title">还没有最近记录</p><p class="tigang-record-item__meta">按住红色圆圈开始第一组练习。</p></article>';
+      list.innerHTML = `<article class="tigang-record-item"><p class="tigang-record-item__title">${copy.noRecent}</p><p class="tigang-record-item__meta">${copy.startHint}</p></article>`;
       return;
     }
     const ordinalMap = buildRecordOrdinalMap(appState.records);
     list.innerHTML = sortRecordsNewestFirst(appState.records)
       .slice(0, 5)
-      .map((item) => renderRecordItem(item, ordinalMap))
+      .map((item) => renderRecordItem(item, ordinalMap, copy))
       .join('');
   }
 
   function renderRecords(appState) {
+    const copy = TRANSLATIONS[appState.language];
     const list = appState.elements.recordList;
     if (!list) return;
     if (!appState.records.length) {
-      list.innerHTML = '<article class="tigang-record-item"><p class="tigang-record-item__title">今天还没有记录</p><p class="tigang-record-item__meta">按住红色圆圈开始第一组练习。</p></article>';
+      list.innerHTML = `<article class="tigang-record-item"><p class="tigang-record-item__title">${copy.noRecords}</p><p class="tigang-record-item__meta">${copy.startHint}</p></article>`;
       return;
     }
     const ordinalMap = buildRecordOrdinalMap(appState.records);
@@ -242,22 +319,46 @@
       .map((group) => `
         <section class="tigang-record-day">
           <h3 class="tigang-record-day__title">${formatRecordDate(group.items[0]?.createdAt || group.dayKey)}</h3>
-          ${group.items.map((item) => renderRecordItem(item, ordinalMap)).join('')}
+          ${group.items.map((item) => renderRecordItem(item, ordinalMap, copy)).join('')}
         </section>
       `)
       .join('');
   }
 
   function renderHome(appState) {
+    const copy = TRANSLATIONS[appState.language];
     const today = buildTodaySummary(appState.records);
     appState.elements.todayCount.textContent = String(today.count);
     appState.elements.todayGoal.textContent = String(DAILY_GOAL_COUNT);
     appState.elements.actionButton.classList.toggle('is-complete', today.isComplete);
     appState.elements.timerValue.textContent = `${(appState.activeDurationMs / 1000).toFixed(1)}s`;
-    appState.elements.statusText.textContent = appState.isPressing ? '开始提肛' : (today.isComplete ? '今日达标' : '按住开始');
+    appState.elements.statusText.textContent = appState.isPressing ? copy.pressingStatus : (today.isComplete ? copy.completeStatus : copy.idleStatus);
     appState.elements.progressText.textContent = today.isComplete
-      ? '今天已经完成 5 次以上，圆圈已变绿。'
-      : `今天还差 ${today.remaining} 次达成绿色状态。`;
+      ? copy.progressComplete
+      : copy.progressRemaining(today.remaining);
+  }
+
+  function applyLanguage(appState, nextLanguage) {
+    const language = normalizeLanguage(nextLanguage);
+    const copy = TRANSLATIONS[language];
+    appState.language = language;
+    saveLanguage(appState.storage, language);
+    if (globalScope.window?.TigangMaster) {
+      globalScope.window.TigangMaster.language = language;
+    }
+    if (globalScope.document?.documentElement) {
+      globalScope.document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN';
+    }
+    globalScope.document.title = language === 'en' ? 'Claw800 Kegel Master' : 'Claw800 提肛大师';
+    appState.elements.i18nNodes.forEach((node) => {
+      const key = node.dataset.i18n;
+      if (key && Object.prototype.hasOwnProperty.call(copy, key)) {
+        node.textContent = copy[key];
+      }
+    });
+    appState.elements.languageButtons.forEach((button) => {
+      button.classList.toggle('is-active', normalizeLanguage(button.dataset.language) === language);
+    });
   }
 
   function speakText(text) {
@@ -275,11 +376,13 @@
   }
 
   function speakFirstDailyCheer() {
-    speakText(FIRST_DAILY_CHEER_TEXT);
+    const language = normalizeLanguage(globalScope.window?.TigangMaster?.language || 'zh');
+    speakText(TRANSLATIONS[language].firstDailyCheer);
   }
 
   function speakDailyGoalCheer() {
-    speakText(DAILY_GOAL_CHEER_TEXT);
+    const language = normalizeLanguage(globalScope.window?.TigangMaster?.language || 'zh');
+    speakText(TRANSLATIONS[language].dailyGoalCheer);
   }
 
   function renderSession(appState) {
@@ -397,6 +500,7 @@
     const appState = {
       storage,
       records: loadTigangRecords(storage),
+      language: loadLanguage(storage),
       nexaSession: loadCachedSession(storage),
       activeTab: 'home',
       isPressing: false,
@@ -405,6 +509,8 @@
       pressTicker: null,
       elements: {
         navButtons: Array.from(root.querySelectorAll('[data-tab-target]')),
+        languageButtons: Array.from(root.querySelectorAll('[data-language]')),
+        i18nNodes: Array.from(root.querySelectorAll('[data-i18n]')),
         panels: Array.from(root.querySelectorAll('[data-tab]')),
         sessionChip: root.querySelector('#tigangSessionChip'),
         actionButton: root.querySelector('#tigangActionButton'),
@@ -422,14 +528,31 @@
       button.addEventListener('click', () => switchTab(appState, button.dataset.tabTarget));
     });
 
-    appState.elements.actionButton?.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      handlePressStart(appState);
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((eventName) => {
-      appState.elements.actionButton?.addEventListener(eventName, () => handlePressEnd(appState));
+    appState.elements.languageButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        applyLanguage(appState, button.dataset.language);
+        renderAll(appState);
+      });
     });
 
+        appState.elements.actionButton?.addEventListener('pointerdown', (event) => {
+          event.preventDefault();
+          handlePressStart(appState);
+        });
+        appState.elements.actionButton?.addEventListener('contextmenu', (event) => {
+          event.preventDefault();
+        });
+        appState.elements.actionButton?.addEventListener('selectstart', (event) => {
+          event.preventDefault();
+        });
+        appState.elements.actionButton?.addEventListener('dragstart', (event) => {
+          event.preventDefault();
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach((eventName) => {
+          appState.elements.actionButton?.addEventListener(eventName, () => handlePressEnd(appState));
+        });
+
+    applyLanguage(appState, appState.language);
     renderAll(appState);
     switchTab(appState, 'home');
     return appState;
@@ -450,13 +573,18 @@
   const exported = {
     TIGANG_STORAGE_KEY,
     TIGANG_SESSION_STORAGE_KEY,
+    TIGANG_LANGUAGE_STORAGE_KEY,
     TIGANG_SESSION_COOKIE_MAX_AGE_MS,
     DAILY_GOAL_COUNT,
+    TRANSLATIONS,
     loadTigangRecords,
     saveTigangRecords,
+    loadLanguage,
+    saveLanguage,
     createTigangEntry,
     buildTodaySummary,
     groupRecordsByDay,
+    applyLanguage,
     speakText,
     speakFirstDailyCheer,
     speakDailyGoalCheer,
@@ -471,6 +599,7 @@
 
   if (globalScope.window) {
     globalScope.window.TigangMaster = exported;
+    globalScope.window.TigangMaster.language = loadLanguage();
     bootBrowser().catch(() => {});
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

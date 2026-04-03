@@ -34,6 +34,7 @@ test('tigang-master html includes home and records tabs plus the squeeze button'
 
   assert.match(html, /<title>Claw800 提肛大师<\/title>/);
   assert.match(html, /data-tigang-app/);
+  assert.match(html, /id="tigangLanguageToggle"/);
   assert.match(html, /data-tab="home"/);
   assert.match(html, /data-tab="records"/);
   assert.match(html, /id="tigangActionButton"/);
@@ -50,8 +51,13 @@ test('tigang-master script includes local record state and nexa session hooks', 
 
   assert.match(js, /const TIGANG_STORAGE_KEY = 'claw800:tigang-master:records';/);
   assert.match(js, /const TIGANG_SESSION_STORAGE_KEY = 'claw800:tigang-master:nexa-session';/);
+  assert.match(js, /const TIGANG_LANGUAGE_STORAGE_KEY = 'claw800:tigang-master:language';/);
   assert.match(js, /const TIGANG_SESSION_COOKIE_MAX_AGE_MS = 30 \* 24 \* 60 \* 60 \* 1000;/);
   assert.match(js, /const DAILY_GOAL_COUNT = 5;/);
+  assert.match(js, /const TRANSLATIONS = \{/);
+  assert.match(js, /zh:/);
+  assert.match(js, /en:/);
+  assert.match(js, /function applyLanguage\(/);
   assert.match(js, /function loadTigangRecords\(/);
   assert.match(js, /function saveTigangRecords\(/);
   assert.match(js, /function createTigangEntry\(/);
@@ -75,4 +81,16 @@ test('tigang-master hides the inactive tab panel so the squeeze button does not 
   const css = fs.readFileSync(cssPath, 'utf8');
 
   assert.match(css, /\.tigang-panel\[hidden\]\s*\{\s*display:\s*none;/);
+});
+
+test('tigang-master squeeze button disables text selection and long-press callout behavior', () => {
+  const css = fs.readFileSync(cssPath, 'utf8');
+  const js = fs.readFileSync(jsPath, 'utf8');
+
+  assert.match(css, /\.tigang-action-button\s*\{[\s\S]*-webkit-touch-callout:\s*none;/);
+  assert.match(css, /\.tigang-action-button\s*\{[\s\S]*user-select:\s*none;/);
+  assert.match(css, /\.tigang-action-button\s*\{[\s\S]*touch-action:\s*manipulation;/);
+  assert.match(js, /addEventListener\('contextmenu',/);
+  assert.match(js, /addEventListener\('selectstart',/);
+  assert.match(js, /addEventListener\('dragstart',/);
 });
