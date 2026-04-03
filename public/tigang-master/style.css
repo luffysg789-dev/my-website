@@ -136,8 +136,8 @@ body {
 }
 
 .tigang-nav__item.is-active {
-  color: var(--tigang-text);
-  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  background: linear-gradient(135deg, #2f7e43, #45955a);
 }
 
 .tigang-language-toggle {
