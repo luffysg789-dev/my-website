@@ -15,7 +15,7 @@
       navHome: '提肛',
       navRecords: '记录',
       todayCountLabel: '今日次数',
-      goalLabel: '目标',
+      goalLabel: '每日目标',
       recentLabel: '最近记录',
       recentFiveTitle: '最近 5 次',
       historyLabel: '最近记录',
