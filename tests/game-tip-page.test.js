@@ -49,9 +49,11 @@ test('piano uses a floating mobile tip button while keeping desktop piano and ot
   const css = fs.readFileSync(tipCssPath, 'utf8');
   assert.match(tipJs, /const path = window\.location\.pathname \|\| '';/);
   assert.match(tipJs, /const isPianoPage = path\.startsWith\('\/piano\/'\);/);
+  assert.match(tipJs, /if \(isWeChatBrowser\(\)\) return false;/);
   assert.match(tipJs, /if \(isMobilePianoTip\(\)\) return isNexaAppEnvironment\(\);/);
   assert.match(tipJs, /return window\.matchMedia\('\(max-width: 720px\)'\)\.matches;/);
   assert.match(tipJs, /function isMobilePianoTip\(\)/);
+  assert.match(tipJs, /function isWeChatBrowser\(\)/);
   assert.match(tipJs, /section\.className = isMobilePianoTip\(\) \? 'game-tip game-tip--floating' : 'game-tip';/);
   assert.match(tipJs, /const buttonLabel = isMobilePianoTip\(\) \? '打赏' : TIP_BUTTON_TEXT_PAY;/);
   assert.match(css, /\.game-tip--floating\s*\{/);
@@ -100,6 +102,7 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /const savedAt = Number\(session\?\.savedAt \|\| 0\) \|\| Date\.now\(\);/);
   assert.match(tipJs, /return savedAt \+ MAX_SESSION_RETENTION_MS;/);
   assert.match(tipJs, /const userAgent = String\(window\.navigator\?\.userAgent \|\| ''\)\.trim\(\);/);
+  assert.match(tipJs, /return \/micromessenger\/i\.test\(userAgent\);/);
   assert.match(tipJs, /const referrer = String\(document\.referrer \|\| ''\)\.trim\(\);/);
   assert.match(tipJs, /const session = loadCachedSession\(\);/);
   assert.match(tipJs, /const hasNexaMarker = \/nexa\/i\.test\(userAgent\) \|\| \/nexa\/i\.test\(referrer\);/);

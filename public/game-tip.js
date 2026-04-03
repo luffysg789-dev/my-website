@@ -18,6 +18,7 @@
 
   function shouldRenderTip() {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+    if (isWeChatBrowser()) return false;
     const path = window.location.pathname || '';
     const isPianoPage = path.startsWith('/piano/');
     if (isMobilePianoTip()) return isNexaAppEnvironment();
@@ -37,6 +38,12 @@
     if (typeof window === 'undefined') return false;
     return (window.location.pathname || '').startsWith('/piano/')
       && isLikelyMobileDevice();
+  }
+
+  function isWeChatBrowser() {
+    if (typeof window === 'undefined') return false;
+    const userAgent = String(window.navigator?.userAgent || '').trim();
+    return /micromessenger/i.test(userAgent);
   }
 
   function isNexaAppEnvironment() {
