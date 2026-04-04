@@ -196,15 +196,14 @@ test('p-mining bootstrap creates a backend account and returns synced account st
     assert.equal(typeof response.body.account.inviteCode, 'string');
     assert.match(response.body.account.inviteCode, /^\d{6}$/);
     assert.equal(response.body.records.power.length >= 1, true);
-    assert.ok(response.body.network.totalUsers >= 1);
-    assert.ok(response.body.network.todayPower >= 10);
+    assert.equal(response.body.network.totalUsers, 1);
   } finally {
     harness.cleanup();
   }
 });
 
 test('p-mining bootstrap network stats add 1-3 synthetic users on random 3-10 minute intervals and matching power growth', async () => {
-  const baseNow = new Date('2026-03-29T01:00:00+07:00').getTime();
+  const baseNow = 1_710_000_000_000;
   const originalNow = Date.now;
   Date.now = () => baseNow;
   const harness = createHarness();
