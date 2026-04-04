@@ -435,6 +435,14 @@ body {
   margin: 0;
 }
 
+.p-mining-runtime-note {
+  margin: -2px 0 0;
+  text-align: center;
+  color: var(--p-mining-muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .p-mining-section-card h2,
 .p-mining-profile-card__email {
   margin: 0 0 10px;
@@ -814,6 +822,11 @@ body {
   .p-mining-rule-card {
     padding: 4px 12px;
     line-height: 1.36;
+  }
+
+  .p-mining-runtime-note {
+    margin-top: -2px;
+    font-size: 0.84rem;
   }
 
   .p-mining-inline-button {

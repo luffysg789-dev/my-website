@@ -62,6 +62,8 @@ const PMINING_HUMAN_CHECK_MAX_INTERVAL_MS = 75 * 1000;
 const PMINING_MAX_RECORDS = 20;
 const PMINING_SYNTHETIC_NETWORK_START_MINUTE = Math.floor(Date.now() / 60000);
 const PMINING_SYNTHETIC_POWER_PER_USER = 10;
+const PMINING_SYNTHETIC_GROWTH_MIN_MINUTES = 3;
+const PMINING_SYNTHETIC_GROWTH_MAX_MINUTES = 10;
 const nexaTipOrders = new Map();
 const PMINING_PAYMENT_CURRENCY = 'USDT';
 const PMINING_POWER_PAYMENT_OPTIONS = {
@@ -875,16 +877,30 @@ function applyPMiningRiskStrike(account, {
   };
 }
 
+function getPMiningSyntheticGrowthEvent(minuteBucket) {
+  const normalizedMinute = Math.max(0, Number(minuteBucket || 0) || 0);
+  const seed = ((normalizedMinute * 1664525) + 1013904223) >>> 0;
+  return {
+    intervalMinutes: PMINING_SYNTHETIC_GROWTH_MIN_MINUTES + (seed % (PMINING_SYNTHETIC_GROWTH_MAX_MINUTES - PMINING_SYNTHETIC_GROWTH_MIN_MINUTES + 1)),
+    addedUsers: 1 + ((seed >>> 3) % 3)
+  };
+}
+
 function buildPMiningNetworkStats() {
   const aggregate = selectPMiningNetworkAggregateStmt.get() || {};
   const today = selectPMiningTodayMinedAggregateStmt.get() || {};
+  const runtime = selectPMiningFirstMiningAtStmt.get() || {};
   const currentMinute = Math.floor(Date.now() / 60000);
-  const syntheticElapsedMinutes = Math.max(0, currentMinute - PMINING_SYNTHETIC_NETWORK_START_MINUTE);
   let syntheticUsers = 0;
-  for (let offset = 1; offset <= syntheticElapsedMinutes; offset += 1) {
-    const minuteBucket = PMINING_SYNTHETIC_NETWORK_START_MINUTE + offset;
-    const seed = ((minuteBucket * 1664525) + 1013904223) >>> 0;
-    syntheticUsers += 1 + (seed % 3);
+  let cursorMinute = PMINING_SYNTHETIC_NETWORK_START_MINUTE;
+  while (true) {
+    const event = getPMiningSyntheticGrowthEvent(cursorMinute);
+    const nextEventMinute = cursorMinute + event.intervalMinutes;
+    if (nextEventMinute > currentMinute) {
+      break;
+    }
+    syntheticUsers += event.addedUsers;
+    cursorMinute = nextEventMinute;
   }
   const totalUsers = Math.max(0, Number(aggregate.total_users || 0) || 0) + syntheticUsers;
   const totalMined = roundPMiningValue(aggregate.total_mined || 0);
@@ -897,6 +913,7 @@ function buildPMiningNetworkStats() {
     totalMined,
     todayMined,
     todayPower,
+    firstMiningAt: Math.max(0, Number(runtime.first_mining_at || 0) || 0),
     remainingSupply: roundPMiningValue(Math.max(0, PMINING_TOTAL_SUPPLY - totalMined)),
     currentHalvingCycle,
     nextHalvingDate,
@@ -3167,6 +3184,11 @@ const selectPMiningTodayMinedAggregateStmt = db.prepare(`
   SELECT COALESCE(SUM(reward_p), 0) AS today_mined
   FROM p_mining_claim_records
   WHERE date(created_at, 'localtime') = date('now', 'localtime')
+`);
+const selectPMiningFirstMiningAtStmt = db.prepare(`
+  SELECT MIN(first_claim_at) AS first_mining_at
+  FROM p_mining_users
+  WHERE first_claim_at > 0
 `);
 const insertPMiningPaymentOrderStmt = db.prepare(`
   INSERT INTO p_mining_payment_orders (

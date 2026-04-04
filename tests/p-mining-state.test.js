@@ -145,19 +145,20 @@ test('advanceNetworkStats updates mined totals and remaining supply', () => {
   assert.ok(next.remainingSupply < TOTAL_SUPPLY);
 });
 
-test('applyAutomaticNetworkGrowth adds 1-3 users per minute and increases total power accordingly', () => {
+test('applyAutomaticNetworkGrowth adds 1-3 users on random 3-10 minute intervals and increases total power accordingly', () => {
   const initial = {
     ...createDefaultNetworkStats(),
     lastAutoGrowthMinute: 100
   };
 
-  const next = applyAutomaticNetworkGrowth(initial, (102 * 60_000) + 1234);
+  const next = applyAutomaticNetworkGrowth(initial, (140 * 60_000) + 1234);
   const grownUsers = next.totalUsers - initial.totalUsers;
 
-  assert.ok(grownUsers >= 2);
-  assert.ok(grownUsers <= 6);
+  assert.ok(grownUsers >= 4);
+  assert.ok(grownUsers <= 30);
   assert.equal(next.todayPower, initial.todayPower + (grownUsers * 10));
-  assert.equal(next.lastAutoGrowthMinute, 102);
+  assert.ok(next.lastAutoGrowthMinute > 100);
+  assert.ok(next.lastAutoGrowthMinute <= 140);
 });
 
 test('canClaim returns false during the 60-second cooldown', () => {

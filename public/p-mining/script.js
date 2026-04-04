@@ -21,6 +21,8 @@
   const PAYMENT_QUERY_INTERVAL_MS = 2000;
   const PAYMENT_QUERY_TIMEOUT_MS = 45000;
   const NETWORK_AUTO_GROWTH_INTERVAL_MS = 60 * 1000;
+  const NETWORK_AUTO_GROWTH_MIN_MINUTES = 3;
+  const NETWORK_AUTO_GROWTH_MAX_MINUTES = 10;
   const CLAIM_SOUND_DURATION_SECONDS = 0.08;
   const CLAIM_SOUND_FREQUENCY_HZ = 1320;
   const CLAIM_SOUND_PULSE_COUNT = 8;
@@ -484,6 +486,7 @@
       totalMined: 0,
       todayMined: 0,
       todayPower: 10,
+      networkFirstClaimAt: 0,
       remainingSupply: TOTAL_SUPPLY,
       currentHalvingCycle: 1,
       nextHalvingDate: '2030/03/28',
@@ -493,9 +496,12 @@
     };
   }
 
-  function getAutomaticNetworkGrowthForMinute(minuteBucket) {
+  function getAutomaticNetworkGrowthEvent(minuteBucket) {
     const seed = ((Math.max(0, Number(minuteBucket || 0)) * 1664525) + 1013904223) >>> 0;
-    return 1 + (seed % 3);
+    return {
+      intervalMinutes: NETWORK_AUTO_GROWTH_MIN_MINUTES + (seed % (NETWORK_AUTO_GROWTH_MAX_MINUTES - NETWORK_AUTO_GROWTH_MIN_MINUTES + 1)),
+      addedUsers: 1 + ((seed >>> 3) % 3)
+    };
   }
 
   function applyAutomaticNetworkGrowth(stats, now = Date.now()) {
@@ -513,15 +519,24 @@
     }
 
     let addedUsers = 0;
-    for (let minute = lastMinute + 1; minute <= currentMinute; minute += 1) {
-      addedUsers += getAutomaticNetworkGrowthForMinute(minute);
+    let lastProcessedMinute = lastMinute;
+    let cursorMinute = lastMinute;
+    while (true) {
+      const event = getAutomaticNetworkGrowthEvent(cursorMinute);
+      const nextEventMinute = cursorMinute + event.intervalMinutes;
+      if (nextEventMinute > currentMinute) {
+        break;
+      }
+      addedUsers += event.addedUsers;
+      lastProcessedMinute = nextEventMinute;
+      cursorMinute = nextEventMinute;
     }
 
     return {
       ...current,
       totalUsers: Math.max(0, Number(current.totalUsers || 0)) + addedUsers,
       todayPower: Math.max(10, Number(current.todayPower || 0)) + (addedUsers * 10),
-      lastAutoGrowthMinute: currentMinute
+      lastAutoGrowthMinute: lastProcessedMinute
     };
   }
 
@@ -1110,8 +1125,8 @@
       ? `${formatMiningNumber(appState.network.estimatedFinishYears)} 年`
       : `${formatMiningNumber(appState.network.estimatedFinishYears)} Y`;
     appState.elements.runtimeDays.textContent = appState.locale === 'zh'
-      ? `${calculateRunningDays(appState.state.firstClaimAt, Date.now())} 天`
-      : `${calculateRunningDays(appState.state.firstClaimAt, Date.now())} Days`;
+      ? `${calculateRunningDays(appState.network.networkFirstClaimAt, Date.now())} 天`
+      : `${calculateRunningDays(appState.network.networkFirstClaimAt, Date.now())} Days`;
     renderClaimState(appState);
   }
 
@@ -1642,6 +1657,7 @@
       totalMined: Number(network.totalMined || 0) || 0,
       todayMined: Number(network.todayMined || 0) || 0,
       todayPower: Number(network.todayPower || 0) || 0,
+      networkFirstClaimAt: Math.max(0, Number(network.firstMiningAt || 0) || 0),
       remainingSupply: Number(network.remainingSupply || 0) || 0,
       currentHalvingCycle: Number(network.currentHalvingCycle || 1) || 1,
       nextHalvingDate: String(network.nextHalvingDate || appState.network.nextHalvingDate || '').trim(),

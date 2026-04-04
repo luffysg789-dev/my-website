@@ -202,7 +202,7 @@ test('p-mining bootstrap creates a backend account and returns synced account st
   }
 });
 
-test('p-mining bootstrap network stats add 1-3 synthetic users per minute and matching power growth', async () => {
+test('p-mining bootstrap network stats add 1-3 synthetic users on random 3-10 minute intervals and matching power growth', async () => {
   const baseNow = 1_710_000_000_000;
   const originalNow = Date.now;
   Date.now = () => baseNow;
@@ -220,12 +220,12 @@ test('p-mining bootstrap network stats add 1-3 synthetic users per minute and ma
     };
 
     const initial = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });
-    Date.now = () => baseNow + 60_000;
+    Date.now = () => baseNow + (30 * 60_000);
     const next = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });
     const grownUsers = next.body.network.totalUsers - initial.body.network.totalUsers;
 
     assert.ok(grownUsers >= 1);
-    assert.ok(grownUsers <= 3);
+    assert.ok(grownUsers <= 30);
     assert.equal(
       next.body.network.todayPower - initial.body.network.todayPower,
       grownUsers * 10
@@ -330,6 +330,7 @@ test('p-mining claim writes balance and claim records on the backend', async () 
     assert.equal(bootstrapResponse.body.account.balance, claimResponse.body.account.balance);
     assert.equal(bootstrapResponse.body.records.claims.length, 1);
     assert.equal(bootstrapResponse.body.account.firstClaimAt > 0, true);
+    assert.equal(bootstrapResponse.body.network.firstMiningAt, bootstrapResponse.body.account.firstClaimAt);
   } finally {
     harness.cleanup();
   }

@@ -51,6 +51,7 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /id="pMiningStatsGrid"/);
   assert.match(html, /id="pMiningEstimatedTodayOutput"/);
   assert.match(html, /id="pMiningRuntimeDays"/);
+  assert.match(html, /class="p-mining-runtime-note"/);
   assert.match(html, /data-i18n="runtimeSince"/);
   assert.match(html, /data-record-filter="claims"/);
   assert.match(html, /data-record-filter="invites"/);
@@ -191,7 +192,7 @@ test('p-mining html includes the expected mining, invite, records, and profile s
   assert.doesNotMatch(html, /id="pMiningProfileEmail"/);
   assert.match(html, /data-i18n="currentTotalPoints"/);
   assert.match(html, /data-i18n="totalSupplyValue"/);
-  assert.match(html, /data-i18n="runtimeSince"/);
+  assert.match(html, /<\/article>\s*<p class="p-mining-runtime-note"><span data-i18n="runtimeSince">/);
   assert.match(html, /Every 4 Years \(Next\)/);
   assert.match(html, /P is Pay，P is People，P无实际用途，参与人数超过 1000 万人时，可能是一场伟大的胜利。/);
   assert.doesNotMatch(html, />2100 亿</);
@@ -278,6 +279,7 @@ test('p-mining script includes the expected UI hooks', () => {
   assert.match(js, /function renderProfilePanel\(/);
   assert.match(js, /function calculateRunningDays\(/);
   assert.match(js, /appState\.elements\.runtimeDays\.textContent =/);
+  assert.match(js, /networkFirstClaimAt:\s*Math\.max\(0,\s*Number\(network\.firstMiningAt \|\| 0\) \|\| 0\)/);
   assert.doesNotMatch(js, /profileEmail:\s*root\.querySelector\('#pMiningProfileEmail'\)/);
   assert.match(js, /appState\.elements\.profileUid\.textContent = appState\.state\.inviteCode \|\| '------';/);
   assert.match(js, /const AudioContextCtor = globalScope\.window\?\.AudioContext \|\| globalScope\.window\?\.webkitAudioContext;/);
