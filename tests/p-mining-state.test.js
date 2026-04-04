@@ -145,6 +145,8 @@ test('advanceNetworkStats updates mined totals and remaining supply', () => {
   assert.ok(next.totalMined > 0);
   assert.ok(next.todayMined > 0);
   assert.ok(next.remainingSupply < TOTAL_SUPPLY);
+  assert.equal(next.totalUsers, 1);
+  assert.equal(next.todayPower, 10);
 });
 
 test('applyAutomaticNetworkGrowth adds 1-3 users on random 3-10 minute intervals and increases total power accordingly', () => {

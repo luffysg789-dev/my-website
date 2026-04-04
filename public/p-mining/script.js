@@ -14,6 +14,7 @@
   const PMINING_PENDING_PAYMENT_STORAGE_KEY = 'claw800:p-mining:pending-payment';
   const PMINING_SETTLED_PAYMENT_STORAGE_KEY = 'claw800:p-mining:settled-payment';
   const MAX_NEXA_SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+  const SYNTHETIC_NETWORK_START_MINUTE = Math.floor(new Date('2026-03-29T00:00:00+07:00').getTime() / 60000);
   const RUNTIME_START_YEAR = 2026;
   const RUNTIME_START_MONTH_INDEX = 2;
   const RUNTIME_START_DAY = 29;
@@ -495,7 +496,7 @@
       nextHalvingDate: '2030/03/28',
       estimatedFinishYears: 100,
       dailyCap: DAILY_CAP,
-      lastAutoGrowthMinute: Math.floor(Date.now() / 60000)
+      lastAutoGrowthMinute: SYNTHETIC_NETWORK_START_MINUTE
     };
   }
 
@@ -576,9 +577,7 @@
       totalMined: nextTotalMined,
       todayMined: nextTodayMined,
       remainingSupply: roundToSingle(Math.max(0, TOTAL_SUPPLY - nextTotalMined)),
-      estimatedFinishYears: roundToSingle(Math.max(0, 100 - nextTotalMined / (DAILY_CAP * 365))),
-      totalUsers: roundToSingle(current.totalUsers + minutes * 0.02),
-      todayPower: roundToSingle(Math.max(1, current.todayPower + minutes * 0.015))
+      estimatedFinishYears: roundToSingle(Math.max(0, 100 - nextTotalMined / (DAILY_CAP * 365)))
     };
   }
 
@@ -1657,17 +1656,19 @@
     };
     appState.network = {
       ...appState.network,
-      totalUsers: Number(network.totalUsers || 0) || 0,
+      totalUsers: Math.max(Number(appState.network.totalUsers || 0) || 0, Number(network.totalUsers || 0) || 0),
       totalMined: Number(network.totalMined || 0) || 0,
       todayMined: Number(network.todayMined || 0) || 0,
-      todayPower: Number(network.todayPower || 0) || 0,
+      todayPower: Math.max(Number(appState.network.todayPower || 0) || 0, Number(network.todayPower || 0) || 0),
       networkFirstClaimAt: Math.max(0, Number(network.firstMiningAt || 0) || 0),
       remainingSupply: Number(network.remainingSupply || 0) || 0,
       currentHalvingCycle: Number(network.currentHalvingCycle || 1) || 1,
       nextHalvingDate: String(network.nextHalvingDate || appState.network.nextHalvingDate || '').trim(),
       estimatedFinishYears: Number(network.estimatedFinishYears || 0) || 0,
-      dailyCap: Number(network.dailyCap || appState.network.dailyCap || DAILY_CAP) || DAILY_CAP
+      dailyCap: Number(network.dailyCap || appState.network.dailyCap || DAILY_CAP) || DAILY_CAP,
+      lastAutoGrowthMinute: Math.max(Number(appState.network.lastAutoGrowthMinute || 0) || 0, Number(network.lastAutoGrowthMinute || 0) || 0, SYNTHETIC_NETWORK_START_MINUTE)
     };
+    saveNetworkStats(appState.storage, appState.network);
   }
 
   async function loadPMiningBootstrap() {
