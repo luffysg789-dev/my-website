@@ -7,7 +7,6 @@
   const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
   const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
   const NEXA_PUBLIC_CONFIG_ENDPOINT = '/api/nexa/public-config';
-  const TIGANG_SESSION_STORAGE_KEY = 'claw800:tigang-master:nexa-session';
   const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';
   const PENDING_ORDER_STORAGE_KEY = 'claw800_nexa_tip_pending_order_v1';
   const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';
@@ -102,35 +101,10 @@
     return savedAt + MAX_SESSION_RETENTION_MS;
   }
 
-  function loadFallbackGameSession() {
-    try {
-      if ((window.location.pathname || '').startsWith('/tigang-master/')) {
-        const raw = getPersistentStorage().getItem(TIGANG_SESSION_STORAGE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return null;
-        if (!parsed.openId || !parsed.sessionKey) return null;
-        parsed.savedAt = Number(parsed.savedAt || 0) || Date.now();
-        parsed.expiresAt = getSessionExpiryTimestamp(parsed);
-        if (parsed.expiresAt < Date.now()) {
-          return null;
-        }
-        return parsed;
-      }
-    } catch {}
-    return null;
-  }
-
   function loadCachedSession() {
     try {
       const raw = getPersistentStorage().getItem(SESSION_STORAGE_KEY);
-      if (!raw) {
-        const fallbackSession = loadFallbackGameSession();
-        if (fallbackSession) {
-          saveCachedSession(fallbackSession);
-        }
-        return fallbackSession;
-      }
+      if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') return null;
       if (!parsed.openId || !parsed.sessionKey) return null;
@@ -142,11 +116,7 @@
       }
       return parsed;
     } catch {
-      const fallbackSession = loadFallbackGameSession();
-      if (fallbackSession) {
-        saveCachedSession(fallbackSession);
-      }
-      return fallbackSession;
+      return null;
     }
   }
 

@@ -75,7 +75,6 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /const TIP_BUTTON_TEXT_PAY = '打赏 0\.1 USDT';/);
   assert.match(tipJs, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
   assert.match(tipJs, /const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth:\/\/order';/);
-  assert.match(tipJs, /const TIGANG_SESSION_STORAGE_KEY = 'claw800:tigang-master:nexa-session';/);
   assert.match(tipJs, /const SESSION_STORAGE_KEY = 'claw800_nexa_tip_session_v1';/);
   assert.match(tipJs, /function getPersistentStorage\(\)/);
   assert.match(tipJs, /const TIP_SUCCESS_STORAGE_KEY = 'claw800_nexa_tip_last_success_v1';/);
@@ -88,7 +87,6 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /function isLikelyMobileDevice\(\)/);
   assert.match(tipJs, /window\.matchMedia\('\(pointer: coarse\)'\)\.matches/);
   assert.match(tipJs, /navigator\.maxTouchPoints > 0/);
-  assert.match(tipJs, /function loadFallbackGameSession\(\)/);
   assert.match(tipJs, /function clearCachedSession\(\)/);
   assert.match(tipJs, /function syncTipCopy\(/);
   assert.match(tipJs, /function updateButtonState\(/);
@@ -106,8 +104,6 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /const userAgent = String\(window\.navigator\?\.userAgent \|\| ''\)\.trim\(\);/);
   assert.match(tipJs, /return \/micromessenger\/i\.test\(userAgent\);/);
   assert.match(tipJs, /const referrer = String\(document\.referrer \|\| ''\)\.trim\(\);/);
-  assert.match(tipJs, /if \(\(window\.location\.pathname \|\| ''\)\.startsWith\('\/tigang-master\/'\)\)/);
-  assert.match(tipJs, /getPersistentStorage\(\)\.getItem\(TIGANG_SESSION_STORAGE_KEY\)/);
   assert.match(tipJs, /const session = loadCachedSession\(\);/);
   assert.match(tipJs, /const hasNexaMarker = \/nexa\/i\.test\(userAgent\) \|\| \/nexa\/i\.test\(referrer\);/);
   assert.match(tipJs, /return Boolean\(hasNexaMarker \|\| session\);/);
@@ -143,6 +139,9 @@ test('shared tip script uses explicit login-then-pay flow for Nexa app webview',
   assert.match(tipJs, /setStatus\('已连接 Nexa 账号，后续可直接打赏。', 'success'\);/);
   assert.match(tipJs, /setStatus\('请在 Nexa 中输入六位支付密码完成余额支付。', ''\);/);
   assert.match(tipJs, /if \(isNexaSessionExpiredError\(error\)\) \{[\s\S]*?clearCachedSession\(\);[\s\S]*?setStatus\('Nexa 登录已过期，请重新登录后再打赏。', 'error'\);/);
+  assert.doesNotMatch(tipJs, /TIGANG_SESSION_STORAGE_KEY/);
+  assert.doesNotMatch(tipJs, /loadFallbackGameSession/);
+  assert.doesNotMatch(tipJs, /\/tigang-master\//);
 });
 
 test('fortune game shows a success alert after tip payment succeeds', () => {
