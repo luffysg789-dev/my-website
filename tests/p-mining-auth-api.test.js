@@ -600,7 +600,7 @@ test('p-mining abnormal repeated claim attempts trigger a 7-day mining ban', asy
   }
 });
 
-test('p-mining requires a human confirmation after 10 minute-paced successful claims', async () => {
+test('p-mining requires a human confirmation after 10 hour-paced successful claims', async () => {
   const harness = createHarness();
   const realNow = Date.now;
 
@@ -621,7 +621,7 @@ test('p-mining requires a human confirmation after 10 minute-paced successful cl
     for (let claimIndex = 0; claimIndex < 10; claimIndex += 1) {
       const claimResponse = await harness.request('POST', '/api/p-mining/claim', {}, { cookies });
       assert.equal(claimResponse.statusCode, 200);
-      now += 60 * 1000;
+      now += 60 * 60 * 1000;
     }
 
     const bootstrapResponse = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });

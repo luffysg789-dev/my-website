@@ -1,7 +1,7 @@
 (function createPMiningModule(globalScope) {
   const TOTAL_SUPPLY = 210000000000;
   const DAILY_CAP = 71917808;
-  const CLAIM_COOLDOWN_MS = 60 * 1000;
+  const CLAIM_COOLDOWN_MS = 60 * 60 * 1000;
   const DEMO_INVITE_CODES = ['246810', '135790', '888888'];
   const STORAGE_KEY_PREFIX = 'claw800:p-mining:state:';
   const NETWORK_STORAGE_KEY = 'claw800:p-mining:network-stats';
@@ -981,7 +981,7 @@
       remainingSeconds,
       progress,
       isClaimable: claimable && !isProcessing,
-      countdownLabel: claimable ? '60' : String(remainingSeconds),
+      countdownLabel: claimable ? '3600' : String(remainingSeconds),
       hintLabel: claimable ? '点击领取' : '冷却中'
     };
   }

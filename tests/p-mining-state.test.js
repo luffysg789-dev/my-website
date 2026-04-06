@@ -165,7 +165,7 @@ test('applyAutomaticNetworkGrowth adds 1-3 users on random 3-10 minute intervals
   assert.ok(next.lastAutoGrowthMinute <= 140);
 });
 
-test('canClaim returns false during the 60-second cooldown', () => {
+test('canClaim returns false during the 1-hour cooldown', () => {
   const now = Date.now();
 
   assert.equal(canClaim({ lastClaimAt: now - 20_000, now }), false);
@@ -179,18 +179,18 @@ test('getClaimCooldownRemainingSeconds rounds up remaining time', () => {
     now
   });
 
-  assert.equal(remaining, 35);
+  assert.equal(remaining, 3575);
 });
 
-test('getClaimUiState shows a full 60-second cooldown immediately after claim', () => {
+test('getClaimUiState shows a full 3600-second cooldown immediately after claim', () => {
   const claimedAt = 1710000000000;
   const ui = getClaimUiState({
     lastClaimAt: claimedAt,
     now: claimedAt
   });
 
-  assert.equal(ui.remainingSeconds, 60);
-  assert.equal(ui.countdownLabel, '60');
+  assert.equal(ui.remainingSeconds, 3600);
+  assert.equal(ui.countdownLabel, '3600');
   assert.equal(ui.hintLabel, '冷却中');
   assert.equal(ui.isClaimable, false);
 });
@@ -205,8 +205,8 @@ test('getClaimUiState uses plain second labels instead of hh:mm:ss', () => {
     now: 1710000005000
   });
 
-  assert.equal(ready.countdownLabel, '60');
-  assert.equal(cooling.countdownLabel, '55');
+  assert.equal(ready.countdownLabel, '3600');
+  assert.equal(cooling.countdownLabel, '3595');
 });
 
 test('applyClaimResult updates balance, lastClaimAt, and claim records', () => {
