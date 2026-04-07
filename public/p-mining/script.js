@@ -491,6 +491,7 @@
       totalMined: 0,
       todayMined: 0,
       todayPower: 10,
+      localDayKey: getDateKeyForTimestamp(Date.now()),
       networkFirstClaimAt: 0,
       remainingSupply: TOTAL_SUPPLY,
       currentHalvingCycle: 1,
@@ -1680,14 +1681,30 @@
       powerChanges: Array.isArray(records.power) ? records.power : [],
       lastClaimAt: Number(account.lastClaimAt || 0) || 0
     };
+    const currentDayKey = getDateKeyForTimestamp(Date.now());
+    const previousDayKey = String(appState.network.localDayKey || '').trim();
+    const incomingTotalMined = Number(network.totalMined || 0) || 0;
+    const incomingTodayMined = Number(network.todayMined || 0) || 0;
+    const incomingRemainingSupply = Number(network.remainingSupply || 0) || 0;
+    const mergedTotalMined = Math.max(incomingTotalMined, Number(appState.network.totalMined || 0) || 0);
+    const mergedTodayMined = previousDayKey === currentDayKey
+      ? Math.max(incomingTodayMined, Number(appState.network.todayMined || 0) || 0)
+      : incomingTodayMined;
+    const mergedRemainingSupply = previousDayKey === currentDayKey
+      ? Math.min(
+        incomingRemainingSupply,
+        Number(appState.network.remainingSupply || TOTAL_SUPPLY) || TOTAL_SUPPLY
+      )
+      : incomingRemainingSupply;
     appState.network = {
       ...appState.network,
       totalUsers: Number(network.totalUsers || 0) || 0,
-      totalMined: Number(network.totalMined || 0) || 0,
-      todayMined: Number(network.todayMined || 0) || 0,
+      totalMined: mergedTotalMined,
+      todayMined: mergedTodayMined,
       todayPower: Number(network.todayPower || 0) || 0,
+      localDayKey: currentDayKey,
       networkFirstClaimAt: Math.max(0, Number(network.firstMiningAt || 0) || 0),
-      remainingSupply: Number(network.remainingSupply || 0) || 0,
+      remainingSupply: mergedRemainingSupply,
       currentHalvingCycle: Number(network.currentHalvingCycle || 1) || 1,
       nextHalvingDate: String(network.nextHalvingDate || appState.network.nextHalvingDate || '').trim(),
       estimatedFinishYears: Number(network.estimatedFinishYears || 0) || 0,
