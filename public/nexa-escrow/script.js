@@ -1,11 +1,103 @@
 (function createNexaEscrowModule(globalScope) {
   const NEXA_ESCROW_SESSION_STORAGE_KEY = 'claw800:nexa-escrow:nexa-session';
   const NEXA_ESCROW_PENDING_PAYMENT_STORAGE_KEY = 'claw800:nexa-escrow:pending-payment';
+  const NEXA_ESCROW_CODE_MODAL_STORAGE_KEY = 'claw800:nexa-escrow:code-modal:';
+  const NEXA_ESCROW_LOCALE_STORAGE_KEY = 'claw800:nexa-escrow:locale';
   const MAX_NEXA_ESCROW_SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
   const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
   const NEXA_PUBLIC_CONFIG_ENDPOINT = '/api/nexa/public-config';
   let cachedNexaPublicConfig = null;
+  const TRANSLATIONS = {
+    zh: {
+      eyebrow: 'USDT 担保交易',
+      tabCreate: '发起担保',
+      tabOrders: '我的订单',
+      tabAccount: '账户中心',
+      createHeadline: '在 Nexa 内完成入金和状态跟踪',
+      roleBuyer: '我是买家',
+      roleSeller: '我是卖家',
+      amountLabel: '交易金额 (USDT)',
+      counterpartySellerLabel: '卖方担保号',
+      counterpartyBuyerLabel: '买方担保号',
+      counterpartySellerPlaceholder: '输入卖方担保号，例如 N123456',
+      counterpartyBuyerPlaceholder: '输入买方担保号，例如 N123456',
+      descriptionLabel: '交易描述',
+      descriptionPlaceholder: '例如：购买虚拟主机服务、设计稿定金等',
+      createAction: '确认发起',
+      joinHeadline: '输入交易码参与担保',
+      tradeCodePlaceholder: '输入 8 位交易码',
+      joinAction: '加入',
+      ordersHeadline: '买家付款、卖家交付、买家放款',
+      accountHeadline: '你的 Nexa 担保身份',
+      escrowCodeLabel: '担保号',
+      walletLabel: '钱包余额',
+      firstLoginHint: '首次登录提醒',
+      codeModalTitle: '您的担保号是多少',
+      codeModalConfirm: '我知道了',
+      creatingOrder: '正在创建担保单...',
+      joiningOrder: '正在加入担保单...',
+      joiningOrderSuccess: '已加入担保单。',
+      processing: '处理中...',
+      actionSuccess: '操作成功。',
+      createSuccess: '担保单已创建，交易码 {tradeCode}',
+      notSupported: '仅支持在 Nexa App 内使用担保交易。',
+      emptyOrders: '还没有担保单，先去发起一个。',
+      detailAmount: '金额',
+      detailBuyer: '买方担保号',
+      detailSeller: '卖方担保号',
+      detailDescription: '描述',
+      actionFund: '支付担保金',
+      actionDeliver: '确认已交付',
+      actionRelease: '确认放款',
+      actionCancel: '取消订单',
+      viewerPending: '待加入'
+    },
+    en: {
+      eyebrow: 'USDT Escrow',
+      tabCreate: 'Create',
+      tabOrders: 'Orders',
+      tabAccount: 'Account',
+      createHeadline: 'Complete deposit and status tracking inside Nexa',
+      roleBuyer: 'I am Buyer',
+      roleSeller: 'I am Seller',
+      amountLabel: 'Amount (USDT)',
+      counterpartySellerLabel: 'Seller Escrow ID',
+      counterpartyBuyerLabel: 'Buyer Escrow ID',
+      counterpartySellerPlaceholder: 'Enter seller escrow ID, e.g. N123456',
+      counterpartyBuyerPlaceholder: 'Enter buyer escrow ID, e.g. N123456',
+      descriptionLabel: 'Trade Description',
+      descriptionPlaceholder: 'Example: VPS service, design deposit, etc.',
+      createAction: 'Create Order',
+      joinHeadline: 'Enter trade code to join the escrow',
+      tradeCodePlaceholder: 'Enter the 8-character trade code',
+      joinAction: 'Join',
+      ordersHeadline: 'Buyer pays, seller delivers, buyer releases',
+      accountHeadline: 'Your Nexa escrow identity',
+      escrowCodeLabel: 'Escrow ID',
+      walletLabel: 'Wallet Balance',
+      firstLoginHint: 'First login reminder',
+      codeModalTitle: 'Your escrow ID',
+      codeModalConfirm: 'Got it',
+      creatingOrder: 'Creating escrow order...',
+      joiningOrder: 'Joining escrow order...',
+      joiningOrderSuccess: 'Escrow order joined.',
+      processing: 'Processing...',
+      actionSuccess: 'Action completed.',
+      createSuccess: 'Escrow created, trade code {tradeCode}',
+      notSupported: 'Escrow is only available inside the Nexa App.',
+      emptyOrders: 'No escrow orders yet. Create one first.',
+      detailAmount: 'Amount',
+      detailBuyer: 'Buyer Escrow ID',
+      detailSeller: 'Seller Escrow ID',
+      detailDescription: 'Description',
+      actionFund: 'Pay Deposit',
+      actionDeliver: 'Mark Delivered',
+      actionRelease: 'Release Funds',
+      actionCancel: 'Cancel Order',
+      viewerPending: 'Pending'
+    }
+  };
 
   function getStorage() {
     try {
@@ -13,6 +105,25 @@
     } catch {
       return globalScope.sessionStorage;
     }
+  }
+
+  function getStoredLocale(storage = getStorage()) {
+    try {
+      return storage?.getItem?.(NEXA_ESCROW_LOCALE_STORAGE_KEY) === 'zh' ? 'zh' : 'en';
+    } catch {
+      return 'en';
+    }
+  }
+
+  function setStoredLocale(storage = getStorage(), locale = 'en') {
+    try {
+      storage?.setItem?.(NEXA_ESCROW_LOCALE_STORAGE_KEY, locale === 'zh' ? 'zh' : 'en');
+    } catch {}
+  }
+
+  function t(locale, key) {
+    const dictionary = TRANSLATIONS[locale === 'zh' ? 'zh' : 'en'];
+    return dictionary?.[key] || key;
   }
 
   function loadCachedSession(storage = getStorage()) {
@@ -73,6 +184,20 @@
   function clearPendingPayment(storage = getStorage()) {
     try {
       storage?.removeItem?.(NEXA_ESCROW_PENDING_PAYMENT_STORAGE_KEY);
+    } catch {}
+  }
+
+  function hasSeenEscrowCodeModal(storage = getStorage(), openId = '') {
+    try {
+      return storage?.getItem?.(`${NEXA_ESCROW_CODE_MODAL_STORAGE_KEY}${String(openId || '').trim()}`) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function markEscrowCodeModalSeen(storage = getStorage(), openId = '') {
+    try {
+      storage?.setItem?.(`${NEXA_ESCROW_CODE_MODAL_STORAGE_KEY}${String(openId || '').trim()}`, '1');
     } catch {}
   }
 
@@ -197,14 +322,18 @@
     const response = await postJson('/api/nexa-escrow/orders', {
       creatorRole: appState.role,
       amount: appState.elements.amountInput.value,
-      counterpartyEmail: appState.elements.counterpartyInput.value,
+      counterpartyEscrowCode: appState.elements.counterpartyInput.value,
       description: appState.elements.descriptionInput.value
     });
     appState.orders = mergeOrder(appState.orders, response.order);
     appState.selectedTradeCode = response.order.tradeCode;
     renderOrders(appState);
     switchTab(appState, 'orders');
-    setStatus(appState.elements.createStatus, `担保单已创建，交易码 ${response.order.tradeCode}`, 'success');
+    setStatus(
+      appState.elements.createStatus,
+      t(appState.locale, 'createSuccess').replace('{tradeCode}', response.order.tradeCode),
+      'success'
+    );
   }
 
   async function joinEscrowOrder(appState) {
@@ -214,7 +343,7 @@
     appState.orders = mergeOrder(appState.orders, response.order);
     appState.selectedTradeCode = response.order.tradeCode;
     renderOrders(appState);
-    setStatus(appState.elements.joinStatus, '已加入担保单。', 'success');
+    setStatus(appState.elements.joinStatus, t(appState.locale, 'joiningOrderSuccess'), 'success');
   }
 
   async function beginEscrowPayment(appState, tradeCode) {
@@ -272,6 +401,30 @@
     node.classList.toggle('is-success', tone === 'success');
   }
 
+  function applyTranslations(appState) {
+    if (globalScope.document?.documentElement) {
+      globalScope.document.documentElement.lang = appState.locale === 'zh' ? 'zh-CN' : 'en';
+    }
+    appState.elements.translatableNodes.forEach((node) => {
+      node.textContent = t(appState.locale, node.dataset.i18n);
+    });
+    appState.elements.placeholderNodes.forEach((node) => {
+      node.setAttribute('placeholder', t(appState.locale, node.dataset.i18nPlaceholder));
+    });
+    appState.elements.localeButtons.forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.localeToggle === appState.locale);
+    });
+  }
+
+  function toggleLanguage(appState, locale) {
+    appState.locale = locale === 'zh' ? 'zh' : 'en';
+    setStoredLocale(appState.storage, appState.locale);
+    applyTranslations(appState);
+    renderCreateRole(appState);
+    renderOrders(appState);
+    renderAccount(appState);
+  }
+
   function switchTab(appState, tab) {
     appState.activeTab = String(tab || 'create');
     appState.elements.panels.forEach((panel) => {
@@ -284,22 +437,16 @@
     });
   }
 
-  function renderAuthState(appState) {
-    const node = appState.elements.authStatus;
-    if (!node) return;
-    if (!hasNexaEnvironment()) {
-      node.textContent = '仅限 Nexa';
-      return;
-    }
-    node.textContent = appState.session?.openId ? '已授权' : '待授权';
-  }
-
   function renderCreateRole(appState) {
     appState.elements.roleButtons.forEach((button) => {
       button.classList.toggle('is-active', button.dataset.role === appState.role);
     });
-    appState.elements.counterpartyLabel.textContent = appState.role === 'buyer' ? '卖家邮箱' : '买家邮箱';
-    appState.elements.counterpartyInput.placeholder = appState.role === 'buyer' ? '对方的 Google 邮箱' : '买方的 Google 邮箱';
+    appState.elements.counterpartyLabel.textContent = appState.role === 'buyer'
+      ? t(appState.locale, 'counterpartySellerLabel')
+      : t(appState.locale, 'counterpartyBuyerLabel');
+    appState.elements.counterpartyInput.placeholder = appState.role === 'buyer'
+      ? t(appState.locale, 'counterpartySellerPlaceholder')
+      : t(appState.locale, 'counterpartyBuyerPlaceholder');
   }
 
   function renderOrderDetail(appState) {
@@ -310,21 +457,23 @@
       return;
     }
     card.hidden = false;
-    appState.elements.detailTitle.textContent = `交易码 ${order.tradeCode}`;
+    appState.elements.detailTitle.textContent = appState.locale === 'zh'
+      ? `交易码 ${order.tradeCode}`
+      : `Trade ${order.tradeCode}`;
     appState.elements.detailPill.textContent = order.status;
     appState.elements.detailBody.innerHTML = `
-      <div class="nexa-escrow-order-detail__line">金额：${order.amount} ${order.currency}</div>
-      <div class="nexa-escrow-order-detail__line">买家：${order.buyerEmail || '--'} ${order.buyerNickname ? `(${order.buyerNickname})` : ''}</div>
-      <div class="nexa-escrow-order-detail__line">卖家：${order.sellerEmail || '--'} ${order.sellerNickname ? `(${order.sellerNickname})` : ''}</div>
-      <div class="nexa-escrow-order-detail__line">描述：${order.description || '--'}</div>
+      <div class="nexa-escrow-order-detail__line">${t(appState.locale, 'detailAmount')}：${order.amount} ${order.currency}</div>
+      <div class="nexa-escrow-order-detail__line">${t(appState.locale, 'detailBuyer')}：${order.buyerEscrowCode || '--'} ${order.buyerNickname ? `(${order.buyerNickname})` : ''}</div>
+      <div class="nexa-escrow-order-detail__line">${t(appState.locale, 'detailSeller')}：${order.sellerEscrowCode || '--'} ${order.sellerNickname ? `(${order.sellerNickname})` : ''}</div>
+      <div class="nexa-escrow-order-detail__line">${t(appState.locale, 'detailDescription')}：${order.description || '--'}</div>
     `;
 
     const [primaryAction, secondaryAction] = order.availableActions || [];
     const actionText = {
-      fund: '支付担保金',
-      mark_delivered: '确认已交付',
-      release: '确认放款',
-      cancel: '取消订单'
+      fund: t(appState.locale, 'actionFund'),
+      mark_delivered: t(appState.locale, 'actionDeliver'),
+      release: t(appState.locale, 'actionRelease'),
+      cancel: t(appState.locale, 'actionCancel')
     };
     appState.elements.primaryAction.hidden = !primaryAction;
     appState.elements.secondaryAction.hidden = !secondaryAction;
@@ -338,7 +487,7 @@
     const list = appState.elements.ordersList;
     if (!list) return;
     if (!appState.orders.length) {
-      list.innerHTML = '<article class="nexa-escrow-order-item"><div class="nexa-escrow-order-item__meta">还没有担保单，先去发起一个。</div></article>';
+      list.innerHTML = `<article class="nexa-escrow-order-item"><div class="nexa-escrow-order-item__meta">${t(appState.locale, 'emptyOrders')}</div></article>`;
       renderOrderDetail(appState);
       return;
     }
@@ -348,7 +497,7 @@
           <div class="nexa-escrow-order-item__code">${order.tradeCode}</div>
           <span class="nexa-escrow-pill">${order.status}</span>
         </div>
-        <div class="nexa-escrow-order-item__meta">${order.amount} ${order.currency} · ${order.viewerRole || '待加入'} · ${order.description}</div>
+        <div class="nexa-escrow-order-item__meta">${order.amount} ${order.currency} · ${order.viewerRole || t(appState.locale, 'viewerPending')} · ${order.description}</div>
       </button>
     `).join('');
     Array.from(list.querySelectorAll('[data-trade-code]')).forEach((button) => {
@@ -363,18 +512,41 @@
     renderOrderDetail(appState);
   }
 
+  function renderAccount(appState) {
+    if (!appState.elements.accountCode || !appState.elements.accountWallet) return;
+    appState.elements.accountCode.textContent = String(appState.account?.escrowCode || 'N000000');
+    appState.elements.accountWallet.textContent = `${String(appState.account?.wallet || '0.00')} USDT`;
+  }
+
+  function openEscrowCodeModal(appState) {
+    const modal = appState.elements.codeModal;
+    if (!modal || !appState.account?.escrowCode) return;
+    appState.elements.codeModalValue.textContent = String(appState.account.escrowCode);
+    modal.hidden = false;
+  }
+
+  function closeEscrowCodeModal(appState) {
+    const modal = appState.elements.codeModal;
+    if (!modal) return;
+    modal.hidden = true;
+    if (appState.session?.openId) {
+      markEscrowCodeModalSeen(appState.storage, appState.session.openId);
+    }
+  }
+
   async function loadBootstrap(appState) {
     const response = await getJson('/api/nexa-escrow/bootstrap');
     appState.account = response.account || null;
     appState.orders = Array.isArray(response.orders) ? response.orders : [];
     renderOrders(appState);
-    renderAuthState(appState);
+    renderAccount(appState);
   }
 
   function createApp(root) {
     const storage = getStorage();
     const appState = {
       storage,
+      locale: getStoredLocale(storage),
       session: loadCachedSession(storage),
       account: null,
       orders: [],
@@ -382,10 +554,12 @@
       role: 'buyer',
       activeTab: 'create',
       elements: {
-        authStatus: root.querySelector('#nexaEscrowAuthStatus'),
         tabButtons: Array.from(root.querySelectorAll('[data-tab-target]')),
         panels: Array.from(root.querySelectorAll('[data-tab]')),
         roleButtons: Array.from(root.querySelectorAll('[data-role]')),
+        localeButtons: Array.from(root.querySelectorAll('[data-locale-toggle]')),
+        translatableNodes: Array.from(root.querySelectorAll('[data-i18n]')),
+        placeholderNodes: Array.from(root.querySelectorAll('[data-i18n-placeholder]')),
         counterpartyLabel: root.querySelector('#nexaEscrowCounterpartyLabel'),
         amountInput: root.querySelector('#nexaEscrowAmountInput'),
         counterpartyInput: root.querySelector('#nexaEscrowCounterpartyInput'),
@@ -402,12 +576,20 @@
         detailBody: root.querySelector('#nexaEscrowDetailBody'),
         detailStatus: root.querySelector('#nexaEscrowDetailStatusText'),
         primaryAction: root.querySelector('#nexaEscrowPrimaryAction'),
-        secondaryAction: root.querySelector('#nexaEscrowSecondaryAction')
+        secondaryAction: root.querySelector('#nexaEscrowSecondaryAction'),
+        accountCode: root.querySelector('#nexaEscrowAccountCode'),
+        accountWallet: root.querySelector('#nexaEscrowAccountWallet'),
+        codeModal: globalScope.document.querySelector('#nexaEscrowCodeModal'),
+        codeModalValue: globalScope.document.querySelector('#nexaEscrowCodeModalValue'),
+        codeModalConfirm: globalScope.document.querySelector('#nexaEscrowCodeModalConfirm')
       }
     };
 
     appState.elements.tabButtons.forEach((button) => {
       button.addEventListener('click', () => switchTab(appState, button.dataset.tabTarget));
+    });
+    appState.elements.localeButtons.forEach((button) => {
+      button.addEventListener('click', () => toggleLanguage(appState, button.dataset.localeToggle));
     });
     appState.elements.roleButtons.forEach((button) => {
       button.addEventListener('click', () => {
@@ -417,7 +599,7 @@
     });
     appState.elements.createButton?.addEventListener('click', async () => {
       try {
-        setStatus(appState.elements.createStatus, '正在创建担保单...');
+        setStatus(appState.elements.createStatus, t(appState.locale, 'creatingOrder'));
         await createEscrowOrder(appState);
       } catch (error) {
         setStatus(appState.elements.createStatus, error instanceof Error ? error.message : '创建失败', 'error');
@@ -425,7 +607,7 @@
     });
     appState.elements.joinButton?.addEventListener('click', async () => {
       try {
-        setStatus(appState.elements.joinStatus, '正在加入担保单...');
+        setStatus(appState.elements.joinStatus, t(appState.locale, 'joiningOrder'));
         await joinEscrowOrder(appState);
       } catch (error) {
         setStatus(appState.elements.joinStatus, error instanceof Error ? error.message : '加入失败', 'error');
@@ -437,20 +619,23 @@
         const tradeCode = String(appState.selectedTradeCode || '').trim();
         if (!action || !tradeCode) return;
         try {
-          setStatus(appState.elements.detailStatus, '处理中...');
+          setStatus(appState.elements.detailStatus, t(appState.locale, 'processing'));
           if (action === 'fund') {
             await beginEscrowPayment(appState, tradeCode);
             return;
           }
           await submitEscrowAction(appState, action, tradeCode);
-          setStatus(appState.elements.detailStatus, '操作成功。', 'success');
+          setStatus(appState.elements.detailStatus, t(appState.locale, 'actionSuccess'), 'success');
         } catch (error) {
           setStatus(appState.elements.detailStatus, error instanceof Error ? error.message : '操作失败', 'error');
         }
       });
     });
+    appState.elements.codeModalConfirm?.addEventListener('click', () => {
+      closeEscrowCodeModal(appState);
+    });
 
-    renderAuthState(appState);
+    applyTranslations(appState);
     renderCreateRole(appState);
     switchTab(appState, 'create');
     renderOrders(appState);
@@ -472,23 +657,27 @@
       }
     }
     if (!appState.session) {
-      if (hasNexaEnvironment()) {
-        await beginNexaLoginFlow().catch(() => {});
-      } else {
-        setStatus(appState.elements.createStatus, '仅支持在 Nexa App 内使用担保交易。', 'error');
+        if (hasNexaEnvironment()) {
+          await beginNexaLoginFlow().catch(() => {});
+        } else {
+          setStatus(appState.elements.createStatus, t(appState.locale, 'notSupported'), 'error');
+        }
+        return;
       }
-      return;
-    }
 
     await loadBootstrap(appState).catch((error) => {
       setStatus(appState.elements.createStatus, error instanceof Error ? error.message : '加载失败', 'error');
     });
     await settlePendingEscrowPayment(appState).catch(() => {});
+    if (appState.session?.openId && !hasSeenEscrowCodeModal(appState.storage, appState.session.openId)) {
+      openEscrowCodeModal(appState);
+    }
   }
 
   const exported = {
     NEXA_ESCROW_SESSION_STORAGE_KEY,
     NEXA_ESCROW_PENDING_PAYMENT_STORAGE_KEY,
+    NEXA_ESCROW_LOCALE_STORAGE_KEY,
     MAX_NEXA_ESCROW_SESSION_RETENTION_MS,
     beginNexaLoginFlow,
     createEscrowOrder,

@@ -180,6 +180,7 @@ test('nexa-escrow bootstrap returns synced account state and empty orders for a 
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.ok, true);
     assert.equal(response.body.account.openId, 'escrow-open-id-bootstrap');
+    assert.match(response.body.account.escrowCode, /^N\d{6}$/);
     assert.equal(Array.isArray(response.body.orders), true);
     assert.equal(response.body.orders.length, 0);
   } finally {
@@ -198,10 +199,23 @@ test('nexa-escrow buyer can create an order and seller can join with the trade c
     });
     const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
 
-    const createResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-seller-open-id',
+      sessionKey: 'escrow-seller-session-key',
+      nickname: 'Seller User'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: {
+        [sellerCookie.name]: sellerCookie.value
+      }
+    });
+    const sellerEscrowCode = sellerBootstrap.body.account.escrowCode;
+
+    const recreateResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
       creatorRole: 'buyer',
       amount: '18.88',
-      counterpartyEmail: 'seller@example.com',
+      counterpartyEscrowCode: sellerEscrowCode,
       description: '购买主机担保'
     }, {
       cookies: {
@@ -209,21 +223,8 @@ test('nexa-escrow buyer can create an order and seller can join with the trade c
       }
     });
 
-    assert.equal(createResponse.statusCode, 200);
-    assert.equal(createResponse.body.ok, true);
-    assert.equal(createResponse.body.order.creatorRole, 'buyer');
-    assert.equal(createResponse.body.order.status, 'AWAITING_SELLER');
-    assert.match(createResponse.body.order.tradeCode, /^[A-Z0-9]{8}$/);
-
-    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
-      openId: 'escrow-seller-open-id',
-      sessionKey: 'escrow-seller-session-key',
-      nickname: 'Seller User'
-    });
-    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
-
     const joinResponse = await harness.request('POST', '/api/nexa-escrow/orders/join', {
-      tradeCode: createResponse.body.order.tradeCode
+      tradeCode: recreateResponse.body.order.tradeCode
     }, {
       cookies: {
         [sellerCookie.name]: sellerCookie.value
@@ -234,6 +235,7 @@ test('nexa-escrow buyer can create an order and seller can join with the trade c
     assert.equal(joinResponse.body.ok, true);
     assert.equal(joinResponse.body.order.status, 'AWAITING_PAYMENT');
     assert.equal(joinResponse.body.order.sellerOpenId, 'escrow-seller-open-id');
+    assert.equal(joinResponse.body.order.sellerEscrowCode, sellerEscrowCode);
   } finally {
     harness.cleanup();
   }
@@ -299,10 +301,16 @@ test('nexa-escrow funded flow supports payment, seller delivery, and buyer relea
     });
     const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
 
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: {
+        [sellerCookie.name]: sellerCookie.value
+      }
+    });
+
     const createResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
       creatorRole: 'buyer',
       amount: '18.88',
-      counterpartyEmail: 'seller@example.com',
+      counterpartyEscrowCode: sellerBootstrap.body.account.escrowCode,
       description: '购买设计稿担保'
     }, {
       cookies: {

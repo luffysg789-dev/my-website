@@ -832,11 +832,44 @@ function requireNexaEscrowSession(req) {
 }
 
 function ensureNexaEscrowUserAccount(session) {
-  return ensureXiangqiUserWallet({
-    openId: String(session?.openId || '').trim(),
-    nickname: String(session?.nickname || 'Nexa User').trim() || 'Nexa User',
-    avatar: String(session?.avatar || '').trim()
-  });
+  const openId = String(session?.openId || '').trim();
+  const nickname = String(session?.nickname || 'Nexa User').trim() || 'Nexa User';
+  const avatar = String(session?.avatar || '').trim();
+  if (!openId) throw buildNexaEscrowBanError('UNAUTHORIZED', 401);
+
+  let user = selectXiangqiUserByOpenIdStmt.get(openId);
+  if (!user) {
+    const escrowCode = createNexaEscrowAccountCode();
+    insertXiangqiUserStmt.run(openId, nickname, avatar, escrowCode);
+    user = selectXiangqiUserByOpenIdStmt.get(openId);
+  } else {
+    const normalizedEscrowCode = String(user.escrow_code || '').trim().toUpperCase();
+    if (!/^N\d{6}$/.test(normalizedEscrowCode)) {
+      const escrowCode = createNexaEscrowAccountCode();
+      updateGameUserEscrowCodeStmt.run(escrowCode, Number(user.id));
+      user = selectXiangqiUserByOpenIdStmt.get(openId);
+    }
+  }
+
+  let wallet = selectXiangqiWalletStmt.get(Number(user.id));
+  if (!wallet) {
+    insertXiangqiWalletStmt.run(Number(user.id));
+    wallet = selectXiangqiWalletStmt.get(Number(user.id));
+  }
+
+  return {
+    user: {
+      id: Number(user.id),
+      openId: String(user.openid || '').trim(),
+      nickname: String(user.nickname || '').trim(),
+      avatar: String(user.avatar || '').trim(),
+      escrowCode: String(user.escrow_code || '').trim().toUpperCase()
+    },
+    wallet: {
+      availableBalance: String(wallet?.available_balance || '0').trim() || '0',
+      frozenBalance: String(wallet?.frozen_balance || '0').trim() || '0'
+    }
+  };
 }
 
 function createNexaEscrowTradeCode() {
@@ -850,6 +883,15 @@ function createNexaEscrowTradeCode() {
     if (!selectNexaEscrowOrderByTradeCodeStmt.get(code)) return code;
   }
   throw buildNexaEscrowBanError('TRADE_CODE_GENERATION_FAILED', 500);
+}
+
+function createNexaEscrowAccountCode() {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const numeric = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const code = `N${numeric}`;
+    if (!selectXiangqiUserByEscrowCodeStmt.get(code)) return code;
+  }
+  throw buildNexaEscrowBanError('ESCROW_CODE_GENERATION_FAILED', 500);
 }
 
 function insertNexaEscrowEvent(orderId, actorUserId, eventType, detail = '') {
@@ -869,7 +911,8 @@ function getEscrowUserSummary(userId) {
     userId: Number(row.id),
     openId: String(row.openid || '').trim(),
     nickname: String(row.nickname || '').trim(),
-    avatar: String(row.avatar || '').trim()
+    avatar: String(row.avatar || '').trim(),
+    escrowCode: String(row.escrow_code || '').trim().toUpperCase()
   };
 }
 
@@ -914,8 +957,8 @@ function formatNexaEscrowOrder(order, viewerUserId = 0) {
     sellerOpenId: String(seller?.openId || '').trim(),
     buyerNickname: String(buyer?.nickname || '').trim(),
     sellerNickname: String(seller?.nickname || '').trim(),
-    buyerEmail: String(order?.buyer_email || '').trim(),
-    sellerEmail: String(order?.seller_email || '').trim(),
+    buyerEscrowCode: String(order?.buyer_escrow_code || buyer?.escrowCode || '').trim().toUpperCase(),
+    sellerEscrowCode: String(order?.seller_escrow_code || seller?.escrowCode || '').trim().toUpperCase(),
     amount: String(order?.amount || '0.00').trim(),
     currency: String(order?.currency || NEXA_ESCROW_CURRENCY).trim() || NEXA_ESCROW_CURRENCY,
     description: String(order?.description || '').trim(),
@@ -947,13 +990,14 @@ function buildNexaEscrowBootstrapPayload(session) {
       userId: ensured.user.id,
       openId: ensured.user.openId,
       nickname: ensured.user.nickname,
+      escrowCode: ensured.user.escrowCode,
       wallet: ensured.wallet.availableBalance
     },
     orders
   };
 }
 
-function createNexaEscrowOrder({ session, creatorRole, amount, counterpartyEmail, description }) {
+function createNexaEscrowOrder({ session, creatorRole, counterpartyEscrowCode, amount, description }) {
   const ensured = ensureNexaEscrowUserAccount(session);
   const normalizedRole = String(creatorRole || '').trim().toLowerCase();
   if (normalizedRole !== 'buyer' && normalizedRole !== 'seller') {
@@ -963,9 +1007,12 @@ function createNexaEscrowOrder({ session, creatorRole, amount, counterpartyEmail
   if (amountCents <= 0n) {
     throw buildNexaEscrowBanError('INVALID_AMOUNT');
   }
-  const normalizedCounterpartyEmail = normalizeEscrowEmail(counterpartyEmail);
-  if (!isValidEscrowEmail(normalizedCounterpartyEmail)) {
-    throw buildNexaEscrowBanError('INVALID_COUNTERPARTY_EMAIL');
+  const normalizedCounterpartyEscrowCode = String(counterpartyEscrowCode || '').trim().toUpperCase();
+  if (!/^N\d{6}$/.test(normalizedCounterpartyEscrowCode)) {
+    throw buildNexaEscrowBanError('INVALID_COUNTERPARTY_ESCROW_CODE');
+  }
+  if (normalizedCounterpartyEscrowCode === ensured.user.escrowCode) {
+    throw buildNexaEscrowBanError('COUNTERPARTY_ESCROW_CODE_SELF');
   }
   const normalizedDescription = String(description || '').trim();
   if (!normalizedDescription) {
@@ -975,8 +1022,8 @@ function createNexaEscrowOrder({ session, creatorRole, amount, counterpartyEmail
   const tradeCode = createNexaEscrowTradeCode();
   const buyerUserId = normalizedRole === 'buyer' ? ensured.user.id : null;
   const sellerUserId = normalizedRole === 'seller' ? ensured.user.id : null;
-  const buyerEmail = normalizedRole === 'buyer' ? normalizeEscrowEmail(`${ensured.user.openId}@nexa.local`) : normalizedCounterpartyEmail;
-  const sellerEmail = normalizedRole === 'seller' ? normalizeEscrowEmail(`${ensured.user.openId}@nexa.local`) : normalizedCounterpartyEmail;
+  const buyerEscrowCode = normalizedRole === 'buyer' ? ensured.user.escrowCode : normalizedCounterpartyEscrowCode;
+  const sellerEscrowCode = normalizedRole === 'seller' ? ensured.user.escrowCode : normalizedCounterpartyEscrowCode;
   const status = normalizedRole === 'buyer' ? 'AWAITING_SELLER' : 'AWAITING_BUYER';
 
   const row = db.transaction(() => {
@@ -986,8 +1033,8 @@ function createNexaEscrowOrder({ session, creatorRole, amount, counterpartyEmail
       normalizedRole,
       buyerUserId,
       sellerUserId,
-      buyerEmail,
-      sellerEmail,
+      buyerEscrowCode,
+      sellerEscrowCode,
       centsToMoneyString(amountCents),
       NEXA_ESCROW_CURRENCY,
       normalizedDescription,
@@ -1011,12 +1058,21 @@ function joinNexaEscrowOrder({ session, tradeCode }) {
   if (!order) {
     throw buildNexaEscrowBanError('ORDER_NOT_FOUND', 404);
   }
+  const normalizedUserEscrowCode = ensured.user.escrowCode;
+  const awaitingBuyer = String(order.buyer_escrow_code || '').trim().toUpperCase();
+  const awaitingSeller = String(order.seller_escrow_code || '').trim().toUpperCase();
   if (Number(order.creator_user_id || 0) === ensured.user.id) {
     throw buildNexaEscrowBanError('CREATOR_CANNOT_JOIN');
   }
   const status = String(order.status || '').trim().toUpperCase();
   if (status !== 'AWAITING_BUYER' && status !== 'AWAITING_SELLER') {
     return formatNexaEscrowOrder(order, ensured.user.id);
+  }
+  if (status === 'AWAITING_BUYER' && awaitingBuyer && awaitingBuyer !== normalizedUserEscrowCode) {
+    throw buildNexaEscrowBanError('COUNTERPARTY_ESCROW_CODE_MISMATCH');
+  }
+  if (status === 'AWAITING_SELLER' && awaitingSeller && awaitingSeller !== normalizedUserEscrowCode) {
+    throw buildNexaEscrowBanError('COUNTERPARTY_ESCROW_CODE_MISMATCH');
   }
 
   const nextBuyerUserId = status === 'AWAITING_BUYER' ? ensured.user.id : order.buyer_user_id;
@@ -1596,7 +1652,8 @@ function ensurePMiningUserAccount({ openId, nickname = 'Nexa User', avatar = '' 
       const result = insertXiangqiUserStmt.run(
         normalizedOpenId,
         String(nickname || 'Nexa User').trim() || 'Nexa User',
-        String(avatar || '').trim()
+        String(avatar || '').trim(),
+        createNexaEscrowAccountCode()
       );
       user = selectXiangqiUserByOpenIdStmt.get(normalizedOpenId) || {
         id: Number(result.lastInsertRowid),
@@ -3355,7 +3412,7 @@ app.post('/api/nexa-escrow/orders', (req, res) => {
       session,
       creatorRole: req.body?.creatorRole,
       amount: req.body?.amount,
-      counterpartyEmail: req.body?.counterpartyEmail,
+      counterpartyEscrowCode: req.body?.counterpartyEscrowCode,
       description: req.body?.description
     });
     return res.json({
@@ -3850,13 +3907,19 @@ const selectXiangqiWalletStmt = db.prepare(
   'SELECT user_id, available_balance, frozen_balance FROM game_wallets WHERE user_id = ?'
 );
 const selectXiangqiUserByIdStmt = db.prepare(
-  'SELECT id, openid, nickname, avatar, created_at FROM game_users WHERE id = ?'
+  'SELECT id, openid, nickname, avatar, escrow_code, created_at FROM game_users WHERE id = ?'
 );
 const selectXiangqiUserByOpenIdStmt = db.prepare(
-  'SELECT id, openid, nickname, avatar, created_at FROM game_users WHERE openid = ?'
+  'SELECT id, openid, nickname, avatar, escrow_code, created_at FROM game_users WHERE openid = ?'
+);
+const selectXiangqiUserByEscrowCodeStmt = db.prepare(
+  'SELECT id, openid, nickname, avatar, escrow_code, created_at FROM game_users WHERE escrow_code = ?'
 );
 const insertXiangqiUserStmt = db.prepare(
-  'INSERT INTO game_users (openid, nickname, avatar) VALUES (?, ?, ?)'
+  'INSERT INTO game_users (openid, nickname, avatar, escrow_code) VALUES (?, ?, ?, ?)'
+);
+const updateGameUserEscrowCodeStmt = db.prepare(
+  'UPDATE game_users SET escrow_code = ?, updated_at = datetime(\'now\') WHERE id = ?'
 );
 const selectPMiningUserByUserIdStmt = db.prepare(`
   SELECT
@@ -4044,8 +4107,8 @@ const insertNexaEscrowOrderStmt = db.prepare(`
     creator_role,
     buyer_user_id,
     seller_user_id,
-    buyer_email,
-    seller_email,
+    buyer_escrow_code,
+    seller_escrow_code,
     amount,
     currency,
     description,
@@ -4060,8 +4123,8 @@ const selectNexaEscrowOrderByTradeCodeStmt = db.prepare(`
     o.creator_role,
     o.buyer_user_id,
     o.seller_user_id,
-    o.buyer_email,
-    o.seller_email,
+    o.buyer_escrow_code,
+    o.seller_escrow_code,
     o.amount,
     o.currency,
     o.description,
@@ -4088,8 +4151,8 @@ const selectNexaEscrowOrderByPaymentOrderNoStmt = db.prepare(`
     o.creator_role,
     o.buyer_user_id,
     o.seller_user_id,
-    o.buyer_email,
-    o.seller_email,
+    o.buyer_escrow_code,
+    o.seller_escrow_code,
     o.amount,
     o.currency,
     o.description,
@@ -4116,8 +4179,8 @@ const listNexaEscrowOrdersByUserStmt = db.prepare(`
     o.creator_role,
     o.buyer_user_id,
     o.seller_user_id,
-    o.buyer_email,
-    o.seller_email,
+    o.buyer_escrow_code,
+    o.seller_escrow_code,
     o.amount,
     o.currency,
     o.description,
@@ -4574,7 +4637,8 @@ function ensureXiangqiUserWallet({ openId, nickname = 'Nexa 玩家', avatar = ''
       const result = insertXiangqiUserStmt.run(
         normalizedOpenId,
         String(nickname || 'Nexa 玩家').trim() || 'Nexa 玩家',
-        String(avatar || '').trim()
+        String(avatar || '').trim(),
+        createNexaEscrowAccountCode()
       );
       const userId = Number(result.lastInsertRowid);
       insertXiangqiWalletStmt.run(userId);

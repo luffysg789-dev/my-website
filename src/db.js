@@ -209,9 +209,21 @@ db.exec(`
     openid TEXT NOT NULL UNIQUE,
     nickname TEXT NOT NULL DEFAULT '',
     avatar TEXT NOT NULL DEFAULT '',
+    escrow_code TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+`);
+
+const hasGameUserEscrowCode = db.prepare("SELECT 1 FROM pragma_table_info('game_users') WHERE name = 'escrow_code'").get();
+if (!hasGameUserEscrowCode) {
+  db.exec("ALTER TABLE game_users ADD COLUMN escrow_code TEXT NOT NULL DEFAULT ''");
+}
+
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_game_users_escrow_code
+  ON game_users(escrow_code)
+  WHERE escrow_code <> '';
 `);
 
 db.exec(`
@@ -248,8 +260,8 @@ db.exec(`
     creator_role TEXT NOT NULL,
     buyer_user_id INTEGER DEFAULT NULL,
     seller_user_id INTEGER DEFAULT NULL,
-    buyer_email TEXT NOT NULL DEFAULT '',
-    seller_email TEXT NOT NULL DEFAULT '',
+    buyer_escrow_code TEXT NOT NULL DEFAULT '',
+    seller_escrow_code TEXT NOT NULL DEFAULT '',
     amount TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'USDT',
     description TEXT NOT NULL DEFAULT '',
@@ -271,6 +283,35 @@ db.exec(`
     FOREIGN KEY(released_by_user_id) REFERENCES game_users(id)
   );
 `);
+
+const hasBuyerEscrowCode = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_orders') WHERE name = 'buyer_escrow_code'").get();
+if (!hasBuyerEscrowCode) {
+  db.exec("ALTER TABLE nexa_escrow_orders ADD COLUMN buyer_escrow_code TEXT NOT NULL DEFAULT ''");
+}
+const hasSellerEscrowCode = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_orders') WHERE name = 'seller_escrow_code'").get();
+if (!hasSellerEscrowCode) {
+  db.exec("ALTER TABLE nexa_escrow_orders ADD COLUMN seller_escrow_code TEXT NOT NULL DEFAULT ''");
+}
+const hasLegacyBuyerEmail = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_orders') WHERE name = 'buyer_email'").get();
+if (hasLegacyBuyerEmail) {
+  db.exec(`
+    UPDATE nexa_escrow_orders
+    SET buyer_escrow_code = CASE
+      WHEN buyer_escrow_code = '' AND buyer_email LIKE 'N______' THEN buyer_email
+      ELSE buyer_escrow_code
+    END
+  `);
+}
+const hasLegacySellerEmail = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_orders') WHERE name = 'seller_email'").get();
+if (hasLegacySellerEmail) {
+  db.exec(`
+    UPDATE nexa_escrow_orders
+    SET seller_escrow_code = CASE
+      WHEN seller_escrow_code = '' AND seller_email LIKE 'N______' THEN seller_email
+      ELSE seller_escrow_code
+    END
+  `);
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS nexa_escrow_events (

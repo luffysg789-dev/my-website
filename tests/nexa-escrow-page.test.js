@@ -35,9 +35,12 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
 
   assert.match(html, /<title>Claw800 Nexa 担保<\/title>/);
   assert.match(html, /data-nexa-escrow-app/);
-  assert.match(html, /id="nexaEscrowAuthStatus"/);
+  assert.doesNotMatch(html, /id="nexaEscrowAuthStatus"/);
+  assert.match(html, /data-locale-toggle="zh"/);
+  assert.match(html, /data-locale-toggle="en"/);
   assert.match(html, /data-tab="create"/);
   assert.match(html, /data-tab="orders"/);
+  assert.match(html, /data-tab="account"/);
   assert.match(html, /id="nexaEscrowRoleBuyer"/);
   assert.match(html, /id="nexaEscrowRoleSeller"/);
   assert.match(html, /id="nexaEscrowAmountInput"/);
@@ -50,6 +53,9 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowOrderDetail"/);
   assert.match(html, /id="nexaEscrowPrimaryAction"/);
   assert.match(html, /id="nexaEscrowSecondaryAction"/);
+  assert.match(html, /id="nexaEscrowAccountCode"/);
+  assert.match(html, /id="nexaEscrowCodeModal"/);
+  assert.doesNotMatch(html, /nexa-escrow-back/);
   assert.match(html, /\/nexa-escrow\/script\.js/);
 });
 
@@ -58,6 +64,8 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
 
   assert.match(js, /const NEXA_ESCROW_SESSION_STORAGE_KEY = 'claw800:nexa-escrow:nexa-session';/);
   assert.match(js, /const NEXA_ESCROW_PENDING_PAYMENT_STORAGE_KEY = 'claw800:nexa-escrow:pending-payment';/);
+  assert.match(js, /const NEXA_ESCROW_CODE_MODAL_STORAGE_KEY = 'claw800:nexa-escrow:code-modal:'/);
+  assert.match(js, /const NEXA_ESCROW_LOCALE_STORAGE_KEY = 'claw800:nexa-escrow:locale';/);
   assert.match(js, /const MAX_NEXA_ESCROW_SESSION_RETENTION_MS = 30 \* 24 \* 60 \* 60 \* 1000;/);
   assert.match(js, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
   assert.match(js, /const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth:\/\/order';/);
@@ -74,4 +82,9 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function beginEscrowPayment\(/);
   assert.match(js, /function settlePendingEscrowPayment\(/);
   assert.match(js, /function submitEscrowAction\(/);
+  assert.match(js, /function openEscrowCodeModal\(/);
+  assert.match(js, /function applyTranslations\(/);
+  assert.match(js, /function toggleLanguage\(/);
+  assert.match(js, /localeButtons/);
+  assert.doesNotMatch(js, /已登录/);
 });
