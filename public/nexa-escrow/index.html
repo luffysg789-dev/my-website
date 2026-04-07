@@ -6,7 +6,7 @@
     <title>Claw800 Nexa 担保</title>
     <meta name="description" content="Claw800 Nexa 担保，支持 Nexa App 内 USDT 担保交易、入金与放款。" />
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="/nexa-escrow/style.css?v=3" />
+    <link rel="stylesheet" href="/nexa-escrow/style.css?v=4" />
   </head>
   <body>
     <main class="nexa-escrow-page" data-nexa-escrow-app>
@@ -15,7 +15,6 @@
           <div class="nexa-escrow-brand">
             <div class="nexa-escrow-brand__icon">🛡️</div>
             <div>
-              <p class="nexa-escrow-brand__eyebrow" data-i18n="eyebrow">USDT 担保交易</p>
               <h1>Nexa 担保</h1>
             </div>
           </div>
@@ -34,10 +33,7 @@
         <section class="nexa-escrow-panel is-active" data-tab="create">
           <article class="nexa-escrow-card">
             <div class="nexa-escrow-card__head">
-              <div>
-                <p class="nexa-escrow-label">发起担保交易</p>
-                <h2 data-i18n="createHeadline">在 Nexa 内完成入金和状态跟踪</h2>
-              </div>
+              <p class="nexa-escrow-label" data-i18n="tabCreate">发起担保</p>
             </div>
 
             <div class="nexa-escrow-role-toggle">
@@ -117,7 +113,10 @@
             </div>
             <div class="nexa-escrow-account-grid">
               <div class="nexa-escrow-account-item">
-                <span class="nexa-escrow-label" data-i18n="escrowCodeLabel">担保号</span>
+                <div class="nexa-escrow-account-item__head">
+                  <span class="nexa-escrow-label" data-i18n="escrowCodeLabel">担保号</span>
+                  <button id="nexaEscrowAccountCodeCopy" class="nexa-escrow-copy-button" type="button" data-i18n="copyAction">复制</button>
+                </div>
                 <strong id="nexaEscrowAccountCode">N000000</strong>
               </div>
               <div class="nexa-escrow-account-item">
@@ -144,6 +143,6 @@
     <script>
       window.ClawGamesConfig?.bootstrapGamePage?.('nexa-escrow');
     </script>
-    <script src="/nexa-escrow/script.js?v=3"></script>
+    <script src="/nexa-escrow/script.js?v=4"></script>
   </body>
 </html>

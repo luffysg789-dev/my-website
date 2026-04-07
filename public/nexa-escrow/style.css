@@ -76,7 +76,6 @@ body {
   font-size: 1.65rem;
 }
 
-.nexa-escrow-brand__eyebrow,
 .nexa-escrow-label {
   margin: 0;
   color: var(--escrow-muted);
@@ -209,7 +208,7 @@ body {
 }
 
 .nexa-escrow-textarea {
-  min-height: 140px;
+  min-height: 96px;
   resize: vertical;
 }
 
@@ -276,11 +275,30 @@ body {
   gap: 8px;
 }
 
+.nexa-escrow-account-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .nexa-escrow-account-item strong,
 .nexa-escrow-code-chip {
   font-size: 1.42rem;
   font-weight: 800;
   letter-spacing: 0.04em;
+}
+
+.nexa-escrow-copy-button {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(47, 109, 255, 0.14);
+  color: #dce8ff;
+  font-weight: 700;
 }
 
 .nexa-escrow-modal[hidden] {

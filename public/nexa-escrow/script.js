@@ -10,11 +10,9 @@
   let cachedNexaPublicConfig = null;
   const TRANSLATIONS = {
     zh: {
-      eyebrow: 'USDT 担保交易',
       tabCreate: '发起担保',
       tabOrders: '我的订单',
       tabAccount: '账户中心',
-      createHeadline: '在 Nexa 内完成入金和状态跟踪',
       roleBuyer: '我是买家',
       roleSeller: '我是卖家',
       amountLabel: '交易金额 (USDT)',
@@ -32,6 +30,7 @@
       accountHeadline: '你的 Nexa 担保身份',
       escrowCodeLabel: '担保号',
       walletLabel: '钱包余额',
+      copyAction: '复制',
       firstLoginHint: '首次登录提醒',
       codeModalTitle: '您的担保号是多少',
       codeModalConfirm: '我知道了',
@@ -54,11 +53,9 @@
       viewerPending: '待加入'
     },
     en: {
-      eyebrow: 'USDT Escrow',
       tabCreate: 'Create',
       tabOrders: 'Orders',
       tabAccount: 'Account',
-      createHeadline: 'Complete deposit and status tracking inside Nexa',
       roleBuyer: 'I am Buyer',
       roleSeller: 'I am Seller',
       amountLabel: 'Amount (USDT)',
@@ -76,6 +73,7 @@
       accountHeadline: 'Your Nexa escrow identity',
       escrowCodeLabel: 'Escrow ID',
       walletLabel: 'Wallet Balance',
+      copyAction: 'Copy',
       firstLoginHint: 'First login reminder',
       codeModalTitle: 'Your escrow ID',
       codeModalConfirm: 'Got it',
@@ -416,6 +414,22 @@
     });
   }
 
+  async function copyEscrowCode(appState) {
+    const code = String(appState.account?.escrowCode || '').trim();
+    if (!code) return;
+    const clipboard = globalScope.navigator?.clipboard;
+    if (clipboard?.writeText) {
+      await clipboard.writeText(code);
+      return;
+    }
+    const helper = globalScope.document.createElement('input');
+    helper.value = code;
+    globalScope.document.body.appendChild(helper);
+    helper.select();
+    globalScope.document.execCommand('copy');
+    helper.remove();
+  }
+
   function toggleLanguage(appState, locale) {
     appState.locale = locale === 'zh' ? 'zh' : 'en';
     setStoredLocale(appState.storage, appState.locale);
@@ -577,11 +591,12 @@
         detailStatus: root.querySelector('#nexaEscrowDetailStatusText'),
         primaryAction: root.querySelector('#nexaEscrowPrimaryAction'),
         secondaryAction: root.querySelector('#nexaEscrowSecondaryAction'),
-        accountCode: root.querySelector('#nexaEscrowAccountCode'),
-        accountWallet: root.querySelector('#nexaEscrowAccountWallet'),
-        codeModal: globalScope.document.querySelector('#nexaEscrowCodeModal'),
-        codeModalValue: globalScope.document.querySelector('#nexaEscrowCodeModalValue'),
-        codeModalConfirm: globalScope.document.querySelector('#nexaEscrowCodeModalConfirm')
+            accountCode: root.querySelector('#nexaEscrowAccountCode'),
+            accountWallet: root.querySelector('#nexaEscrowAccountWallet'),
+            accountCodeCopy: root.querySelector('#nexaEscrowAccountCodeCopy'),
+            codeModal: globalScope.document.querySelector('#nexaEscrowCodeModal'),
+            codeModalValue: globalScope.document.querySelector('#nexaEscrowCodeModalValue'),
+            codeModalConfirm: globalScope.document.querySelector('#nexaEscrowCodeModalConfirm')
       }
     };
 
@@ -633,6 +648,11 @@
     });
     appState.elements.codeModalConfirm?.addEventListener('click', () => {
       closeEscrowCodeModal(appState);
+    });
+    appState.elements.accountCodeCopy?.addEventListener('click', async () => {
+      try {
+        await copyEscrowCode(appState);
+      } catch {}
     });
 
     applyTranslations(appState);

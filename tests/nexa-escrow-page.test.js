@@ -38,6 +38,8 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.doesNotMatch(html, /id="nexaEscrowAuthStatus"/);
   assert.match(html, /data-locale-toggle="zh"/);
   assert.match(html, /data-locale-toggle="en"/);
+  assert.doesNotMatch(html, /data-i18n="eyebrow"/);
+  assert.doesNotMatch(html, /data-i18n="createHeadline"/);
   assert.match(html, /data-tab="create"/);
   assert.match(html, /data-tab="orders"/);
   assert.match(html, /data-tab="account"/);
@@ -54,6 +56,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowPrimaryAction"/);
   assert.match(html, /id="nexaEscrowSecondaryAction"/);
   assert.match(html, /id="nexaEscrowAccountCode"/);
+  assert.match(html, /id="nexaEscrowAccountCodeCopy"/);
   assert.match(html, /id="nexaEscrowCodeModal"/);
   assert.doesNotMatch(html, /nexa-escrow-back/);
   assert.match(html, /\/nexa-escrow\/script\.js/);
@@ -85,6 +88,7 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function openEscrowCodeModal\(/);
   assert.match(js, /function applyTranslations\(/);
   assert.match(js, /function toggleLanguage\(/);
+  assert.match(js, /function copyEscrowCode\(/);
   assert.match(js, /localeButtons/);
   assert.doesNotMatch(js, /已登录/);
 });
