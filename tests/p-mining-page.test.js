@@ -73,7 +73,8 @@ test('p-mining html includes host header, tab panels, and script mounts', () => 
   assert.match(html, /data-purchase-tier="starter"/);
   assert.match(html, /data-purchase-tier="boost"/);
   assert.match(html, /\/games-config\.js/);
-  assert.match(html, /\/p-mining\/script\.js/);
+  assert.match(html, /\/p-mining\/style\.css\?v=20260407-02/);
+  assert.match(html, /\/p-mining\/script\.js\?v=20260407-02/);
 });
 
 test('p-mining purchase is a standalone tab placed between invite and records', () => {
