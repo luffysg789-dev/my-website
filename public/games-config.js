@@ -4,6 +4,21 @@ const { getGameCardMediaMarkup } = typeof window === 'undefined'
 
 const DEFAULT_GAMES = [
   {
+    slug: 'nexa-escrow',
+    name: 'Nexa 担保',
+    description: 'Nexa App 内的 USDT 担保交易，支持买卖双方发起、入金与放款。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    showInGamesHub: 0,
+    sort_order: 55,
+    route: '/nexa-escrow/',
+    icon: '🛡️',
+    actionText: '进入担保'
+  },
+  {
     slug: 'tigang-master',
     name: '提肛大师',
     description: '开始提肛、松开记录，每天 5 次圆圈变绿。',
@@ -161,6 +176,7 @@ const DEFAULT_GAMES = [
 ];
 
 const GAME_ACTION_TEXT = {
+  'nexa-escrow': '进入担保',
   'tigang-master': '开始打卡',
   'p-mining': '开始挖矿',
   piano: '开始演奏',

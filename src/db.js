@@ -241,6 +241,66 @@ db.exec(`
 `);
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS nexa_escrow_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_code TEXT NOT NULL UNIQUE,
+    creator_user_id INTEGER NOT NULL,
+    creator_role TEXT NOT NULL,
+    buyer_user_id INTEGER DEFAULT NULL,
+    seller_user_id INTEGER DEFAULT NULL,
+    buyer_email TEXT NOT NULL DEFAULT '',
+    seller_email TEXT NOT NULL DEFAULT '',
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USDT',
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'AWAITING_COUNTERPARTY',
+    payment_order_no TEXT NOT NULL DEFAULT '',
+    payment_partner_order_no TEXT NOT NULL DEFAULT '',
+    last_payment_status TEXT NOT NULL DEFAULT '',
+    funded_at TEXT NOT NULL DEFAULT '',
+    delivered_at TEXT NOT NULL DEFAULT '',
+    released_at TEXT NOT NULL DEFAULT '',
+    cancelled_at TEXT NOT NULL DEFAULT '',
+    released_by_user_id INTEGER DEFAULT NULL,
+    cancel_reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(creator_user_id) REFERENCES game_users(id),
+    FOREIGN KEY(buyer_user_id) REFERENCES game_users(id),
+    FOREIGN KEY(seller_user_id) REFERENCES game_users(id),
+    FOREIGN KEY(released_by_user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS nexa_escrow_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    actor_user_id INTEGER DEFAULT NULL,
+    event_type TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(order_id) REFERENCES nexa_escrow_orders(id),
+    FOREIGN KEY(actor_user_id) REFERENCES game_users(id)
+  );
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_nexa_escrow_orders_trade_code
+  ON nexa_escrow_orders(trade_code);
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_nexa_escrow_orders_participants
+  ON nexa_escrow_orders(creator_user_id, buyer_user_id, seller_user_id, created_at DESC);
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_nexa_escrow_events_order
+  ON nexa_escrow_events(order_id, created_at DESC);
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS p_mining_users (
     user_id INTEGER PRIMARY KEY,
     invite_code TEXT NOT NULL UNIQUE,
@@ -479,6 +539,17 @@ db.exec(`
 `);
 
 const DEFAULT_GAMES_CATALOG = [
+  {
+    slug: 'nexa-escrow',
+    name: 'Nexa 担保',
+    description: 'Nexa App 内的 USDT 担保交易，支持买卖双方发起、入金与放款。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 55
+  },
   {
     slug: 'tigang-master',
     name: '提肛大师',

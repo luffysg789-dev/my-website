@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Claw800 Nexa 担保</title>
+    <meta name="description" content="Claw800 Nexa 担保，支持 Nexa App 内 USDT 担保交易、入金与放款。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/nexa-escrow/style.css?v=1" />
+  </head>
+  <body>
+    <main class="nexa-escrow-page" data-nexa-escrow-app>
+      <section class="nexa-escrow-shell">
+        <header class="nexa-escrow-header">
+          <div class="nexa-escrow-brand">
+            <a class="nexa-escrow-back" href="/games.html" aria-label="返回游戏大全" title="返回游戏大全">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="currentColor" d="M15.7 5.3a1 1 0 010 1.4L10.41 12l5.29 5.3a1 1 0 01-1.42 1.4l-6-6a1 1 0 010-1.4l6-6a1 1 0 011.42 0z" />
+              </svg>
+            </a>
+            <div class="nexa-escrow-brand__icon">🛡️</div>
+            <div>
+              <p class="nexa-escrow-brand__eyebrow">USDT 担保交易</p>
+              <h1>Nexa 担保</h1>
+            </div>
+          </div>
+          <div class="nexa-escrow-auth-status" id="nexaEscrowAuthStatus">连接中</div>
+        </header>
+
+        <nav class="nexa-escrow-tabs">
+          <button class="nexa-escrow-tabs__item is-active" type="button" data-tab-target="create">发起担保</button>
+          <button class="nexa-escrow-tabs__item" type="button" data-tab-target="orders">我的订单</button>
+        </nav>
+
+        <section class="nexa-escrow-panel is-active" data-tab="create">
+          <article class="nexa-escrow-card">
+            <div class="nexa-escrow-card__head">
+              <div>
+                <p class="nexa-escrow-label">发起担保交易</p>
+                <h2>在 Nexa 内完成入金和状态跟踪</h2>
+              </div>
+            </div>
+
+            <div class="nexa-escrow-role-toggle">
+              <button id="nexaEscrowRoleBuyer" class="nexa-escrow-role-toggle__item is-active" type="button" data-role="buyer">我是买家</button>
+              <button id="nexaEscrowRoleSeller" class="nexa-escrow-role-toggle__item" type="button" data-role="seller">我是卖家</button>
+            </div>
+
+            <label class="nexa-escrow-field">
+              <span>交易金额 (USDT)</span>
+              <input id="nexaEscrowAmountInput" class="nexa-escrow-input" type="number" min="0" step="0.01" placeholder="0.00" />
+            </label>
+
+            <label class="nexa-escrow-field">
+              <span id="nexaEscrowCounterpartyLabel">卖家邮箱</span>
+              <input id="nexaEscrowCounterpartyInput" class="nexa-escrow-input" type="email" placeholder="对方的 Google 邮箱" />
+            </label>
+
+            <label class="nexa-escrow-field">
+              <span>交易描述</span>
+              <textarea id="nexaEscrowDescriptionInput" class="nexa-escrow-textarea" placeholder="例如：购买虚拟主机服务、设计稿定金等"></textarea>
+            </label>
+
+            <button id="nexaEscrowCreateButton" class="nexa-escrow-primary" type="button">确认发起</button>
+            <p id="nexaEscrowCreateStatus" class="nexa-escrow-status" hidden></p>
+          </article>
+        </section>
+
+        <section class="nexa-escrow-panel" data-tab="orders" hidden>
+          <article class="nexa-escrow-card">
+            <div class="nexa-escrow-card__head">
+              <div>
+                <p class="nexa-escrow-label">加入担保单</p>
+                <h2>输入交易码参与担保</h2>
+              </div>
+            </div>
+            <div class="nexa-escrow-join-row">
+              <input id="nexaEscrowTradeCodeInput" class="nexa-escrow-input" type="text" placeholder="输入 8 位交易码" />
+              <button id="nexaEscrowJoinButton" class="nexa-escrow-secondary" type="button">加入</button>
+            </div>
+            <p id="nexaEscrowJoinStatus" class="nexa-escrow-status" hidden></p>
+          </article>
+
+          <article class="nexa-escrow-card">
+            <div class="nexa-escrow-card__head">
+              <div>
+                <p class="nexa-escrow-label">我的担保单</p>
+                <h2>买家付款、卖家交付、买家放款</h2>
+              </div>
+            </div>
+            <div id="nexaEscrowOrdersList" class="nexa-escrow-orders-list"></div>
+          </article>
+
+          <article class="nexa-escrow-card nexa-escrow-order-detail" id="nexaEscrowOrderDetail" hidden>
+            <div class="nexa-escrow-card__head">
+              <div>
+                <p class="nexa-escrow-label">订单详情</p>
+                <h2 id="nexaEscrowDetailTitle">交易单</h2>
+              </div>
+              <span id="nexaEscrowDetailStatus" class="nexa-escrow-pill">状态</span>
+            </div>
+            <div id="nexaEscrowDetailBody" class="nexa-escrow-order-detail__body"></div>
+            <div class="nexa-escrow-order-detail__actions">
+              <button id="nexaEscrowPrimaryAction" class="nexa-escrow-primary" type="button" hidden>主操作</button>
+              <button id="nexaEscrowSecondaryAction" class="nexa-escrow-secondary" type="button" hidden>次操作</button>
+            </div>
+            <p id="nexaEscrowDetailStatusText" class="nexa-escrow-status" hidden></p>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="/games-config.js"></script>
+    <script>
+      window.ClawGamesConfig?.bootstrapGamePage?.('nexa-escrow');
+    </script>
+    <script src="/nexa-escrow/script.js?v=1"></script>
+  </body>
+</html>

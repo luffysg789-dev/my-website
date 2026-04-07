@@ -308,7 +308,7 @@ test('admin site config can store Nexa credentials and public config only return
   }
 });
 
-test('p-mining bootstrap network stats add 1-3 synthetic users on random 3-10 minute intervals and matching power growth', async () => {
+test('p-mining bootstrap network stats add 1-3 synthetic users on random 3-10 minute intervals and advance mined totals too', async () => {
   const baseNow = 1_710_000_000_000;
   const originalNow = Date.now;
   Date.now = () => baseNow;
@@ -336,9 +336,117 @@ test('p-mining bootstrap network stats add 1-3 synthetic users on random 3-10 mi
       next.body.network.todayPower - initial.body.network.todayPower,
       grownUsers * 10
     );
+    assert.ok(Number(next.body.network.todayMined || 0) > Number(initial.body.network.todayMined || 0));
+    assert.ok(Number(next.body.network.totalMined || 0) > Number(initial.body.network.totalMined || 0));
   } finally {
     Date.now = originalNow;
     harness.cleanup();
+  }
+});
+
+test('p-mining bootstrap persists the highest synthetic mined floor across server restarts on the same database', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claw800-p-mining-mined-floor-'));
+  const dbPath = path.join(tmpDir, 'claw800.db');
+  const originalNow = Date.now;
+  const previousDbPath = process.env.CLAW800_DB_PATH;
+  const baseNow = 1_710_000_000_000;
+
+  Date.now = () => baseNow;
+  process.env.CLAW800_DB_PATH = dbPath;
+  delete require.cache[require.resolve(dbModulePath)];
+  delete require.cache[require.resolve(serverModulePath)];
+  delete require.cache[require.resolve(nexaPayModulePath)];
+
+  let db = require(dbModulePath);
+  let app = require(serverModulePath);
+
+  async function request(appInstance, method, routePath, body, options = {}) {
+    return new Promise((resolve, reject) => {
+      const req = new EventEmitter();
+      req.method = method;
+      req.url = routePath;
+      req.originalUrl = routePath;
+      req.headers = { ...(options.headers || {}) };
+      req.connection = {};
+      req.socket = {};
+      req.body = body;
+      req.query = {};
+      req.cookies = { ...(options.cookies || {}) };
+
+      const res = new EventEmitter();
+      res.statusCode = 200;
+      res.headers = {};
+      res.locals = {};
+      res.setHeader = function setHeader(name, value) {
+        this.headers[String(name).toLowerCase()] = value;
+      };
+      res.cookie = function cookie(name, value, opts = {}) {
+        const serialized = JSON.stringify({ name, value, opts });
+        const current = this.headers['set-cookie'];
+        if (!current) {
+          this.headers['set-cookie'] = [serialized];
+        } else {
+          current.push(serialized);
+        }
+        return this;
+      };
+      res.status = function status(code) {
+        this.statusCode = code;
+        return this;
+      };
+      res.json = function json(payload) {
+        resolve({ statusCode: this.statusCode, body: payload, headers: this.headers });
+        return this;
+      };
+      res.end = function end(payload) {
+        resolve({ statusCode: this.statusCode, body: payload, headers: this.headers });
+      };
+
+      appInstance.handle(req, res, reject);
+      req.emit('end');
+    });
+  }
+
+  try {
+    const syncResponse = await request(app, 'POST', '/api/p-mining/session', {
+      openId: 'p-mining-open-id-mined-floor',
+      sessionKey: 'p-mining-session-key-mined-floor',
+      nickname: 'Mined Floor Miner'
+    });
+    const serialized = JSON.parse(syncResponse.headers['set-cookie'][0]);
+    const cookies = {
+      [serialized.name]: serialized.value
+    };
+
+    Date.now = () => baseNow + (40 * 60_000);
+    const firstBootstrap = await request(app, 'GET', '/api/p-mining/bootstrap', null, { cookies });
+    const firstTodayMined = Number(firstBootstrap.body.network.todayMined || 0);
+    const storedFloor = db.prepare("SELECT value FROM settings WHERE key = 'p_mining_today_mined_floor'").get();
+    assert.ok(firstTodayMined > 0);
+    assert.equal(Number(storedFloor?.value || 0), firstTodayMined);
+
+    db.close();
+    delete require.cache[require.resolve(serverModulePath)];
+    delete require.cache[require.resolve(dbModulePath)];
+    delete require.cache[require.resolve(nexaPayModulePath)];
+
+    Date.now = () => baseNow + (5 * 60_000);
+    db = require(dbModulePath);
+    app = require(serverModulePath);
+
+    const secondBootstrap = await request(app, 'GET', '/api/p-mining/bootstrap', null, { cookies });
+    assert.ok(Number(secondBootstrap.body.network.todayMined || 0) >= firstTodayMined);
+  } finally {
+    Date.now = originalNow;
+    db.close();
+    delete require.cache[require.resolve(serverModulePath)];
+    delete require.cache[require.resolve(dbModulePath)];
+    delete require.cache[require.resolve(nexaPayModulePath)];
+    if (previousDbPath === undefined) {
+      delete process.env.CLAW800_DB_PATH;
+    } else {
+      process.env.CLAW800_DB_PATH = previousDbPath;
+    }
   }
 });
 

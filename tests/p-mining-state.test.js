@@ -149,7 +149,7 @@ test('advanceNetworkStats updates mined totals and remaining supply', () => {
   assert.equal(next.todayPower, 10);
 });
 
-test('applyAutomaticNetworkGrowth adds 1-3 users on random 3-10 minute intervals and increases total power accordingly', () => {
+test('applyAutomaticNetworkGrowth adds 1-3 users on random 3-10 minute intervals and advances power plus mined totals', () => {
   const initial = {
     ...createDefaultNetworkStats(),
     lastAutoGrowthMinute: 100
@@ -161,6 +161,9 @@ test('applyAutomaticNetworkGrowth adds 1-3 users on random 3-10 minute intervals
   assert.ok(grownUsers >= 4);
   assert.ok(grownUsers <= 30);
   assert.equal(next.todayPower, initial.todayPower + (grownUsers * 10));
+  assert.ok(next.todayMined > initial.todayMined);
+  assert.ok(next.totalMined > initial.totalMined);
+  assert.ok(next.remainingSupply < initial.remainingSupply);
   assert.ok(next.lastAutoGrowthMinute > 100);
   assert.ok(next.lastAutoGrowthMinute <= 140);
 });

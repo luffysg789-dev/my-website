@@ -1,0 +1,324 @@
+:root {
+  --escrow-bg: #0f1115;
+  --escrow-card: #171a21;
+  --escrow-card-soft: #1d2230;
+  --escrow-border: rgba(255, 255, 255, 0.08);
+  --escrow-text: #f6f8fb;
+  --escrow-muted: #9ea7b8;
+  --escrow-primary: #2f6dff;
+  --escrow-primary-soft: rgba(47, 109, 255, 0.16);
+  --escrow-success: #1fb86a;
+  --escrow-danger: #ef5858;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: radial-gradient(circle at top, rgba(47, 109, 255, 0.16), transparent 34%), var(--escrow-bg);
+  color: var(--escrow-text);
+  font-family: "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  padding: 0;
+}
+
+.nexa-escrow-page {
+  min-height: 100vh;
+  padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
+}
+
+.nexa-escrow-shell {
+  width: min(100%, 560px);
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+}
+
+.nexa-escrow-header,
+.nexa-escrow-card,
+.nexa-escrow-tabs {
+  border: 1px solid var(--escrow-border);
+  background: rgba(23, 26, 33, 0.92);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.nexa-escrow-header {
+  border-radius: 24px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nexa-escrow-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.nexa-escrow-back {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  text-decoration: none;
+}
+
+.nexa-escrow-back svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nexa-escrow-brand__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #3674ff, #2657ef);
+  font-size: 1.65rem;
+}
+
+.nexa-escrow-brand__eyebrow,
+.nexa-escrow-label {
+  margin: 0;
+  color: var(--escrow-muted);
+  font-size: 0.82rem;
+}
+
+.nexa-escrow-brand h1,
+.nexa-escrow-card h2 {
+  margin: 4px 0 0;
+  font-size: 1.08rem;
+}
+
+.nexa-escrow-auth-status,
+.nexa-escrow-pill {
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--escrow-primary-soft);
+  color: #cfe0ff;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.nexa-escrow-tabs {
+  border-radius: 18px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.nexa-escrow-tabs__item,
+.nexa-escrow-role-toggle__item,
+.nexa-escrow-primary,
+.nexa-escrow-secondary {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
+}
+
+.nexa-escrow-tabs__item,
+.nexa-escrow-role-toggle__item {
+  padding: 12px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--escrow-muted);
+  font-weight: 700;
+}
+
+.nexa-escrow-tabs__item.is-active,
+.nexa-escrow-role-toggle__item.is-active {
+  background: linear-gradient(180deg, #3674ff, #2657ef);
+  color: #fff;
+}
+
+.nexa-escrow-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.nexa-escrow-panel[hidden] {
+  display: none;
+}
+
+.nexa-escrow-card {
+  border-radius: 24px;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.nexa-escrow-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nexa-escrow-role-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 18px;
+}
+
+.nexa-escrow-field {
+  display: grid;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.nexa-escrow-input,
+.nexa-escrow-textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--escrow-text);
+  border-radius: 18px;
+  padding: 15px 16px;
+  font: inherit;
+}
+
+.nexa-escrow-textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.nexa-escrow-input::placeholder,
+.nexa-escrow-textarea::placeholder {
+  color: #7f8695;
+}
+
+.nexa-escrow-primary,
+.nexa-escrow-secondary {
+  min-height: 52px;
+  border-radius: 18px;
+  padding: 0 16px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.nexa-escrow-primary {
+  background: linear-gradient(180deg, #3674ff, #2657ef);
+  color: #fff;
+}
+
+.nexa-escrow-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.nexa-escrow-status {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--escrow-muted);
+}
+
+.nexa-escrow-status.is-error {
+  color: #ffb0b0;
+}
+
+.nexa-escrow-status.is-success {
+  color: #8ce8b4;
+}
+
+.nexa-escrow-join-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.nexa-escrow-orders-list {
+  display: grid;
+  gap: 10px;
+}
+
+.nexa-escrow-order-item {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.nexa-escrow-order-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nexa-escrow-order-item__code {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.nexa-escrow-order-item__meta,
+.nexa-escrow-order-detail__line {
+  color: var(--escrow-muted);
+  font-size: 0.9rem;
+}
+
+.nexa-escrow-order-detail {
+  gap: 12px;
+}
+
+.nexa-escrow-order-detail__body {
+  display: grid;
+  gap: 8px;
+}
+
+.nexa-escrow-order-detail__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .nexa-escrow-page {
+    padding: 14px 12px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .nexa-escrow-shell,
+  .nexa-escrow-panel {
+    gap: 10px;
+  }
+
+  .nexa-escrow-header,
+  .nexa-escrow-card {
+    border-radius: 20px;
+    padding: 14px;
+  }
+
+  .nexa-escrow-brand__icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+    font-size: 1.4rem;
+  }
+
+  .nexa-escrow-join-row,
+  .nexa-escrow-order-detail__actions {
+    grid-template-columns: 1fr;
+  }
+}

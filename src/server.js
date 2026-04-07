@@ -39,6 +39,8 @@ const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
 const TUTORIAL_MAX_BYTES = 5000000;
 const tutorialUploadDrafts = new Map();
 const ADMIN_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const NEXA_ESCROW_SESSION_COOKIE_NAME = 'nexa_escrow_session';
+const NEXA_ESCROW_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const PMINING_SESSION_COOKIE_NAME = 'p_mining_session';
 const PMINING_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const TIGANG_SESSION_COOKIE_NAME = 'tigang_master_session';
@@ -48,6 +50,7 @@ const COOKIE_SECURE = String(process.env.COOKIE_SECURE || '') === 'true';
 const TRUST_PROXY = String(process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal').trim();
 const NEXA_TIP_AMOUNT = '0.10';
 const NEXA_TIP_CURRENCY = 'USDT';
+const NEXA_ESCROW_CURRENCY = 'USDT';
 const PMINING_TOTAL_SUPPLY = 210000000000;
 const PMINING_DAILY_CAP = 71917808;
 const PMINING_CLAIM_COOLDOWN_MS = 60 * 60 * 1000;
@@ -60,7 +63,6 @@ const PMINING_HUMAN_CHECK_STREAK_THRESHOLD = 10;
 const PMINING_HUMAN_CHECK_MIN_INTERVAL_MS = PMINING_CLAIM_COOLDOWN_MS;
 const PMINING_HUMAN_CHECK_MAX_INTERVAL_MS = 75 * 60 * 1000;
 const PMINING_MAX_RECORDS = 20;
-const PMINING_SYNTHETIC_NETWORK_START_MINUTE = Math.floor(Date.now() / 60000);
 const PMINING_SYNTHETIC_POWER_PER_USER = 10;
 const PMINING_SYNTHETIC_GROWTH_MIN_MINUTES = 3;
 const PMINING_SYNTHETIC_GROWTH_MAX_MINUTES = 10;
@@ -79,6 +81,7 @@ const PMINING_POWER_PAYMENT_OPTIONS = {
   }
 };
 const pMiningPaymentOrders = new Map();
+const nexaEscrowPaymentOrders = new Map();
 const xiangqiRoomEventStreams = new Map();
 let preferredNexaPaymentVariantName = 'github-doc-strict';
 
@@ -355,6 +358,40 @@ function decodeTigangSessionCookie(raw) {
 }
 
 function buildTigangCookieSession(payload = {}) {
+  return {
+    openId: String(payload.openId || '').trim(),
+    sessionKey: String(payload.sessionKey || '').trim(),
+    nickname: String(payload.nickname || 'Nexa User').trim() || 'Nexa User',
+    avatar: String(payload.avatar || '').trim(),
+    savedAt: Date.now()
+  };
+}
+
+function encodeNexaEscrowSessionCookie(session) {
+  return Buffer.from(JSON.stringify(session), 'utf8').toString('base64url');
+}
+
+function decodeNexaEscrowSessionCookie(raw) {
+  try {
+    const decoded = Buffer.from(String(raw || '').trim(), 'base64url').toString('utf8');
+    const parsed = JSON.parse(decoded);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const openId = String(parsed.openId || '').trim();
+    const sessionKey = String(parsed.sessionKey || '').trim();
+    if (!openId || !sessionKey) return null;
+    return {
+      openId,
+      sessionKey,
+      nickname: String(parsed.nickname || 'Nexa User').trim() || 'Nexa User',
+      avatar: String(parsed.avatar || '').trim(),
+      savedAt: Number(parsed.savedAt || 0) || Date.now()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildNexaEscrowCookieSession(payload = {}) {
   return {
     openId: String(payload.openId || '').trim(),
     sessionKey: String(payload.sessionKey || '').trim(),
@@ -770,6 +807,504 @@ async function queryPMiningPaymentOrder(orderNo) {
   return next;
 }
 
+function buildNexaEscrowBanError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function normalizeEscrowEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isValidEscrowEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEscrowEmail(value));
+}
+
+function requireNexaEscrowSession(req) {
+  const session = decodeNexaEscrowSessionCookie(req.cookies?.[NEXA_ESCROW_SESSION_COOKIE_NAME]);
+  if (!session) {
+    const error = new Error('UNAUTHORIZED');
+    error.statusCode = 401;
+    throw error;
+  }
+  return session;
+}
+
+function ensureNexaEscrowUserAccount(session) {
+  return ensureXiangqiUserWallet({
+    openId: String(session?.openId || '').trim(),
+    nickname: String(session?.nickname || 'Nexa User').trim() || 'Nexa User',
+    avatar: String(session?.avatar || '').trim()
+  });
+}
+
+function createNexaEscrowTradeCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    let code = '';
+    const bytes = crypto.randomBytes(8);
+    for (let index = 0; index < 8; index += 1) {
+      code += alphabet[bytes[index] % alphabet.length];
+    }
+    if (!selectNexaEscrowOrderByTradeCodeStmt.get(code)) return code;
+  }
+  throw buildNexaEscrowBanError('TRADE_CODE_GENERATION_FAILED', 500);
+}
+
+function insertNexaEscrowEvent(orderId, actorUserId, eventType, detail = '') {
+  insertNexaEscrowEventStmt.run(
+    Number(orderId),
+    actorUserId ? Number(actorUserId) : null,
+    String(eventType || '').trim(),
+    String(detail || '').trim()
+  );
+}
+
+function getEscrowUserSummary(userId) {
+  if (!userId) return null;
+  const row = selectXiangqiUserByIdStmt.get(Number(userId));
+  if (!row) return null;
+  return {
+    userId: Number(row.id),
+    openId: String(row.openid || '').trim(),
+    nickname: String(row.nickname || '').trim(),
+    avatar: String(row.avatar || '').trim()
+  };
+}
+
+function getNexaEscrowViewerRole(order, userId) {
+  const normalizedUserId = Number(userId || 0) || 0;
+  if (!normalizedUserId) return '';
+  if (Number(order?.buyer_user_id || 0) === normalizedUserId) return 'buyer';
+  if (Number(order?.seller_user_id || 0) === normalizedUserId) return 'seller';
+  return '';
+}
+
+function buildNexaEscrowAvailableActions(order, userId) {
+  const viewerRole = getNexaEscrowViewerRole(order, userId);
+  const actions = [];
+  const status = String(order?.status || '').trim().toUpperCase();
+  const creatorUserId = Number(order?.creator_user_id || 0) || 0;
+  const normalizedUserId = Number(userId || 0) || 0;
+
+  if ((status === 'AWAITING_BUYER' || status === 'AWAITING_SELLER' || status === 'AWAITING_PAYMENT') && creatorUserId === normalizedUserId) {
+    actions.push('cancel');
+  }
+  if (status === 'AWAITING_PAYMENT' && viewerRole === 'buyer') {
+    actions.push('fund');
+  }
+  if (status === 'FUNDED' && viewerRole === 'seller') {
+    actions.push('mark_delivered');
+  }
+  if ((status === 'FUNDED' || status === 'DELIVERED') && viewerRole === 'buyer') {
+    actions.push('release');
+  }
+  return actions;
+}
+
+function formatNexaEscrowOrder(order, viewerUserId = 0) {
+  const buyer = getEscrowUserSummary(order?.buyer_user_id);
+  const seller = getEscrowUserSummary(order?.seller_user_id);
+  return {
+    id: Number(order?.id || 0) || 0,
+    tradeCode: String(order?.trade_code || '').trim(),
+    creatorRole: String(order?.creator_role || '').trim(),
+    buyerOpenId: String(buyer?.openId || '').trim(),
+    sellerOpenId: String(seller?.openId || '').trim(),
+    buyerNickname: String(buyer?.nickname || '').trim(),
+    sellerNickname: String(seller?.nickname || '').trim(),
+    buyerEmail: String(order?.buyer_email || '').trim(),
+    sellerEmail: String(order?.seller_email || '').trim(),
+    amount: String(order?.amount || '0.00').trim(),
+    currency: String(order?.currency || NEXA_ESCROW_CURRENCY).trim() || NEXA_ESCROW_CURRENCY,
+    description: String(order?.description || '').trim(),
+    status: String(order?.status || '').trim(),
+    paymentOrderNo: String(order?.payment_order_no || '').trim(),
+    lastPaymentStatus: String(order?.last_payment_status || '').trim(),
+    fundedAt: String(order?.funded_at || '').trim(),
+    deliveredAt: String(order?.delivered_at || '').trim(),
+    releasedAt: String(order?.released_at || '').trim(),
+    cancelledAt: String(order?.cancelled_at || '').trim(),
+    createdAt: String(order?.created_at || '').trim(),
+    updatedAt: String(order?.updated_at || '').trim(),
+    viewerRole: getNexaEscrowViewerRole(order, viewerUserId),
+    availableActions: buildNexaEscrowAvailableActions(order, viewerUserId)
+  };
+}
+
+function buildNexaEscrowBootstrapPayload(session) {
+  const ensured = ensureNexaEscrowUserAccount(session);
+  const orders = listNexaEscrowOrdersByUserStmt.all(
+    ensured.user.id,
+    ensured.user.id,
+    ensured.user.id,
+    30
+  ).map((row) => formatNexaEscrowOrder(row, ensured.user.id));
+
+  return {
+    account: {
+      userId: ensured.user.id,
+      openId: ensured.user.openId,
+      nickname: ensured.user.nickname,
+      wallet: ensured.wallet.availableBalance
+    },
+    orders
+  };
+}
+
+function createNexaEscrowOrder({ session, creatorRole, amount, counterpartyEmail, description }) {
+  const ensured = ensureNexaEscrowUserAccount(session);
+  const normalizedRole = String(creatorRole || '').trim().toLowerCase();
+  if (normalizedRole !== 'buyer' && normalizedRole !== 'seller') {
+    throw buildNexaEscrowBanError('INVALID_CREATOR_ROLE');
+  }
+  const amountCents = parseMoneyToCents(amount);
+  if (amountCents <= 0n) {
+    throw buildNexaEscrowBanError('INVALID_AMOUNT');
+  }
+  const normalizedCounterpartyEmail = normalizeEscrowEmail(counterpartyEmail);
+  if (!isValidEscrowEmail(normalizedCounterpartyEmail)) {
+    throw buildNexaEscrowBanError('INVALID_COUNTERPARTY_EMAIL');
+  }
+  const normalizedDescription = String(description || '').trim();
+  if (!normalizedDescription) {
+    throw buildNexaEscrowBanError('DESCRIPTION_REQUIRED');
+  }
+
+  const tradeCode = createNexaEscrowTradeCode();
+  const buyerUserId = normalizedRole === 'buyer' ? ensured.user.id : null;
+  const sellerUserId = normalizedRole === 'seller' ? ensured.user.id : null;
+  const buyerEmail = normalizedRole === 'buyer' ? normalizeEscrowEmail(`${ensured.user.openId}@nexa.local`) : normalizedCounterpartyEmail;
+  const sellerEmail = normalizedRole === 'seller' ? normalizeEscrowEmail(`${ensured.user.openId}@nexa.local`) : normalizedCounterpartyEmail;
+  const status = normalizedRole === 'buyer' ? 'AWAITING_SELLER' : 'AWAITING_BUYER';
+
+  const row = db.transaction(() => {
+    const insertResult = insertNexaEscrowOrderStmt.run(
+      tradeCode,
+      ensured.user.id,
+      normalizedRole,
+      buyerUserId,
+      sellerUserId,
+      buyerEmail,
+      sellerEmail,
+      centsToMoneyString(amountCents),
+      NEXA_ESCROW_CURRENCY,
+      normalizedDescription,
+      status
+    );
+    const orderId = Number(insertResult.lastInsertRowid || 0);
+    insertNexaEscrowEvent(orderId, ensured.user.id, 'CREATED', normalizedRole);
+    return selectNexaEscrowOrderByTradeCodeStmt.get(tradeCode);
+  })();
+
+  return {
+    account: buildNexaEscrowBootstrapPayload(session).account,
+    order: formatNexaEscrowOrder(row, ensured.user.id)
+  };
+}
+
+function joinNexaEscrowOrder({ session, tradeCode }) {
+  const ensured = ensureNexaEscrowUserAccount(session);
+  const normalizedTradeCode = String(tradeCode || '').trim().toUpperCase();
+  const order = selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
+  if (!order) {
+    throw buildNexaEscrowBanError('ORDER_NOT_FOUND', 404);
+  }
+  if (Number(order.creator_user_id || 0) === ensured.user.id) {
+    throw buildNexaEscrowBanError('CREATOR_CANNOT_JOIN');
+  }
+  const status = String(order.status || '').trim().toUpperCase();
+  if (status !== 'AWAITING_BUYER' && status !== 'AWAITING_SELLER') {
+    return formatNexaEscrowOrder(order, ensured.user.id);
+  }
+
+  const nextBuyerUserId = status === 'AWAITING_BUYER' ? ensured.user.id : order.buyer_user_id;
+  const nextSellerUserId = status === 'AWAITING_SELLER' ? ensured.user.id : order.seller_user_id;
+
+  const nextOrder = db.transaction(() => {
+    updateNexaEscrowOrderJoinStmt.run(
+      nextBuyerUserId ? Number(nextBuyerUserId) : null,
+      nextSellerUserId ? Number(nextSellerUserId) : null,
+      'AWAITING_PAYMENT',
+      Number(order.id)
+    );
+    insertNexaEscrowEvent(order.id, ensured.user.id, 'JOINED', status === 'AWAITING_BUYER' ? 'buyer' : 'seller');
+    return selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
+  })();
+
+  return formatNexaEscrowOrder(nextOrder, ensured.user.id);
+}
+
+async function createNexaEscrowPaymentOrder({ req, session, tradeCode }) {
+  const ensured = ensureNexaEscrowUserAccount(session);
+  const normalizedTradeCode = String(tradeCode || '').trim().toUpperCase();
+  const order = selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
+  if (!order) throw buildNexaEscrowBanError('ORDER_NOT_FOUND', 404);
+  if (Number(order.buyer_user_id || 0) !== ensured.user.id) throw buildNexaEscrowBanError('ONLY_BUYER_CAN_FUND', 403);
+  if (!Number(order.seller_user_id || 0)) throw buildNexaEscrowBanError('WAITING_FOR_COUNTERPARTY');
+  if (String(order.status || '').trim().toUpperCase() !== 'AWAITING_PAYMENT') throw buildNexaEscrowBanError('ORDER_NOT_PAYABLE');
+
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const baseUrl = getPublicBaseUrl(req);
+  const partnerOrderNo = `claw800_escrow_${normalizedTradeCode}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const amount = String(order.amount || '0.00').trim();
+  const legacyPayload = buildNexaLegacyPaymentCreatePayload({
+    apiKey,
+    appSecret,
+    amount,
+    currency: NEXA_ESCROW_CURRENCY,
+    subject: 'Nexa 担保入金',
+    body: `Trade ${normalizedTradeCode}`,
+    notifyUrl: `${baseUrl}/api/nexa-escrow/payment/notify`,
+    returnUrl: `${baseUrl}/nexa-escrow/`,
+    openId: String(session.openId || '').trim(),
+    sessionKey: String(session.sessionKey || '').trim()
+  });
+  const paymentVariants = prioritizeNexaPaymentCreateVariants(
+    buildNexaPaymentCreatePayloadVariants({
+      apiKey,
+      appSecret,
+      orderNo: partnerOrderNo,
+      amount,
+      currency: NEXA_ESCROW_CURRENCY,
+      callbackUrl: `${baseUrl}/nexa-escrow/`,
+      subject: 'Nexa 担保入金',
+      body: `Trade ${normalizedTradeCode}`,
+      notifyUrl: `${baseUrl}/api/nexa-escrow/payment/notify`,
+      returnUrl: `${baseUrl}/nexa-escrow/`,
+      openId: String(session.openId || '').trim(),
+      sessionKey: String(session.sessionKey || '').trim()
+    }),
+    preferredNexaPaymentVariantName
+  );
+
+  let response = null;
+  let lastSignatureResponse = null;
+  try {
+    response = await postNexaJson('/partner/api/openapi/payment/create', legacyPayload);
+  } catch (error) {
+    if (isNexaRateLimitError(error)) {
+      const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+      rateLimitError.statusCode = 429;
+      throw rateLimitError;
+    }
+    throw error;
+  }
+  if (isNexaRateLimitError(response)) {
+    const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+    rateLimitError.statusCode = 429;
+    throw rateLimitError;
+  }
+  if (isNexaSignatureError(response)) {
+    lastSignatureResponse = response;
+    response = null;
+  }
+  for (const variant of response ? [] : paymentVariants) {
+    try {
+      response = await postNexaJson('/partner/api/openapi/payment/create', variant.payload);
+    } catch (error) {
+      if (isNexaRateLimitError(error)) {
+        const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+        rateLimitError.statusCode = 429;
+        throw rateLimitError;
+      }
+      throw error;
+    }
+    if (isNexaRateLimitError(response)) {
+      const rateLimitError = new Error('Nexa 支付请求过于频繁，请稍后再试。');
+      rateLimitError.statusCode = 429;
+      throw rateLimitError;
+    }
+    if (isNexaSignatureError(response)) {
+      lastSignatureResponse = response;
+      response = null;
+      continue;
+    }
+    preferredNexaPaymentVariantName = variant.name;
+    break;
+  }
+  if (!response) {
+    if (lastSignatureResponse) {
+      throw new Error(String(lastSignatureResponse?.message || 'Nexa 下单失败'));
+    }
+    throw new Error('Nexa 下单失败');
+  }
+
+  const data = unwrapNexaResult(response, 'Nexa 下单失败');
+  const orderNo = String(data.orderNo || '').trim();
+  if (!orderNo) throw new Error('Nexa 没有返回订单号');
+
+  updateNexaEscrowOrderPaymentStmt.run(
+    orderNo,
+    partnerOrderNo,
+    'PENDING',
+    'PAYMENT_PENDING',
+    Number(order.id)
+  );
+  insertNexaEscrowEvent(order.id, ensured.user.id, 'PAYMENT_CREATED', orderNo);
+  nexaEscrowPaymentOrders.set(orderNo, {
+    orderNo,
+    partnerOrderNo,
+    tradeCode: normalizedTradeCode,
+    amount,
+    status: 'PENDING',
+    createdAt: Date.now()
+  });
+
+  return {
+    orderNo,
+    tradeCode: normalizedTradeCode,
+    amount,
+    payment: {
+      timestamp: String(data.timestamp || '').trim(),
+      nonce: String(data.nonce || '').trim(),
+      signType: String(data.signType || 'MD5').trim(),
+      paySign: String(data.paySign || '').trim(),
+      apiKey: String(data.apiKey || apiKey).trim(),
+      orderNo
+    }
+  };
+}
+
+function creditEscrowSellerWallet({ sellerUserId, amount, tradeCode }) {
+  if (!sellerUserId) return;
+  const wallet = selectXiangqiWalletStmt.get(Number(sellerUserId));
+  if (!wallet) return;
+  const nextBalance = parseMoneyToCents(wallet.available_balance) + parseMoneyToCents(amount);
+  const nextBalanceString = centsToMoneyString(nextBalance);
+  updateXiangqiWalletBalanceStmt.run(nextBalanceString, Number(sellerUserId));
+  insertXiangqiLedgerStmt.run(
+    Number(sellerUserId),
+    'escrow_release',
+    String(amount || '0.00').trim(),
+    nextBalanceString,
+    'nexa_escrow',
+    String(tradeCode || '').trim(),
+    'Nexa 担保放款'
+  );
+}
+
+function settleNexaEscrowPaymentSuccess(orderNo, payload = {}) {
+  const normalizedOrderNo = String(orderNo || '').trim();
+  if (!normalizedOrderNo) return null;
+  const order = selectNexaEscrowOrderByPaymentOrderNoStmt.get(normalizedOrderNo);
+  if (!order) return null;
+  if (String(order.status || '').trim().toUpperCase() === 'FUNDED' || String(order.funded_at || '').trim()) {
+    return formatNexaEscrowOrder(order, Number(order.buyer_user_id || 0));
+  }
+
+  const paidTime = String(payload.paidTime || '').trim();
+  const nextOrder = db.transaction(() => {
+    markNexaEscrowOrderFundedStmt.run(
+      paidTime,
+      paidTime,
+      Number(order.id)
+    );
+    insertNexaEscrowEvent(order.id, Number(order.buyer_user_id || 0) || null, 'FUNDED', normalizedOrderNo);
+    return selectNexaEscrowOrderByPaymentOrderNoStmt.get(normalizedOrderNo);
+  })();
+  nexaEscrowPaymentOrders.set(normalizedOrderNo, {
+    ...(nexaEscrowPaymentOrders.get(normalizedOrderNo) || {}),
+    orderNo: normalizedOrderNo,
+    tradeCode: String(nextOrder.trade_code || '').trim(),
+    amount: String(nextOrder.amount || '0.00').trim(),
+    status: 'SUCCESS',
+    paidTime
+  });
+  return formatNexaEscrowOrder(nextOrder, Number(nextOrder.buyer_user_id || 0));
+}
+
+async function queryNexaEscrowPaymentOrder(orderNo) {
+  const { apiKey, appSecret } = ensureNexaCredentialsConfigured();
+  const payload = buildNexaPaymentQueryPayload({
+    apiKey,
+    appSecret,
+    orderNo: String(orderNo || '').trim()
+  });
+  const response = await postNexaJson('/partner/api/openapi/payment/query', payload);
+  const data = unwrapNexaResult(response, 'Nexa 查询订单失败');
+  const normalizedOrderNo = String(data.orderNo || orderNo || '').trim();
+  const normalizedStatus = String(data.status || 'PENDING').trim().toUpperCase();
+  let formattedOrder = null;
+  if (normalizedStatus === 'SUCCESS') {
+    formattedOrder = settleNexaEscrowPaymentSuccess(normalizedOrderNo, { paidTime: String(data.paidTime || '').trim() });
+  } else {
+    const order = selectNexaEscrowOrderByPaymentOrderNoStmt.get(normalizedOrderNo);
+    if (order) {
+      formattedOrder = formatNexaEscrowOrder(order, Number(order.buyer_user_id || 0));
+      nexaEscrowPaymentOrders.set(normalizedOrderNo, {
+        ...(nexaEscrowPaymentOrders.get(normalizedOrderNo) || {}),
+        orderNo: normalizedOrderNo,
+        tradeCode: formattedOrder.tradeCode,
+        amount: formattedOrder.amount,
+        status: normalizedStatus,
+        paidTime: String(data.paidTime || '').trim()
+      });
+    }
+  }
+
+  return {
+    orderNo: normalizedOrderNo,
+    status: normalizedStatus,
+    amount: String(data.amount || formattedOrder?.amount || '0.00').trim(),
+    currency: String(data.currency || NEXA_ESCROW_CURRENCY).trim() || NEXA_ESCROW_CURRENCY,
+    paidTime: String(data.paidTime || '').trim(),
+    order: formattedOrder
+  };
+}
+
+function applyNexaEscrowAction({ session, tradeCode, action }) {
+  const ensured = ensureNexaEscrowUserAccount(session);
+  const normalizedTradeCode = String(tradeCode || '').trim().toUpperCase();
+  const normalizedAction = String(action || '').trim().toLowerCase();
+  const order = selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
+  if (!order) throw buildNexaEscrowBanError('ORDER_NOT_FOUND', 404);
+
+  const viewerRole = getNexaEscrowViewerRole(order, ensured.user.id);
+  const status = String(order.status || '').trim().toUpperCase();
+
+  if (normalizedAction === 'mark_delivered') {
+    if (viewerRole !== 'seller') throw buildNexaEscrowBanError('ONLY_SELLER_CAN_MARK_DELIVERED', 403);
+    if (status !== 'FUNDED') throw buildNexaEscrowBanError('ORDER_NOT_DELIVERABLE');
+    const nextOrder = db.transaction(() => {
+      markNexaEscrowOrderDeliveredStmt.run(Number(order.id));
+      insertNexaEscrowEvent(order.id, ensured.user.id, 'DELIVERED', normalizedTradeCode);
+      return selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
+    })();
+    return formatNexaEscrowOrder(nextOrder, ensured.user.id);
+  }
+
+  if (normalizedAction === 'release') {
+    if (viewerRole !== 'buyer') throw buildNexaEscrowBanError('ONLY_BUYER_CAN_RELEASE', 403);
+    if (status !== 'FUNDED' && status !== 'DELIVERED') throw buildNexaEscrowBanError('ORDER_NOT_RELEASABLE');
+    const nextOrder = db.transaction(() => {
+      markNexaEscrowOrderReleasedStmt.run(ensured.user.id, Number(order.id));
+      creditEscrowSellerWallet({
+        sellerUserId: Number(order.seller_user_id || 0),
+        amount: String(order.amount || '0.00').trim(),
+        tradeCode: normalizedTradeCode
+      });
+      insertNexaEscrowEvent(order.id, ensured.user.id, 'RELEASED', normalizedTradeCode);
+      return selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
+    })();
+    return formatNexaEscrowOrder(nextOrder, ensured.user.id);
+  }
+
+  if (normalizedAction === 'cancel') {
+    if (Number(order.creator_user_id || 0) !== ensured.user.id) throw buildNexaEscrowBanError('ONLY_CREATOR_CAN_CANCEL', 403);
+    if (status === 'FUNDED' || status === 'DELIVERED' || status === 'COMPLETED') throw buildNexaEscrowBanError('FUNDED_ORDER_CANNOT_CANCEL');
+    const nextOrder = db.transaction(() => {
+      markNexaEscrowOrderCancelledStmt.run('creator_cancelled', Number(order.id));
+      insertNexaEscrowEvent(order.id, ensured.user.id, 'CANCELLED', normalizedTradeCode);
+      return selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
+    })();
+    return formatNexaEscrowOrder(nextOrder, ensured.user.id);
+  }
+
+  throw buildNexaEscrowBanError('INVALID_ESCROW_ACTION');
+}
+
 function roundPMiningValue(value) {
   return Number(Number(value || 0).toFixed(1));
 }
@@ -900,36 +1435,86 @@ function getPMiningSyntheticGrowthEvent(minuteBucket) {
   };
 }
 
+function getPMiningSyntheticMinedIncrement(intervalMinutes) {
+  const safeIntervalMinutes = Math.max(0, Number(intervalMinutes || 0) || 0);
+  return roundPMiningValue((PMINING_DAILY_CAP / 1440) * safeIntervalMinutes);
+}
+
+function getPMiningDayKey(timestamp = Date.now()) {
+  const date = new Date(Number(timestamp || Date.now()) || Date.now());
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function buildPMiningNetworkStats() {
   const aggregate = selectPMiningNetworkAggregateStmt.get() || {};
   const today = selectPMiningTodayMinedAggregateStmt.get() || {};
   const runtime = selectPMiningFirstMiningAtStmt.get() || {};
-  const currentMinute = Math.floor(Date.now() / 60000);
-  let syntheticUsers = 0;
-  let cursorMinute = PMINING_SYNTHETIC_NETWORK_START_MINUTE;
-  while (true) {
-    const event = getPMiningSyntheticGrowthEvent(cursorMinute);
-    const nextEventMinute = cursorMinute + event.intervalMinutes;
-    if (nextEventMinute > currentMinute) {
-      break;
-    }
-    syntheticUsers += event.addedUsers;
-    cursorMinute = nextEventMinute;
-  }
-  const computedTotalUsers = Math.max(0, Number(aggregate.total_users || 0) || 0) + syntheticUsers;
-  const totalMined = roundPMiningValue(aggregate.total_mined || 0);
-  const computedTodayPower = Math.max(10, Number(aggregate.total_power || 0) || 0) + (syntheticUsers * PMINING_SYNTHETIC_POWER_PER_USER);
+  const normalizedNow = Date.now();
+  const currentMinute = Math.floor(normalizedNow / 60000);
+  const currentDayKey = getPMiningDayKey(normalizedNow);
+  const actualTotalUsers = Math.max(0, Number(aggregate.total_users || 0) || 0);
+  const actualTotalMined = roundPMiningValue(aggregate.total_mined || 0);
+  const actualTodayMined = roundPMiningValue(today.today_mined || 0);
+  const actualTodayPower = Math.max(10, Number(aggregate.total_power || 0) || 0);
   const storedTotalUsersFloor = Math.max(0, Number(getSetting('p_mining_total_users_floor', '0')) || 0);
   const storedTodayPowerFloor = Math.max(10, Number(getSetting('p_mining_today_power_floor', '10')) || 10);
-  const totalUsers = Math.max(computedTotalUsers, storedTotalUsersFloor);
-  const todayPower = Math.max(computedTodayPower, storedTodayPowerFloor);
+  const storedTotalMinedFloor = Math.max(0, Number(getSetting('p_mining_total_mined_floor', '0')) || 0);
+  const storedTodayMinedFloorDay = String(getSetting('p_mining_today_mined_floor_day', '') || '').trim();
+  const storedTodayMinedFloor = storedTodayMinedFloorDay === currentDayKey
+    ? Math.max(0, Number(getSetting('p_mining_today_mined_floor', '0')) || 0)
+    : 0;
+  const storedLastAutoGrowthMinute = Number(getSetting('p_mining_auto_growth_last_minute', '0')) || 0;
+  let totalUsers = Math.max(actualTotalUsers, storedTotalUsersFloor);
+  let todayPower = Math.max(actualTodayPower, storedTodayPowerFloor);
+  let totalMined = roundPMiningValue(Math.max(actualTotalMined, storedTotalMinedFloor));
+  let todayMined = roundPMiningValue(Math.max(actualTodayMined, storedTodayMinedFloor));
+  let nextLastAutoGrowthMinute = storedLastAutoGrowthMinute;
+
+  if (!storedLastAutoGrowthMinute) {
+    nextLastAutoGrowthMinute = currentMinute;
+  } else if (currentMinute > storedLastAutoGrowthMinute) {
+    let cursorMinute = storedLastAutoGrowthMinute;
+    let nextTodayMined = storedTodayMinedFloorDay === currentDayKey
+      ? todayMined
+      : actualTodayMined;
+    while (true) {
+      const event = getPMiningSyntheticGrowthEvent(cursorMinute);
+      const nextEventMinute = cursorMinute + event.intervalMinutes;
+      if (nextEventMinute > currentMinute) {
+        break;
+      }
+      const minedIncrement = getPMiningSyntheticMinedIncrement(event.intervalMinutes);
+      totalUsers += event.addedUsers;
+      todayPower += event.addedUsers * PMINING_SYNTHETIC_POWER_PER_USER;
+      totalMined = roundPMiningValue(totalMined + minedIncrement);
+      if (getPMiningDayKey(nextEventMinute * 60000) === currentDayKey) {
+        nextTodayMined = roundPMiningValue(nextTodayMined + minedIncrement);
+      }
+      nextLastAutoGrowthMinute = nextEventMinute;
+      cursorMinute = nextEventMinute;
+    }
+    todayMined = roundPMiningValue(Math.max(actualTodayMined, nextTodayMined));
+  }
+
   if (totalUsers > storedTotalUsersFloor) {
     upsertSettingStmt.run('p_mining_total_users_floor', String(totalUsers));
   }
   if (todayPower > storedTodayPowerFloor) {
     upsertSettingStmt.run('p_mining_today_power_floor', String(todayPower));
   }
-  const todayMined = roundPMiningValue(today.today_mined || 0);
+  if (totalMined > storedTotalMinedFloor) {
+    upsertSettingStmt.run('p_mining_total_mined_floor', String(totalMined));
+  }
+  if (todayMined > storedTodayMinedFloor || storedTodayMinedFloorDay !== currentDayKey) {
+    upsertSettingStmt.run('p_mining_today_mined_floor_day', currentDayKey);
+    upsertSettingStmt.run('p_mining_today_mined_floor', String(todayMined));
+  }
+  if (nextLastAutoGrowthMinute !== storedLastAutoGrowthMinute) {
+    upsertSettingStmt.run('p_mining_auto_growth_last_minute', String(nextLastAutoGrowthMinute));
+  }
   const currentHalvingCycle = 1;
   const nextHalvingDate = '2030/03/28';
   return {
@@ -944,6 +1529,14 @@ function buildPMiningNetworkStats() {
     estimatedFinishYears: roundPMiningValue(Math.max(0, 100 - totalMined / (PMINING_DAILY_CAP * 365))),
     dailyCap: PMINING_DAILY_CAP
   };
+}
+
+function ensurePMiningAutoGrowthClockInitialized(now = Date.now()) {
+  const currentMinute = Math.floor((Number(now || Date.now()) || Date.now()) / 60000);
+  const storedLastAutoGrowthMinute = Number(getSetting('p_mining_auto_growth_last_minute', '0')) || 0;
+  if (!storedLastAutoGrowthMinute) {
+    upsertSettingStmt.run('p_mining_auto_growth_last_minute', String(currentMinute));
+  }
 }
 
 function listPMiningRecordBundle(userId) {
@@ -1334,6 +1927,7 @@ const DEFAULT_SKILLS_PAGE_BOT_PROMPT_EN = 'claw800.com is a curated OpenClaw ski
 const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_ZH = '你是 OpenClaw 用户的技能安装助手。现在请帮我安装技能「{{name}}」。\n技能简介：{{description}}\n技能分类：{{category}}\n详情链接：{{url}}\n请按这个流程执行：\n1. 先打开详情链接，阅读 README、SKILL.md 或安装说明。\n2. 用中文告诉我这个技能做什么、是否安全、安装后会影响什么。\n3. 如果需要环境变量、依赖或权限，先明确列出来，再征求我确认。\n4. 只有在我确认后，才开始安装。\n5. 安装完成后，告诉我验证方法、使用方法，以及如何卸载或回滚。\n不要跳过确认步骤，也不要一次性安装无关技能。';
 const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_EN = 'You are an OpenClaw skill installation assistant. Help me install the skill "{{name}}".\nSkill summary: {{description}}\nSkill category: {{category}}\nDetail URL: {{url}}\nFollow this process:\n1. Open the detail page and read the README, SKILL.md, or install docs.\n2. Explain what the skill does, whether it looks safe, and what it may change.\n3. List any dependencies, env vars, permissions, or prerequisites before installing.\n4. Wait for my confirmation before you run or install anything.\n5. After installation, tell me how to verify it, use it, and uninstall or roll it back.\nDo not skip confirmation and do not install unrelated skills.';
 const GAME_ROUTE_MAP = {
+  'nexa-escrow': '/nexa-escrow/',
   'tigang-master': '/tigang-master/',
   'p-mining': '/p-mining/',
   piano: '/piano/',
@@ -1346,6 +1940,7 @@ const GAME_ROUTE_MAP = {
   muyu: '/muyu.html'
 };
 const GAME_ICON_MAP = {
+  'nexa-escrow': '🛡️',
   'tigang-master': '⭕',
   'p-mining': '⛏️',
   piano: '🎹',
@@ -2703,11 +3298,188 @@ app.get('/api/nexa/public-config', (_req, res) => {
   }
 });
 
+app.post('/api/nexa-escrow/session', (req, res) => {
+  const session = buildNexaEscrowCookieSession(req.body || {});
+  if (!session.openId || !session.sessionKey) {
+    return res.status(400).json({ ok: false, error: 'openId 和 sessionKey 必填' });
+  }
+
+  res.cookie(NEXA_ESCROW_SESSION_COOKIE_NAME, encodeNexaEscrowSessionCookie(session), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: COOKIE_SECURE,
+    path: '/',
+    maxAge: NEXA_ESCROW_SESSION_MAX_AGE_MS
+  });
+
+  return res.json({
+    ok: true,
+    session: {
+      ...session,
+      expiresAt: session.savedAt + NEXA_ESCROW_SESSION_MAX_AGE_MS
+    }
+  });
+});
+
+app.get('/api/nexa-escrow/session', (req, res) => {
+  const session = decodeNexaEscrowSessionCookie(req.cookies?.[NEXA_ESCROW_SESSION_COOKIE_NAME]);
+  if (!session) {
+    return res.status(401).json({ ok: false, error: 'UNAUTHORIZED' });
+  }
+  return res.json({
+    ok: true,
+    session: {
+      ...session,
+      expiresAt: Number(session.savedAt || Date.now()) + NEXA_ESCROW_SESSION_MAX_AGE_MS
+    }
+  });
+});
+
+app.post('/api/nexa-escrow/session/logout', (_req, res) => {
+  res.clearCookie(NEXA_ESCROW_SESSION_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: COOKIE_SECURE,
+    path: '/'
+  });
+  return res.json({ ok: true });
+});
+
+app.get('/api/nexa-escrow/bootstrap', (req, res) => {
+  try {
+    const session = requireNexaEscrowSession(req);
+    return res.json({
+      ok: true,
+      ...buildNexaEscrowBootstrapPayload(session)
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 401) || 401;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'UNAUTHORIZED') });
+  }
+});
+
+app.post('/api/nexa-escrow/orders', (req, res) => {
+  try {
+    const session = requireNexaEscrowSession(req);
+    const result = createNexaEscrowOrder({
+      session,
+      creatorRole: req.body?.creatorRole,
+      amount: req.body?.amount,
+      counterpartyEmail: req.body?.counterpartyEmail,
+      description: req.body?.description
+    });
+    return res.json({
+      ok: true,
+      account: result.account,
+      order: result.order
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 400) || 400;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'ESCROW_CREATE_FAILED') });
+  }
+});
+
+app.post('/api/nexa-escrow/orders/join', (req, res) => {
+  try {
+    const session = requireNexaEscrowSession(req);
+    const order = joinNexaEscrowOrder({
+      session,
+      tradeCode: req.body?.tradeCode
+    });
+    return res.json({
+      ok: true,
+      order
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 400) || 400;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'ESCROW_JOIN_FAILED') });
+  }
+});
+
+app.post('/api/nexa-escrow/payment/create', async (req, res) => {
+  try {
+    const session = requireNexaEscrowSession(req);
+    const order = await createNexaEscrowPaymentOrder({
+      req,
+      session,
+      tradeCode: req.body?.tradeCode
+    });
+    return res.json({
+      ok: true,
+      orderNo: order.orderNo,
+      tradeCode: order.tradeCode,
+      amount: order.amount,
+      currency: NEXA_ESCROW_CURRENCY,
+      payment: order.payment
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'Nexa 下单失败') });
+  }
+});
+
+app.post('/api/nexa-escrow/payment/query', async (req, res) => {
+  try {
+    requireNexaEscrowSession(req);
+    const result = await queryNexaEscrowPaymentOrder(req.body?.orderNo);
+    return res.json({
+      ok: true,
+      orderNo: result.orderNo,
+      status: result.status,
+      amount: result.amount,
+      currency: result.currency,
+      paidTime: result.paidTime,
+      order: result.order
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 502) || 502;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'Nexa 查询失败') });
+  }
+});
+
+app.post('/api/nexa-escrow/payment/notify', (req, res) => {
+  const orderNo = String(req.body?.orderNo || req.body?.data?.orderNo || '').trim();
+  const status = String(req.body?.status || req.body?.data?.status || '').trim().toUpperCase();
+  const paidTime = String(req.body?.paidTime || req.body?.data?.paidTime || '').trim();
+  if (orderNo) {
+    nexaEscrowPaymentOrders.set(orderNo, {
+      ...(nexaEscrowPaymentOrders.get(orderNo) || {}),
+      orderNo,
+      status: status || 'PENDING',
+      paidTime
+    });
+    if (status === 'SUCCESS') {
+      settleNexaEscrowPaymentSuccess(orderNo, { paidTime });
+    }
+  }
+  return res.json({ code: '0', msg: 'success' });
+});
+
+app.post('/api/nexa-escrow/orders/action', (req, res) => {
+  try {
+    const session = requireNexaEscrowSession(req);
+    const order = applyNexaEscrowAction({
+      session,
+      tradeCode: req.body?.tradeCode,
+      action: req.body?.action
+    });
+    return res.json({
+      ok: true,
+      order
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 400) || 400;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'ESCROW_ACTION_FAILED') });
+  }
+});
+
 app.post('/api/p-mining/session', (req, res) => {
   const session = buildPMiningCookieSession(req.body || {});
   if (!session.openId || !session.sessionKey) {
     return res.status(400).json({ ok: false, error: 'openId 和 sessionKey 必填' });
   }
+
+  ensurePMiningAutoGrowthClockInitialized(session.savedAt);
 
   res.cookie(PMINING_SESSION_COOKIE_NAME, encodePMiningSessionCookie(session), {
     httpOnly: true,
@@ -3272,6 +4044,161 @@ const updatePMiningPaymentOrderNotifyStmt = db.prepare(`
   UPDATE p_mining_payment_orders
   SET status = ?, notify_payload = ?, paid_at = CASE WHEN ? <> '' THEN ? ELSE paid_at END
   WHERE order_no = ?
+`);
+const insertNexaEscrowOrderStmt = db.prepare(`
+  INSERT INTO nexa_escrow_orders (
+    trade_code,
+    creator_user_id,
+    creator_role,
+    buyer_user_id,
+    seller_user_id,
+    buyer_email,
+    seller_email,
+    amount,
+    currency,
+    description,
+    status
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const selectNexaEscrowOrderByTradeCodeStmt = db.prepare(`
+  SELECT
+    o.id,
+    o.trade_code,
+    o.creator_user_id,
+    o.creator_role,
+    o.buyer_user_id,
+    o.seller_user_id,
+    o.buyer_email,
+    o.seller_email,
+    o.amount,
+    o.currency,
+    o.description,
+    o.status,
+    o.payment_order_no,
+    o.payment_partner_order_no,
+    o.last_payment_status,
+    o.funded_at,
+    o.delivered_at,
+    o.released_at,
+    o.cancelled_at,
+    o.released_by_user_id,
+    o.cancel_reason,
+    o.created_at,
+    o.updated_at
+  FROM nexa_escrow_orders o
+  WHERE o.trade_code = ?
+`);
+const selectNexaEscrowOrderByPaymentOrderNoStmt = db.prepare(`
+  SELECT
+    o.id,
+    o.trade_code,
+    o.creator_user_id,
+    o.creator_role,
+    o.buyer_user_id,
+    o.seller_user_id,
+    o.buyer_email,
+    o.seller_email,
+    o.amount,
+    o.currency,
+    o.description,
+    o.status,
+    o.payment_order_no,
+    o.payment_partner_order_no,
+    o.last_payment_status,
+    o.funded_at,
+    o.delivered_at,
+    o.released_at,
+    o.cancelled_at,
+    o.released_by_user_id,
+    o.cancel_reason,
+    o.created_at,
+    o.updated_at
+  FROM nexa_escrow_orders o
+  WHERE o.payment_order_no = ?
+`);
+const listNexaEscrowOrdersByUserStmt = db.prepare(`
+  SELECT
+    o.id,
+    o.trade_code,
+    o.creator_user_id,
+    o.creator_role,
+    o.buyer_user_id,
+    o.seller_user_id,
+    o.buyer_email,
+    o.seller_email,
+    o.amount,
+    o.currency,
+    o.description,
+    o.status,
+    o.payment_order_no,
+    o.payment_partner_order_no,
+    o.last_payment_status,
+    o.funded_at,
+    o.delivered_at,
+    o.released_at,
+    o.cancelled_at,
+    o.released_by_user_id,
+    o.cancel_reason,
+    o.created_at,
+    o.updated_at
+  FROM nexa_escrow_orders o
+  WHERE o.creator_user_id = ?
+     OR o.buyer_user_id = ?
+     OR o.seller_user_id = ?
+  ORDER BY o.id DESC
+  LIMIT ?
+`);
+const updateNexaEscrowOrderJoinStmt = db.prepare(`
+  UPDATE nexa_escrow_orders
+  SET buyer_user_id = ?,
+      seller_user_id = ?,
+      status = ?,
+      updated_at = datetime('now')
+  WHERE id = ?
+`);
+const updateNexaEscrowOrderPaymentStmt = db.prepare(`
+  UPDATE nexa_escrow_orders
+  SET payment_order_no = ?,
+      payment_partner_order_no = ?,
+      last_payment_status = ?,
+      status = ?,
+      updated_at = datetime('now')
+  WHERE id = ?
+`);
+const markNexaEscrowOrderFundedStmt = db.prepare(`
+  UPDATE nexa_escrow_orders
+  SET status = 'FUNDED',
+      last_payment_status = 'SUCCESS',
+      funded_at = CASE WHEN ? <> '' THEN ? ELSE datetime('now') END,
+      updated_at = datetime('now')
+  WHERE id = ?
+`);
+const markNexaEscrowOrderDeliveredStmt = db.prepare(`
+  UPDATE nexa_escrow_orders
+  SET status = 'DELIVERED',
+      delivered_at = datetime('now'),
+      updated_at = datetime('now')
+  WHERE id = ?
+`);
+const markNexaEscrowOrderReleasedStmt = db.prepare(`
+  UPDATE nexa_escrow_orders
+  SET status = 'COMPLETED',
+      released_at = datetime('now'),
+      released_by_user_id = ?,
+      updated_at = datetime('now')
+  WHERE id = ?
+`);
+const markNexaEscrowOrderCancelledStmt = db.prepare(`
+  UPDATE nexa_escrow_orders
+  SET status = 'CANCELLED',
+      cancelled_at = datetime('now'),
+      cancel_reason = ?,
+      updated_at = datetime('now')
+  WHERE id = ?
+`);
+const insertNexaEscrowEventStmt = db.prepare(`
+  INSERT INTO nexa_escrow_events (order_id, actor_user_id, event_type, detail)
+  VALUES (?, ?, ?, ?)
 `);
 const insertXiangqiWalletStmt = db.prepare(
   "INSERT INTO game_wallets (user_id, currency, available_balance, frozen_balance) VALUES (?, 'USDT', '0.00', '0.00')"
