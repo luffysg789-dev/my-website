@@ -649,11 +649,15 @@ test('p-mining claim writes balance and claim records on the backend', async () 
       [serialized.name]: serialized.value
     };
 
+    const beforeBootstrap = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });
     const claimResponse = await harness.request('POST', '/api/p-mining/claim', {}, { cookies });
     assert.equal(claimResponse.statusCode, 200);
     assert.equal(claimResponse.body.ok, true);
     assert.equal(claimResponse.body.account.balance > 0, true);
     assert.equal(claimResponse.body.records.claims.length, 1);
+    assert.ok(Number(claimResponse.body.network.totalMined || 0) > Number(beforeBootstrap.body.network.totalMined || 0));
+    assert.ok(Number(claimResponse.body.network.todayMined || 0) > Number(beforeBootstrap.body.network.todayMined || 0));
+    assert.ok(Number(claimResponse.body.network.remainingSupply || 0) < Number(beforeBootstrap.body.network.remainingSupply || 0));
 
     const bootstrapResponse = await harness.request('GET', '/api/p-mining/bootstrap', null, { cookies });
     assert.equal(bootstrapResponse.body.account.balance, claimResponse.body.account.balance);

@@ -1531,6 +1531,22 @@ function buildPMiningNetworkStats() {
   };
 }
 
+function applyPMiningClaimNetworkDelta(network, reward) {
+  const safeReward = roundPMiningValue(reward || 0);
+  const current = {
+    ...network
+  };
+  const nextTotalMined = roundPMiningValue(Math.max(0, Number(current.totalMined || 0) || 0) + safeReward);
+  const nextTodayMined = roundPMiningValue(Math.max(0, Number(current.todayMined || 0) || 0) + safeReward);
+  return {
+    ...current,
+    totalMined: nextTotalMined,
+    todayMined: nextTodayMined,
+    remainingSupply: roundPMiningValue(Math.max(0, PMINING_TOTAL_SUPPLY - nextTotalMined)),
+    estimatedFinishYears: roundPMiningValue(Math.max(0, 100 - nextTotalMined / (PMINING_DAILY_CAP * 365)))
+  };
+}
+
 function ensurePMiningAutoGrowthClockInitialized(now = Date.now()) {
   const currentMinute = Math.floor((Number(now || Date.now()) || Date.now()) / 60000);
   const storedLastAutoGrowthMinute = Number(getSetting('p_mining_auto_growth_last_minute', '0')) || 0;
@@ -3611,10 +3627,12 @@ app.post('/api/p-mining/claim', (req, res) => {
     if (result.kind !== 'claimed') {
       return res.status(404).json({ ok: false, error: 'ACCOUNT_NOT_FOUND' });
     }
+    const payload = buildPMiningBootstrapPayload(session);
+    payload.network = applyPMiningClaimNetworkDelta(payload.network, result.reward);
     return res.json({
       ok: true,
       reward: result.reward,
-      ...buildPMiningBootstrapPayload(session)
+      ...payload
     });
   } catch (error) {
     const statusCode = Number(error?.statusCode || 500) || 500;
