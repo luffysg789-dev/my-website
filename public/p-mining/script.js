@@ -1445,6 +1445,7 @@
     try {
       const response = await postJson('/api/p-mining/claim', {});
       if (response?.ok) {
+        appState.claimNetworkProtectUntil = Date.now() + 5000;
         syncAppStateFromServer(appState, response);
         playClaimSuccessSound(appState);
         renderAll(appState);
@@ -1681,16 +1682,17 @@
       powerChanges: Array.isArray(records.power) ? records.power : [],
       lastClaimAt: Number(account.lastClaimAt || 0) || 0
     };
-    const currentDayKey = getDateKeyForTimestamp(Date.now());
-    const previousDayKey = String(appState.network.localDayKey || '').trim();
     const incomingTotalMined = Number(network.totalMined || 0) || 0;
     const incomingTodayMined = Number(network.todayMined || 0) || 0;
     const incomingRemainingSupply = Number(network.remainingSupply || 0) || 0;
-    const mergedTotalMined = Math.max(incomingTotalMined, Number(appState.network.totalMined || 0) || 0);
-    const mergedTodayMined = previousDayKey === currentDayKey
+    const protectRecentClaimNetwork = Number(appState.claimNetworkProtectUntil || 0) > Date.now();
+    const mergedTotalMined = protectRecentClaimNetwork
+      ? Math.max(incomingTotalMined, Number(appState.network.totalMined || 0) || 0)
+      : incomingTotalMined;
+    const mergedTodayMined = protectRecentClaimNetwork
       ? Math.max(incomingTodayMined, Number(appState.network.todayMined || 0) || 0)
       : incomingTodayMined;
-    const mergedRemainingSupply = previousDayKey === currentDayKey
+    const mergedRemainingSupply = protectRecentClaimNetwork
       ? Math.min(
         incomingRemainingSupply,
         Number(appState.network.remainingSupply || TOTAL_SUPPLY) || TOTAL_SUPPLY
@@ -1702,7 +1704,7 @@
       totalMined: mergedTotalMined,
       todayMined: mergedTodayMined,
       todayPower: Number(network.todayPower || 0) || 0,
-      localDayKey: currentDayKey,
+      localDayKey: getDateKeyForTimestamp(Date.now()),
       networkFirstClaimAt: Math.max(0, Number(network.firstMiningAt || 0) || 0),
       remainingSupply: mergedRemainingSupply,
       currentHalvingCycle: Number(network.currentHalvingCycle || 1) || 1,
@@ -1814,6 +1816,7 @@
       animatedBalanceValue: Number(hostUser?.balance || 0) || 0,
       balanceAnimationFrame: null,
       hasAnimatedBalance: false,
+      claimNetworkProtectUntil: 0,
       isProcessing: false,
       isHumanCheckSubmitting: false,
       isInvitePromptDismissed: false,
