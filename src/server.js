@@ -1435,11 +1435,6 @@ function getPMiningSyntheticGrowthEvent(minuteBucket) {
   };
 }
 
-function getPMiningSyntheticMinedIncrement(intervalMinutes) {
-  const safeIntervalMinutes = Math.max(0, Number(intervalMinutes || 0) || 0);
-  return roundPMiningValue((PMINING_DAILY_CAP / 1440) * safeIntervalMinutes);
-}
-
 function getPMiningDayKey(timestamp = Date.now()) {
   const date = new Date(Number(timestamp || Date.now()) || Date.now());
   const year = date.getFullYear();
@@ -1461,42 +1456,28 @@ function buildPMiningNetworkStats() {
   const actualTodayPower = Math.max(10, Number(aggregate.total_power || 0) || 0);
   const storedTotalUsersFloor = Math.max(0, Number(getSetting('p_mining_total_users_floor', '0')) || 0);
   const storedTodayPowerFloor = Math.max(10, Number(getSetting('p_mining_today_power_floor', '10')) || 10);
-  const storedTotalMinedFloor = Math.max(0, Number(getSetting('p_mining_total_mined_floor', '0')) || 0);
-  const storedTodayMinedFloorDay = String(getSetting('p_mining_today_mined_floor_day', '') || '').trim();
-  const storedTodayMinedFloor = storedTodayMinedFloorDay === currentDayKey
-    ? Math.max(0, Number(getSetting('p_mining_today_mined_floor', '0')) || 0)
-    : 0;
   const storedLastAutoGrowthMinute = Number(getSetting('p_mining_auto_growth_last_minute', '0')) || 0;
   let totalUsers = Math.max(actualTotalUsers, storedTotalUsersFloor);
   let todayPower = Math.max(actualTodayPower, storedTodayPowerFloor);
-  let totalMined = roundPMiningValue(Math.max(actualTotalMined, storedTotalMinedFloor));
-  let todayMined = roundPMiningValue(Math.max(actualTodayMined, storedTodayMinedFloor));
+  const totalMined = roundPMiningValue(actualTotalMined);
+  const todayMined = roundPMiningValue(actualTodayMined);
   let nextLastAutoGrowthMinute = storedLastAutoGrowthMinute;
 
   if (!storedLastAutoGrowthMinute) {
     nextLastAutoGrowthMinute = currentMinute;
   } else if (currentMinute > storedLastAutoGrowthMinute) {
     let cursorMinute = storedLastAutoGrowthMinute;
-    let nextTodayMined = storedTodayMinedFloorDay === currentDayKey
-      ? todayMined
-      : actualTodayMined;
     while (true) {
       const event = getPMiningSyntheticGrowthEvent(cursorMinute);
       const nextEventMinute = cursorMinute + event.intervalMinutes;
       if (nextEventMinute > currentMinute) {
         break;
       }
-      const minedIncrement = getPMiningSyntheticMinedIncrement(event.intervalMinutes);
       totalUsers += event.addedUsers;
       todayPower += event.addedUsers * PMINING_SYNTHETIC_POWER_PER_USER;
-      totalMined = roundPMiningValue(totalMined + minedIncrement);
-      if (getPMiningDayKey(nextEventMinute * 60000) === currentDayKey) {
-        nextTodayMined = roundPMiningValue(nextTodayMined + minedIncrement);
-      }
       nextLastAutoGrowthMinute = nextEventMinute;
       cursorMinute = nextEventMinute;
     }
-    todayMined = roundPMiningValue(Math.max(actualTodayMined, nextTodayMined));
   }
 
   if (totalUsers > storedTotalUsersFloor) {
@@ -1504,13 +1485,6 @@ function buildPMiningNetworkStats() {
   }
   if (todayPower > storedTodayPowerFloor) {
     upsertSettingStmt.run('p_mining_today_power_floor', String(todayPower));
-  }
-  if (totalMined > storedTotalMinedFloor) {
-    upsertSettingStmt.run('p_mining_total_mined_floor', String(totalMined));
-  }
-  if (todayMined > storedTodayMinedFloor || storedTodayMinedFloorDay !== currentDayKey) {
-    upsertSettingStmt.run('p_mining_today_mined_floor_day', currentDayKey);
-    upsertSettingStmt.run('p_mining_today_mined_floor', String(todayMined));
   }
   if (nextLastAutoGrowthMinute !== storedLastAutoGrowthMinute) {
     upsertSettingStmt.run('p_mining_auto_growth_last_minute', String(nextLastAutoGrowthMinute));

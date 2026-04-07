@@ -509,11 +509,6 @@
     };
   }
 
-  function getAutomaticGrowthMinedIncrement(intervalMinutes) {
-    const safeIntervalMinutes = Math.max(0, Number(intervalMinutes || 0));
-    return roundToSingle((DAILY_CAP / 1440) * safeIntervalMinutes);
-  }
-
   function getDateKeyForTimestamp(timestamp) {
     const date = new Date(Number(timestamp || Date.now()) || Date.now());
     const year = date.getFullYear();
@@ -537,14 +532,8 @@
     }
 
     let addedUsers = 0;
-    let addedMined = 0;
     let lastProcessedMinute = lastMinute;
     let cursorMinute = lastMinute;
-    const currentDayKey = getDateKeyForTimestamp(now);
-    const lastProcessedDayKey = getDateKeyForTimestamp(lastMinute * 60000);
-    let nextTodayMined = currentDayKey === lastProcessedDayKey
-      ? Math.max(0, Number(current.todayMined || 0))
-      : 0;
 
     while (true) {
       const event = getAutomaticNetworkGrowthEvent(cursorMinute);
@@ -553,25 +542,14 @@
         break;
       }
       addedUsers += event.addedUsers;
-      const minedIncrement = getAutomaticGrowthMinedIncrement(event.intervalMinutes);
-      addedMined += minedIncrement;
-      if (getDateKeyForTimestamp(nextEventMinute * 60000) === currentDayKey) {
-        nextTodayMined = roundToSingle(nextTodayMined + minedIncrement);
-      }
       lastProcessedMinute = nextEventMinute;
       cursorMinute = nextEventMinute;
     }
 
-    const nextTotalMined = roundToSingle(Math.max(0, Number(current.totalMined || 0)) + addedMined);
-
     return {
       ...current,
       totalUsers: Math.max(0, Number(current.totalUsers || 0)) + addedUsers,
-      totalMined: nextTotalMined,
-      todayMined: nextTodayMined,
       todayPower: Math.max(10, Number(current.todayPower || 0)) + (addedUsers * 10),
-      remainingSupply: roundToSingle(Math.max(0, TOTAL_SUPPLY - nextTotalMined)),
-      estimatedFinishYears: roundToSingle(Math.max(0, 100 - nextTotalMined / (DAILY_CAP * 365))),
       networkFirstClaimAt: Number(current.networkFirstClaimAt || 0) || RUNTIME_START_AT_MS,
       lastAutoGrowthMinute: lastProcessedMinute
     };
@@ -1259,10 +1237,7 @@
     const nextNetwork = applyAutomaticNetworkGrowth(appState.network, Date.now());
     if (
       Number(nextNetwork.totalUsers || 0) === Number(appState.network.totalUsers || 0)
-      && Number(nextNetwork.totalMined || 0) === Number(appState.network.totalMined || 0)
-      && Number(nextNetwork.todayMined || 0) === Number(appState.network.todayMined || 0)
       && Number(nextNetwork.todayPower || 0) === Number(appState.network.todayPower || 0)
-      && Number(nextNetwork.remainingSupply || 0) === Number(appState.network.remainingSupply || 0)
       && Number(nextNetwork.lastAutoGrowthMinute || 0) === Number(appState.network.lastAutoGrowthMinute || 0)
     ) {
       return;
