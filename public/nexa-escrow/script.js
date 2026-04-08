@@ -40,6 +40,7 @@
       withdrawCreated: '提现申请已提交到 Nexa。',
       withdrawOnlyNexa: '请在 Nexa App 内提现。',
       invalidEscrowCode: '请填写正确担保号',
+      descriptionTooLong: '交易描述最多 30 个字',
       firstLoginHint: '首次登录提醒',
       codeModalTitle: '您的担保号是多少',
       codeModalConfirm: '我知道了',
@@ -119,6 +120,7 @@
       withdrawCreated: 'Withdrawal has been submitted to Nexa.',
       withdrawOnlyNexa: 'Please withdraw inside the Nexa App.',
       invalidEscrowCode: 'Please enter a valid escrow ID',
+      descriptionTooLong: 'Description must be 30 characters or fewer',
       firstLoginHint: 'First login reminder',
       codeModalTitle: 'Your escrow ID',
       codeModalConfirm: 'Got it',
@@ -376,11 +378,16 @@
   }
 
   async function createEscrowOrder(appState) {
+    const description = String(appState.elements.descriptionInput.value || '').trim();
+    if (description.length > 30) {
+      setStatus(appState.elements.createStatus, t(appState.locale, 'descriptionTooLong'), 'error');
+      return null;
+    }
     const response = await postJson('/api/nexa-escrow/orders', {
       creatorRole: appState.role,
       amount: appState.elements.amountInput.value,
       counterpartyEscrowCode: appState.elements.counterpartyInput.value,
-      description: appState.elements.descriptionInput.value
+      description
     });
     appState.orders = mergeOrder(appState.orders, response.order);
     appState.selectedTradeCode = response.order.tradeCode;
@@ -763,7 +770,7 @@
         <div class="nexa-escrow-order-item__desc">${order.description || '--'}</div>
         <div class="nexa-escrow-order-item__footer">
           ${describeViewerRole(appState, order) ? `<span class="nexa-escrow-order-item__initiator nexa-escrow-order-item__initiator--${getViewerRoleType(appState, order)}">${describeViewerRole(appState, order)}</span>` : ''}
-          <button class="nexa-escrow-order-item__view" type="button" data-detail-trigger="${order.tradeCode}">${order.tradeCode === appState.selectedTradeCode ? t(appState.locale, 'closeDetail') : t(appState.locale, 'viewDetail')}</button>
+          <button class="nexa-escrow-order-item__view" type="button" data-detail-trigger="${order.tradeCode}">${hasExpandedDetail && order.tradeCode === appState.selectedTradeCode ? t(appState.locale, 'closeDetail') : t(appState.locale, 'viewDetail')}</button>
         </div>
       </article>
     `).join('');

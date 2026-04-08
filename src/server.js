@@ -1091,6 +1091,9 @@ function createNexaEscrowOrder({ session, creatorRole, counterpartyEscrowCode, a
   if (!normalizedDescription) {
     throw buildNexaEscrowBanError('DESCRIPTION_REQUIRED');
   }
+  if (Array.from(normalizedDescription).length > 30) {
+    throw buildNexaEscrowBanError('DESCRIPTION_TOO_LONG');
+  }
   const counterpartyUser = selectXiangqiUserByEscrowCodeStmt.get(normalizedCounterpartyEscrowCode);
   if (!counterpartyUser) {
     throw buildNexaEscrowBanError('INVALID_COUNTERPARTY_ESCROW_CODE');

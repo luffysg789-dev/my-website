@@ -547,6 +547,48 @@ test('nexa-escrow accepts uppercase counterparty escrow codes and rejects unknow
   }
 });
 
+test('nexa-escrow rejects descriptions longer than 30 characters', async () => {
+  const harness = createHarness();
+
+  try {
+    const buyerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-buyer-open-id-long-desc',
+      sessionKey: 'escrow-buyer-session-key-long-desc',
+      nickname: 'Buyer User'
+    });
+    const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
+
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-seller-open-id-long-desc',
+      sessionKey: 'escrow-seller-session-key-long-desc',
+      nickname: 'Seller User'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: {
+        [sellerCookie.name]: sellerCookie.value
+      }
+    });
+
+    const invalidCreate = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '10.00',
+      counterpartyEscrowCode: sellerBootstrap.body.account.escrowCode,
+      description: '这是一个超过三十个字的担保交易描述测试内容请拒绝创建订单并返回超长错误提示'
+    }, {
+      cookies: {
+        [buyerCookie.name]: buyerCookie.value
+      }
+    });
+
+    assert.equal(invalidCreate.statusCode, 400);
+    assert.equal(invalidCreate.body.ok, false);
+    assert.equal(invalidCreate.body.error, 'DESCRIPTION_TOO_LONG');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('nexa-escrow seller-created order lets the buyer see and pay from order detail flow', async () => {
   const harness = createHarness({
     mockPaymentResponse() {

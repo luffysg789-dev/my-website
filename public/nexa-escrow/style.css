@@ -154,11 +154,11 @@ body {
 }
 
 .nexa-escrow-pill {
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: linear-gradient(180deg, #27bf69, #169955);
-  color: #fff;
-  font-size: 0.82rem;
+  padding: 0;
+  background: transparent;
+  color: #27bf69;
+  font-size: 0.78rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -538,7 +538,7 @@ body {
 
 .nexa-escrow-order-item__status {
   color: #27bf69;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-align: right;
   white-space: nowrap;
@@ -546,7 +546,7 @@ body {
 
 .nexa-escrow-order-item__code {
   font-weight: 800;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   letter-spacing: 0.08em;
 }
 

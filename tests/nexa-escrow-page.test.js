@@ -60,6 +60,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowAmountInput"/);
   assert.match(html, /id="nexaEscrowCounterpartyInput"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"/);
+  assert.match(html, /id="nexaEscrowDescriptionInput"[\s\S]*maxlength="30"/);
   assert.match(html, /id="nexaEscrowCreateButton"/);
   assert.match(html, /data-order-filter="all"/);
   assert.match(html, /data-order-filter="active"/);
@@ -115,11 +116,12 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function openEscrowOrderFromList\(/);
   assert.match(js, /viewerBuyer: '我是买家'/);
   assert.match(js, /viewerSeller: '我是卖家'/);
+  assert.match(js, /descriptionTooLong: '交易描述最多 30 个字'/);
   assert.match(js, /function describeViewerRole\(/);
   assert.match(js, /function getViewerRoleType\(/);
   assert.match(js, /nexa-escrow-order-item__initiator--\$\{getViewerRoleType\(appState, order\)\}/);
   assert.match(js, /closeDetail: '关闭详情'/);
-  assert.match(js, /order\.tradeCode === appState\.selectedTradeCode \? t\(appState\.locale, 'closeDetail'\) : t\(appState\.locale, 'viewDetail'\)/);
+  assert.match(js, /hasExpandedDetail && order\.tradeCode === appState\.selectedTradeCode \? t\(appState\.locale, 'closeDetail'\) : t\(appState\.locale, 'viewDetail'\)/);
   assert.match(js, /function applyTranslations\(/);
   assert.match(js, /function copyEscrowCode\(/);
   assert.match(js, /function beginEscrowWithdrawFlow\(/);
@@ -130,6 +132,7 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /actionDispute/);
   assert.match(js, /actionConfirmReceipt/);
   assert.doesNotMatch(js, /已登录/);
+  assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-order-item__desc\s*\{[\s\S]*white-space:\s*nowrap/);
 });
 
 test('admin panel includes nexa escrow orders, users, and withdrawal review entry points', () => {
