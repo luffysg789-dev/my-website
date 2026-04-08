@@ -97,34 +97,6 @@ body {
   white-space: nowrap;
 }
 
-.nexa-escrow-locale-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.nexa-escrow-locale-toggle__button {
-  appearance: none;
-  border: 0;
-  cursor: pointer;
-  min-width: 44px;
-  min-height: 36px;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--escrow-muted);
-  font-weight: 700;
-  transition: background 160ms ease, color 160ms ease;
-}
-
-.nexa-escrow-locale-toggle__button.is-active {
-  background: linear-gradient(180deg, #3674ff, #2657ef);
-  color: #fff;
-}
-
 .nexa-escrow-tabs {
   border-radius: 18px;
   padding: 6px;
@@ -371,6 +343,12 @@ body {
   display: grid;
   gap: 12px;
   text-align: left;
+}
+
+.nexa-escrow-order-item.is-selected {
+  border-color: rgba(47, 109, 255, 0.32);
+  background: rgba(47, 109, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(47, 109, 255, 0.12);
 }
 
 .nexa-escrow-order-item__top {

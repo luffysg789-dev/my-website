@@ -2,7 +2,6 @@
   const NEXA_ESCROW_SESSION_STORAGE_KEY = 'claw800:nexa-escrow:nexa-session';
   const NEXA_ESCROW_PENDING_PAYMENT_STORAGE_KEY = 'claw800:nexa-escrow:pending-payment';
   const NEXA_ESCROW_CODE_MODAL_STORAGE_KEY = 'claw800:nexa-escrow:code-modal:';
-  const NEXA_ESCROW_LOCALE_STORAGE_KEY = 'claw800:nexa-escrow:locale';
   const MAX_NEXA_ESCROW_SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
   const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
@@ -143,20 +142,6 @@
     } catch {
       return globalScope.sessionStorage;
     }
-  }
-
-  function getStoredLocale(storage = getStorage()) {
-    try {
-      return storage?.getItem?.(NEXA_ESCROW_LOCALE_STORAGE_KEY) === 'zh' ? 'zh' : 'en';
-    } catch {
-      return 'en';
-    }
-  }
-
-  function setStoredLocale(storage = getStorage(), locale = 'en') {
-    try {
-      storage?.setItem?.(NEXA_ESCROW_LOCALE_STORAGE_KEY, locale === 'zh' ? 'zh' : 'en');
-    } catch {}
   }
 
   function t(locale, key) {
@@ -439,9 +424,6 @@
     appState.elements.placeholderNodes.forEach((node) => {
       node.setAttribute('placeholder', t(appState.locale, node.dataset.i18nPlaceholder));
     });
-    appState.elements.localeButtons.forEach((button) => {
-      button.classList.toggle('is-active', button.dataset.localeToggle === appState.locale);
-    });
   }
 
   async function copyEscrowCode(appState) {
@@ -458,15 +440,6 @@
     helper.select();
     globalScope.document.execCommand('copy');
     helper.remove();
-  }
-
-  function toggleLanguage(appState, locale) {
-    appState.locale = locale === 'zh' ? 'zh' : 'en';
-    setStoredLocale(appState.storage, appState.locale);
-    applyTranslations(appState);
-    renderCreateRole(appState);
-    renderOrders(appState);
-    renderAccount(appState);
   }
 
   function switchTab(appState, tab) {
@@ -535,13 +508,14 @@
     const card = appState.elements.orderDetail;
     if (!order) {
       card.hidden = true;
+      appState.elements.detailStatus.hidden = true;
       return;
     }
     card.hidden = false;
     appState.elements.detailTitle.textContent = appState.locale === 'zh'
       ? `交易码 ${order.tradeCode}`
       : `Trade ${order.tradeCode}`;
-    appState.elements.detailPill.textContent = order.status;
+    appState.elements.detailPill.textContent = describeOrderStatus(appState, order);
     appState.elements.detailBody.innerHTML = `
       <div class="nexa-escrow-detail-grid">
         <div class="nexa-escrow-order-detail__line"><span>${t(appState.locale, 'detailAmount')}</span><strong>${order.amount} ${order.currency}</strong></div>
@@ -600,14 +574,15 @@
     const visibleOrders = filterOrders(appState);
     if (!visibleOrders.length) {
       list.innerHTML = `<article class="nexa-escrow-order-item"><div class="nexa-escrow-order-item__meta">${t(appState.locale, 'emptyOrders')}</div></article>`;
+      appState.selectedTradeCode = '';
       renderOrderDetail(appState);
       return;
     }
     list.innerHTML = visibleOrders.map((order) => `
-      <button class="nexa-escrow-order-item" type="button" data-trade-code="${order.tradeCode}">
+      <button class="nexa-escrow-order-item${order.tradeCode === appState.selectedTradeCode ? ' is-selected' : ''}" type="button" data-trade-code="${order.tradeCode}">
         <div class="nexa-escrow-order-item__top">
           <div class="nexa-escrow-order-item__code">${order.tradeCode}</div>
-          <span class="nexa-escrow-pill">${order.status}</span>
+          <span class="nexa-escrow-pill">${describeOrderStatus(appState, order)}</span>
         </div>
         <div class="nexa-escrow-order-item__summary">
           <div class="nexa-escrow-order-item__amount">
@@ -632,11 +607,12 @@
     Array.from(list.querySelectorAll('[data-trade-code]')).forEach((button) => {
       button.addEventListener('click', () => {
         appState.selectedTradeCode = button.dataset.tradeCode;
+        renderOrders(appState);
         renderOrderDetail(appState);
       });
     });
-    if (!visibleOrders.some((item) => item.tradeCode === appState.selectedTradeCode)) {
-      appState.selectedTradeCode = visibleOrders[0]?.tradeCode || '';
+    if (appState.selectedTradeCode && !visibleOrders.some((item) => item.tradeCode === appState.selectedTradeCode)) {
+      appState.selectedTradeCode = '';
     }
     renderOrderDetail(appState);
   }
@@ -675,7 +651,7 @@
     const storage = getStorage();
     const appState = {
       storage,
-      locale: getStoredLocale(storage),
+      locale: 'zh',
       session: loadCachedSession(storage),
       account: null,
       orders: [],
@@ -687,7 +663,6 @@
         tabButtons: Array.from(root.querySelectorAll('[data-tab-target]')),
         panels: Array.from(root.querySelectorAll('[data-tab]')),
         roleButtons: Array.from(root.querySelectorAll('[data-role]')),
-        localeButtons: Array.from(root.querySelectorAll('[data-locale-toggle]')),
         orderFilterButtons: Array.from(root.querySelectorAll('[data-order-filter]')),
         translatableNodes: Array.from(root.querySelectorAll('[data-i18n]')),
         placeholderNodes: Array.from(root.querySelectorAll('[data-i18n-placeholder]')),
@@ -718,9 +693,6 @@
 
     appState.elements.tabButtons.forEach((button) => {
       button.addEventListener('click', () => switchTab(appState, button.dataset.tabTarget));
-    });
-    appState.elements.localeButtons.forEach((button) => {
-      button.addEventListener('click', () => toggleLanguage(appState, button.dataset.localeToggle));
     });
     appState.elements.orderFilterButtons.forEach((button) => {
       button.addEventListener('click', () => {
@@ -812,7 +784,6 @@
   const exported = {
     NEXA_ESCROW_SESSION_STORAGE_KEY,
     NEXA_ESCROW_PENDING_PAYMENT_STORAGE_KEY,
-    NEXA_ESCROW_LOCALE_STORAGE_KEY,
     MAX_NEXA_ESCROW_SESSION_RETENTION_MS,
     beginNexaLoginFlow,
     createEscrowOrder,

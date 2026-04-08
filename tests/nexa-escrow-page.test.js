@@ -36,8 +36,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /<title>Claw800 Nexa 担保<\/title>/);
   assert.match(html, /data-nexa-escrow-app/);
   assert.doesNotMatch(html, /id="nexaEscrowAuthStatus"/);
-  assert.match(html, /data-locale-toggle="zh"/);
-  assert.match(html, /data-locale-toggle="en"/);
+  assert.doesNotMatch(html, /data-locale-toggle=/);
   assert.doesNotMatch(html, /data-i18n="eyebrow"/);
   assert.doesNotMatch(html, /data-i18n="createHeadline"/);
   assert.match(html, /data-tab="create"/);
@@ -70,7 +69,6 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /const NEXA_ESCROW_SESSION_STORAGE_KEY = 'claw800:nexa-escrow:nexa-session';/);
   assert.match(js, /const NEXA_ESCROW_PENDING_PAYMENT_STORAGE_KEY = 'claw800:nexa-escrow:pending-payment';/);
   assert.match(js, /const NEXA_ESCROW_CODE_MODAL_STORAGE_KEY = 'claw800:nexa-escrow:code-modal:'/);
-  assert.match(js, /const NEXA_ESCROW_LOCALE_STORAGE_KEY = 'claw800:nexa-escrow:locale';/);
   assert.match(js, /const MAX_NEXA_ESCROW_SESSION_RETENTION_MS = 30 \* 24 \* 60 \* 60 \* 1000;/);
   assert.match(js, /const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth:\/\/oauth\/authorize';/);
   assert.match(js, /const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth:\/\/order';/);
@@ -88,11 +86,9 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function filterOrders\(/);
   assert.match(js, /function openEscrowCodeModal\(/);
   assert.match(js, /function applyTranslations\(/);
-  assert.match(js, /function toggleLanguage\(/);
   assert.match(js, /function copyEscrowCode\(/);
   assert.match(js, /orderFilterButtons/);
   assert.match(js, /actionDispute/);
   assert.match(js, /actionConfirmReceipt/);
-  assert.match(js, /localeButtons/);
   assert.doesNotMatch(js, /已登录/);
 });
