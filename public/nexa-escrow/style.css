@@ -446,6 +446,14 @@ body {
   gap: 8px;
 }
 
+.nexa-escrow-order-item__status {
+  color: #27bf69;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .nexa-escrow-order-item__code {
   font-weight: 800;
   font-size: 0.88rem;

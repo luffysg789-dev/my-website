@@ -681,7 +681,7 @@
       <article class="nexa-escrow-order-item${hasExpandedDetail && order.tradeCode === appState.selectedTradeCode ? ' is-selected' : ''}" data-trade-code="${order.tradeCode}">
         <div class="nexa-escrow-order-item__top">
           <div class="nexa-escrow-order-item__code">订单号: ${order.tradeCode}</div>
-          <span class="nexa-escrow-pill">${describeOrderStatus(appState, order)}</span>
+          <span class="nexa-escrow-order-item__status">${describeOrderStatus(appState, order)}</span>
         </div>
         <div class="nexa-escrow-order-item__summary">
           <div class="nexa-escrow-order-item__amount">
