@@ -88,6 +88,17 @@ body {
   font-size: 1.08rem;
 }
 
+.nexa-escrow-header__identity {
+  color: #cfe0ff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nexa-escrow-header__identity span {
+  color: #fff;
+}
+
 .nexa-escrow-pill {
   border-radius: 999px;
   padding: 8px 12px;
@@ -452,7 +463,15 @@ body {
 
 .nexa-escrow-order-item__footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nexa-escrow-order-item__initiator {
+  color: #8ea3cf;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .nexa-escrow-order-item__view {
@@ -616,6 +635,15 @@ body {
   .nexa-escrow-card {
     border-radius: 20px;
     padding: 14px;
+  }
+
+  .nexa-escrow-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nexa-escrow-header__identity {
+    font-size: 0.82rem;
   }
 
   .nexa-escrow-brand__icon {

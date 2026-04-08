@@ -127,7 +127,7 @@
       totalMined: '已挖出总量',
       todayOutput: '今日全网产出',
       todayPower: '全网今日算力',
-      estimatedTodayOutput: '今日预挖总数',
+      estimatedTodayOutput: '今您预挖总数',
       remainingSupply: '剩余总量',
       halvingCycle: '当前减半周期',
       nextHalving: '每四年减半（下次）',

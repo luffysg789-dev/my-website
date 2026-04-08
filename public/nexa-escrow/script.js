@@ -637,6 +637,21 @@
     return allOrders;
   }
 
+  function isOrderInitiatedByCurrentUser(appState, order) {
+    const accountEscrowCode = String(appState.account?.escrowCode || '').trim().toUpperCase();
+    if (!accountEscrowCode) return false;
+    const creatorRole = String(order?.creatorRole || '').trim().toLowerCase();
+    const buyerEscrowCode = String(order?.buyerEscrowCode || '').trim().toUpperCase();
+    const sellerEscrowCode = String(order?.sellerEscrowCode || '').trim().toUpperCase();
+    if (creatorRole === 'buyer') {
+      return accountEscrowCode === buyerEscrowCode;
+    }
+    if (creatorRole === 'seller') {
+      return accountEscrowCode === sellerEscrowCode;
+    }
+    return false;
+  }
+
   function renderOrders(appState) {
     const list = appState.elements.ordersList;
     if (!list) return;
@@ -665,6 +680,7 @@
         </div>
         <div class="nexa-escrow-order-item__desc">${order.description || '--'}</div>
         <div class="nexa-escrow-order-item__footer">
+          ${isOrderInitiatedByCurrentUser(appState, order) ? '<span class="nexa-escrow-order-item__initiator">我发起的</span>' : ''}
           <button class="nexa-escrow-order-item__view" type="button" data-detail-trigger="${order.tradeCode}">${t(appState.locale, 'viewDetail')}</button>
         </div>
       </article>
@@ -684,7 +700,11 @@
 
   function renderAccount(appState) {
     if (!appState.elements.accountCode || !appState.elements.accountWallet) return;
-    appState.elements.accountCode.textContent = String(appState.account?.escrowCode || 'N000000');
+    const escrowCode = String(appState.account?.escrowCode || 'N000000');
+    appState.elements.accountCode.textContent = escrowCode;
+    if (appState.elements.headerCode) {
+      appState.elements.headerCode.textContent = escrowCode;
+    }
     appState.elements.accountWallet.textContent = `${String(appState.account?.wallet || '0.00')} USDT`;
     if (appState.elements.withdrawBtn) {
       appState.elements.withdrawBtn.textContent = t(appState.locale, 'withdrawAction');
@@ -751,6 +771,7 @@
         detailStatus: root.querySelector('#nexaEscrowDetailStatusText'),
         primaryAction: root.querySelector('#nexaEscrowPrimaryAction'),
         secondaryAction: root.querySelector('#nexaEscrowSecondaryAction'),
+            headerCode: root.querySelector('#nexaEscrowHeaderCode'),
             accountCode: root.querySelector('#nexaEscrowAccountCode'),
             accountWallet: root.querySelector('#nexaEscrowAccountWallet'),
             accountCodeCopy: root.querySelector('#nexaEscrowAccountCodeCopy'),
