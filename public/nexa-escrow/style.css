@@ -485,11 +485,17 @@ body {
   appearance: none;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  min-height: 34px;
-  padding: 0 12px;
+  min-width: 46px;
+  min-height: 46px;
+  padding: 0 14px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--escrow-muted);
+  font-size: 1.6rem;
   font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
