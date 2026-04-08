@@ -133,6 +133,8 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /viewerBuyer: '我是买家'/);
   assert.match(js, /viewerSeller: '我是卖家'/);
   assert.match(js, /descriptionTooLong: '交易描述最多 30 个字'/);
+  assert.match(js, /invalidAmount: '金额最多支持两位小数'/);
+  assert.match(js, /function normalizeMoneyInputValue\(/);
   assert.match(js, /nicknameLabel: '昵称'/);
   assert.match(js, /nicknameHint: '昵称一旦生成，无法修改'/);
   assert.match(js, /nicknameSaved: '昵称已保存'/);

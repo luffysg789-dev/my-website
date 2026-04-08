@@ -46,6 +46,7 @@
       withdrawCreated: '提现申请已提交到 Nexa。',
       withdrawOnlyNexa: '请在 Nexa App 内提现。',
       invalidEscrowCode: '请填写正确担保号',
+      invalidAmount: '金额最多支持两位小数',
       descriptionTooLong: '交易描述最多 30 个字',
       firstLoginHint: '首次登录提醒',
       codeModalTitle: '请输入昵称',
@@ -134,6 +135,7 @@
       withdrawCreated: 'Withdrawal has been submitted to Nexa.',
       withdrawOnlyNexa: 'Please withdraw inside the Nexa App.',
       invalidEscrowCode: 'Please enter a valid escrow ID',
+      invalidAmount: 'Amount supports at most 2 decimal places',
       descriptionTooLong: 'Description must be 30 characters or fewer',
       firstLoginHint: 'First login reminder',
       codeModalTitle: 'Set your nickname',
@@ -332,6 +334,18 @@
     return `${NEXA_PROTOCOL_ORDER_BASE}?${params.toString()}`;
   }
 
+  function normalizeMoneyInputValue(value) {
+    const raw = String(value || '').replace(/[^\d.]/g, '');
+    if (!raw) return '';
+    const [whole = '', ...fractionParts] = raw.split('.');
+    const normalizedWhole = whole.replace(/^0+(?=\d)/, '') || (whole ? '0' : '');
+    const fraction = fractionParts.join('').slice(0, 2);
+    if (!raw.includes('.')) {
+      return normalizedWhole;
+    }
+    return `${normalizedWhole || '0'}.${fraction}`;
+  }
+
   async function postJson(url, body) {
     const response = await fetch(url, {
       method: 'POST',
@@ -395,13 +409,18 @@
 
   async function createEscrowOrder(appState) {
     const description = String(appState.elements.descriptionInput.value || '').trim();
+    const amount = String(appState.elements.amountInput.value || '').trim();
+    if (amount.includes('.') && String(amount.split('.')[1] || '').length > 2) {
+      setStatus(appState.elements.createStatus, t(appState.locale, 'invalidAmount'), 'error');
+      return null;
+    }
     if (description.length > 30) {
       setStatus(appState.elements.createStatus, t(appState.locale, 'descriptionTooLong'), 'error');
       return null;
     }
     const response = await postJson('/api/nexa-escrow/orders', {
       creatorRole: appState.role,
-      amount: appState.elements.amountInput.value,
+      amount,
       counterpartyEscrowCode: appState.elements.counterpartyInput.value,
       description
     });
@@ -476,6 +495,10 @@
   async function submitEscrowWithdraw(appState) {
     const amount = String(appState.elements.withdrawAmountInput?.value || '').trim();
     if (!amount) return;
+    if (amount.includes('.') && String(amount.split('.')[1] || '').length > 2) {
+      setStatus(appState.elements.accountStatus, t(appState.locale, 'invalidAmount'), 'error');
+      return;
+    }
     closeEscrowWithdrawModal(appState);
     setStatus(appState.elements.accountStatus, t(appState.locale, 'processing'));
     const response = await postJson('/api/nexa-escrow/withdraw/create', { amount });
@@ -1252,6 +1275,14 @@
           appState.activeInputNode = null;
         }
         updateEscrowKeyboardInset(appState);
+      });
+    });
+    [appState.elements.amountInput, appState.elements.withdrawAmountInput].forEach((input) => {
+      input?.addEventListener('input', () => {
+        const normalized = normalizeMoneyInputValue(input.value);
+        if (input.value !== normalized) {
+          input.value = normalized;
+        }
       });
     });
     globalScope.window.visualViewport?.addEventListener?.('resize', () => {

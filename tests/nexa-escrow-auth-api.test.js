@@ -272,6 +272,43 @@ test('nexa-escrow bootstrap returns synced account state and empty orders for a 
   }
 });
 
+test('nexa-escrow order creation rejects amounts with more than two decimal places', async () => {
+  const harness = createHarness();
+
+  try {
+    const buyerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-amount-buyer-open-id',
+      sessionKey: 'escrow-amount-buyer-session-key',
+      nickname: 'Amount Buyer'
+    });
+    const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-amount-seller-open-id',
+      sessionKey: 'escrow-amount-seller-session-key',
+      nickname: 'Amount Seller'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: { [sellerCookie.name]: sellerCookie.value }
+    });
+
+    const createResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '12.345',
+      counterpartyEscrowCode: sellerBootstrap.body.account.escrowCode,
+      description: '金额精度测试'
+    }, {
+      cookies: { [buyerCookie.name]: buyerCookie.value }
+    });
+
+    assert.equal(createResponse.statusCode, 400);
+    assert.equal(createResponse.body.ok, false);
+    assert.equal(createResponse.body.error, 'INVALID_AMOUNT');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('nexa-escrow bootstrap wallet only reflects the dedicated escrow wallet balance', async () => {
   const harness = createHarness();
 
