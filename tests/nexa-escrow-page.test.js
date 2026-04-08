@@ -135,6 +135,10 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /descriptionTooLong: '交易描述最多 30 个字'/);
   assert.match(js, /invalidAmount: '金额最多支持两位小数'/);
   assert.match(js, /function normalizeMoneyInputValue\(/);
+  assert.match(js, /button\.classList\.toggle\('is-buyer', isActive && appState\.role === 'buyer'\)/);
+  assert.match(js, /button\.classList\.toggle\('is-seller', isActive && appState\.role === 'seller'\)/);
+  assert.match(js, /createButton\.classList\.toggle\('is-buyer', appState\.role === 'buyer'\)/);
+  assert.match(js, /createButton\.classList\.toggle\('is-seller', appState\.role === 'seller'\)/);
   assert.match(js, /nicknameLabel: '昵称'/);
   assert.match(js, /nicknameHint: '昵称一旦生成，无法修改'/);
   assert.match(js, /nicknameSaved: '昵称已保存'/);
@@ -149,6 +153,16 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /担保号:/);
   assert.match(js, /function describeViewerRole\(/);
   assert.match(js, /function getViewerRoleType\(/);
+  assert.match(js, /paymentCountdown: '付款倒计时'/);
+  assert.match(js, /shipCountdown: '等发货倒计时'/);
+  assert.match(js, /receiptCountdown: '倒计时确认收货'/);
+  assert.match(js, /function formatEscrowCountdown\(/);
+  assert.match(js, /function getEscrowPaymentCountdownText\(/);
+  assert.match(js, /function getEscrowShipCountdownText\(/);
+  assert.match(js, /function getEscrowReceiptCountdownText\(/);
+  assert.match(js, /orderTickTimer:/);
+  assert.match(js, /startEscrowOrderTick\(appState\)/);
+  assert.match(js, /autoReleaseAt = String\(order\?\.autoReleaseAt \|\| ''\)\.trim\(\)/);
   assert.match(js, /nexa-escrow-order-item__initiator--\$\{getViewerRoleType\(appState, order\)\}/);
   assert.match(js, /closeDetail: '关闭详情'/);
   assert.match(js, /hasExpandedDetail && order\.tradeCode === appState\.selectedTradeCode \? t\(appState\.locale, 'closeDetail'\) : t\(appState\.locale, 'viewDetail'\)/);
@@ -170,7 +184,10 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /primaryAction\.hidden = !primaryAction \|\| showCancelledInfo/);
   assert.doesNotMatch(js, /已登录/);
   assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-order-item__desc\s*\{[\s\S]*white-space:\s*nowrap/);
+  assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-order-item__countdown\s*\{/);
   assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-field--inline\s*\{[\s\S]*grid-template-columns:\s*110px minmax\(0,\s*1fr\)/);
+  assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-role-toggle__item\.is-active\.is-buyer,[\s\S]*\.nexa-escrow-primary\.is-buyer/);
+  assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-role-toggle__item\.is-active\.is-seller,[\s\S]*\.nexa-escrow-primary\.is-seller/);
 });
 
 test('admin panel includes nexa escrow orders, users, and withdrawal review entry points', () => {

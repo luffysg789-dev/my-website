@@ -298,10 +298,12 @@ db.exec(`
     currency TEXT NOT NULL DEFAULT 'USDT',
     description TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'AWAITING_COUNTERPARTY',
+    payment_due_at TEXT NOT NULL DEFAULT '',
     payment_order_no TEXT NOT NULL DEFAULT '',
     payment_partner_order_no TEXT NOT NULL DEFAULT '',
     last_payment_status TEXT NOT NULL DEFAULT '',
     funded_at TEXT NOT NULL DEFAULT '',
+    ship_due_at TEXT NOT NULL DEFAULT '',
     delivered_at TEXT NOT NULL DEFAULT '',
     auto_release_at TEXT NOT NULL DEFAULT '',
     disputed_at TEXT NOT NULL DEFAULT '',
@@ -393,6 +395,14 @@ if (!hasNexaEscrowRefundToBuyerAt) {
 const hasNexaEscrowReleaseType = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_orders') WHERE name = 'release_type'").get();
 if (!hasNexaEscrowReleaseType) {
   db.exec("ALTER TABLE nexa_escrow_orders ADD COLUMN release_type TEXT NOT NULL DEFAULT ''");
+}
+const hasNexaEscrowPaymentDueAt = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_orders') WHERE name = 'payment_due_at'").get();
+if (!hasNexaEscrowPaymentDueAt) {
+  db.exec("ALTER TABLE nexa_escrow_orders ADD COLUMN payment_due_at TEXT NOT NULL DEFAULT ''");
+}
+const hasNexaEscrowShipDueAt = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_orders') WHERE name = 'ship_due_at'").get();
+if (!hasNexaEscrowShipDueAt) {
+  db.exec("ALTER TABLE nexa_escrow_orders ADD COLUMN ship_due_at TEXT NOT NULL DEFAULT ''");
 }
 
 db.exec(`

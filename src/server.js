@@ -946,7 +946,9 @@ function getNexaEscrowViewerRole(order, userId) {
   return '';
 }
 
-const NEXA_ESCROW_AUTO_RELEASE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const NEXA_ESCROW_AUTO_RELEASE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+const NEXA_ESCROW_PAYMENT_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+const NEXA_ESCROW_SHIP_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
 function addMillisecondsToSqliteDate(dateText, deltaMs) {
   const baseDate = dateText ? new Date(String(dateText).replace(' ', 'T') + 'Z') : new Date();
@@ -1006,9 +1008,11 @@ function formatNexaEscrowOrder(order, viewerUserId = 0) {
     currency: String(order?.currency || NEXA_ESCROW_CURRENCY).trim() || NEXA_ESCROW_CURRENCY,
     description: String(order?.description || '').trim(),
     status: String(order?.status || '').trim(),
+    paymentDueAt: String(order?.payment_due_at || '').trim(),
     paymentOrderNo: String(order?.payment_order_no || '').trim(),
     lastPaymentStatus: String(order?.last_payment_status || '').trim(),
     fundedAt: String(order?.funded_at || '').trim(),
+    shipDueAt: String(order?.ship_due_at || '').trim(),
     deliveredAt: String(order?.delivered_at || '').trim(),
     autoReleaseAt: String(order?.auto_release_at || '').trim(),
     disputedAt: String(order?.disputed_at || '').trim(),
@@ -1036,12 +1040,45 @@ function claimNexaEscrowOrdersForUser(user) {
     const nextStatus = nextBuyerUserId && nextSellerUserId
       ? 'AWAITING_PAYMENT'
       : (nextBuyerUserId ? 'AWAITING_SELLER' : 'AWAITING_BUYER');
+    const paymentDueAt = nextStatus === 'AWAITING_PAYMENT'
+      ? addMillisecondsToSqliteDate('', NEXA_ESCROW_PAYMENT_TIMEOUT_MS)
+      : '';
     updateNexaEscrowOrderJoinStmt.run(
       nextBuyerUserId ? Number(nextBuyerUserId) : null,
       nextSellerUserId ? Number(nextSellerUserId) : null,
       nextStatus,
+      paymentDueAt,
       Number(order.id)
     );
+  });
+}
+
+function maybeAutoCancelPendingPaymentEscrowOrders() {
+  const dueOrders = listNexaEscrowPaymentExpiredOrdersStmt.all();
+  dueOrders.forEach((order) => {
+    const status = String(order?.status || '').trim().toUpperCase();
+    if (status !== 'AWAITING_PAYMENT' && status !== 'PAYMENT_PENDING') return;
+    db.transaction(() => {
+      markNexaEscrowOrderCancelledStmt.run('payment_timeout', Number(order.id));
+      insertNexaEscrowEvent(Number(order.id), null, 'PAYMENT_TIMEOUT_CANCELLED', String(order.trade_code || '').trim());
+    })();
+  });
+}
+
+function maybeAutoCancelPendingShipmentEscrowOrders() {
+  const dueOrders = listNexaEscrowShipmentExpiredOrdersStmt.all();
+  dueOrders.forEach((order) => {
+    const status = String(order?.status || '').trim().toUpperCase();
+    if (status !== 'FUNDED') return;
+    db.transaction(() => {
+      markNexaEscrowOrderCancelledStmt.run('ship_timeout', Number(order.id));
+      creditEscrowBuyerRefund({
+        buyerUserId: Number(order.buyer_user_id || 0),
+        amount: String(order.amount || '0.00').trim(),
+        tradeCode: String(order.trade_code || '').trim()
+      });
+      insertNexaEscrowEvent(Number(order.id), null, 'SHIP_TIMEOUT_CANCELLED', String(order.trade_code || '').trim());
+    })();
   });
 }
 
@@ -1065,6 +1102,8 @@ function maybeAutoReleaseDeliveredEscrowOrders() {
 function buildNexaEscrowBootstrapPayload(session) {
   const ensured = ensureNexaEscrowUserAccount(session);
   claimNexaEscrowOrdersForUser(ensured.user);
+  maybeAutoCancelPendingPaymentEscrowOrders();
+  maybeAutoCancelPendingShipmentEscrowOrders();
   maybeAutoReleaseDeliveredEscrowOrders();
   const orders = listNexaEscrowOrdersByUserStmt.all(
     ensured.user.id,
@@ -1123,6 +1162,9 @@ function createNexaEscrowOrder({ session, creatorRole, counterpartyEscrowCode, a
   const status = buyerUserId && sellerUserId
     ? 'AWAITING_PAYMENT'
     : (normalizedRole === 'buyer' ? 'AWAITING_SELLER' : 'AWAITING_BUYER');
+  const paymentDueAt = status === 'AWAITING_PAYMENT'
+    ? addMillisecondsToSqliteDate('', NEXA_ESCROW_PAYMENT_TIMEOUT_MS)
+    : '';
 
   const row = db.transaction(() => {
     const insertResult = insertNexaEscrowOrderStmt.run(
@@ -1136,7 +1178,8 @@ function createNexaEscrowOrder({ session, creatorRole, counterpartyEscrowCode, a
       centsToMoneyString(amountCents),
       NEXA_ESCROW_CURRENCY,
       normalizedDescription,
-      status
+      status,
+      paymentDueAt
     );
     const orderId = Number(insertResult.lastInsertRowid || 0);
     insertNexaEscrowEvent(orderId, ensured.user.id, 'CREATED', normalizedRole);
@@ -1181,6 +1224,7 @@ function joinNexaEscrowOrder({ session, tradeCode }) {
       nextBuyerUserId ? Number(nextBuyerUserId) : null,
       nextSellerUserId ? Number(nextSellerUserId) : null,
       'AWAITING_PAYMENT',
+      addMillisecondsToSqliteDate('', NEXA_ESCROW_PAYMENT_TIMEOUT_MS),
       Number(order.id)
     );
     insertNexaEscrowEvent(order.id, ensured.user.id, 'JOINED', status === 'AWAITING_BUYER' ? 'buyer' : 'seller');
@@ -1191,6 +1235,8 @@ function joinNexaEscrowOrder({ session, tradeCode }) {
 }
 
 async function createNexaEscrowPaymentOrder({ req, session, tradeCode }) {
+  maybeAutoCancelPendingPaymentEscrowOrders();
+  maybeAutoCancelPendingShipmentEscrowOrders();
   const ensured = ensureNexaEscrowUserAccount(session);
   const normalizedTradeCode = String(tradeCode || '').trim().toUpperCase();
   const order = selectNexaEscrowOrderByTradeCodeStmt.get(normalizedTradeCode);
@@ -1562,6 +1608,7 @@ function settleNexaEscrowPaymentSuccess(orderNo, payload = {}) {
   const paidTime = String(payload.paidTime || '').trim();
   const nextOrder = db.transaction(() => {
     markNexaEscrowOrderFundedStmt.run(
+      addMillisecondsToSqliteDate('', NEXA_ESCROW_SHIP_TIMEOUT_MS),
       paidTime,
       paidTime,
       Number(order.id)
@@ -1674,6 +1721,8 @@ async function queryNexaEscrowPaymentOrder(orderNo) {
 function applyNexaEscrowAction({ session, tradeCode, action }) {
   const ensured = ensureNexaEscrowUserAccount(session);
   claimNexaEscrowOrdersForUser(ensured.user);
+  maybeAutoCancelPendingPaymentEscrowOrders();
+  maybeAutoCancelPendingShipmentEscrowOrders();
   maybeAutoReleaseDeliveredEscrowOrders();
   const normalizedTradeCode = String(tradeCode || '').trim().toUpperCase();
   const normalizedAction = String(action || '').trim().toLowerCase();
@@ -4827,8 +4876,9 @@ const insertNexaEscrowOrderStmt = db.prepare(`
     amount,
     currency,
     description,
-    status
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    status,
+    payment_due_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const selectNexaEscrowOrderByTradeCodeStmt = db.prepare(`
   SELECT
@@ -4844,10 +4894,12 @@ const selectNexaEscrowOrderByTradeCodeStmt = db.prepare(`
     o.currency,
     o.description,
     o.status,
+    o.payment_due_at,
     o.payment_order_no,
     o.payment_partner_order_no,
     o.last_payment_status,
     o.funded_at,
+    o.ship_due_at,
     o.delivered_at,
     o.auto_release_at,
     o.disputed_at,
@@ -4882,10 +4934,12 @@ const selectNexaEscrowOrderByPaymentOrderNoStmt = db.prepare(`
     o.currency,
     o.description,
     o.status,
+    o.payment_due_at,
     o.payment_order_no,
     o.payment_partner_order_no,
     o.last_payment_status,
     o.funded_at,
+    o.ship_due_at,
     o.delivered_at,
     o.auto_release_at,
     o.disputed_at,
@@ -4920,10 +4974,12 @@ const listNexaEscrowOrdersByUserStmt = db.prepare(`
     o.currency,
     o.description,
     o.status,
+    o.payment_due_at,
     o.payment_order_no,
     o.payment_partner_order_no,
     o.last_payment_status,
     o.funded_at,
+    o.ship_due_at,
     o.delivered_at,
     o.auto_release_at,
     o.disputed_at,
@@ -4962,10 +5018,12 @@ const listNexaEscrowOrdersByEscrowCodeStmt = db.prepare(`
     o.currency,
     o.description,
     o.status,
+    o.payment_due_at,
     o.payment_order_no,
     o.payment_partner_order_no,
     o.last_payment_status,
     o.funded_at,
+    o.ship_due_at,
     o.delivered_at,
     o.auto_release_at,
     o.disputed_at,
@@ -5002,10 +5060,12 @@ const listNexaEscrowAutoReleasableOrdersStmt = db.prepare(`
     o.currency,
     o.description,
     o.status,
+    o.payment_due_at,
     o.payment_order_no,
     o.payment_partner_order_no,
     o.last_payment_status,
     o.funded_at,
+    o.ship_due_at,
     o.delivered_at,
     o.auto_release_at,
     o.disputed_at,
@@ -5029,6 +5089,28 @@ const listNexaEscrowAutoReleasableOrdersStmt = db.prepare(`
     AND o.auto_release_at <> ''
     AND datetime(o.auto_release_at) <= datetime('now')
 `);
+const listNexaEscrowPaymentExpiredOrdersStmt = db.prepare(`
+  SELECT
+    o.id,
+    o.trade_code,
+    o.status
+  FROM nexa_escrow_orders o
+  WHERE o.status IN ('AWAITING_PAYMENT', 'PAYMENT_PENDING')
+    AND o.payment_due_at <> ''
+    AND datetime(o.payment_due_at) <= datetime('now')
+`);
+const listNexaEscrowShipmentExpiredOrdersStmt = db.prepare(`
+  SELECT
+    o.id,
+    o.trade_code,
+    o.status,
+    o.buyer_user_id,
+    o.amount
+  FROM nexa_escrow_orders o
+  WHERE o.status = 'FUNDED'
+    AND o.ship_due_at <> ''
+    AND datetime(o.ship_due_at) <= datetime('now')
+`);
 const listAdminNexaEscrowOrdersStmt = db.prepare(`
   SELECT
     o.id,
@@ -5043,10 +5125,12 @@ const listAdminNexaEscrowOrdersStmt = db.prepare(`
     o.currency,
     o.description,
     o.status,
+    o.payment_due_at,
     o.payment_order_no,
     o.payment_partner_order_no,
     o.last_payment_status,
     o.funded_at,
+    o.ship_due_at,
     o.delivered_at,
     o.auto_release_at,
     o.disputed_at,
@@ -5074,6 +5158,7 @@ const updateNexaEscrowOrderJoinStmt = db.prepare(`
   SET buyer_user_id = ?,
       seller_user_id = ?,
       status = ?,
+      payment_due_at = ?,
       updated_at = datetime('now')
   WHERE id = ?
 `);
@@ -5090,6 +5175,8 @@ const markNexaEscrowOrderFundedStmt = db.prepare(`
   UPDATE nexa_escrow_orders
   SET status = 'FUNDED',
       last_payment_status = 'SUCCESS',
+      payment_due_at = '',
+      ship_due_at = ?,
       funded_at = CASE WHEN ? <> '' THEN ? ELSE datetime('now') END,
       updated_at = datetime('now')
   WHERE id = ?
@@ -5097,6 +5184,7 @@ const markNexaEscrowOrderFundedStmt = db.prepare(`
 const markNexaEscrowOrderDeliveredStmt = db.prepare(`
   UPDATE nexa_escrow_orders
   SET status = 'DELIVERED',
+      ship_due_at = '',
       delivered_at = datetime('now'),
       auto_release_at = ?,
       updated_at = datetime('now')
@@ -5143,6 +5231,8 @@ const markNexaEscrowOrderRefundedStmt = db.prepare(`
 const markNexaEscrowOrderCancelledStmt = db.prepare(`
   UPDATE nexa_escrow_orders
   SET status = 'CANCELLED',
+      payment_due_at = '',
+      ship_due_at = '',
       cancelled_at = datetime('now'),
       cancel_reason = ?,
       updated_at = datetime('now')

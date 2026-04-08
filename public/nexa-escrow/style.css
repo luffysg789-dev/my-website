@@ -201,6 +201,18 @@ body {
   color: #fff;
 }
 
+.nexa-escrow-role-toggle__item.is-active.is-buyer,
+.nexa-escrow-primary.is-buyer {
+  background: linear-gradient(180deg, #f05d5d, #d73a3a);
+  color: #fff;
+}
+
+.nexa-escrow-role-toggle__item.is-active.is-seller,
+.nexa-escrow-primary.is-seller {
+  background: linear-gradient(180deg, #2cc06a, #1f9b53);
+  color: #fff;
+}
+
 .nexa-escrow-panel {
   display: grid;
   gap: 12px;
@@ -678,6 +690,7 @@ body {
   justify-content: flex-start;
   gap: 8px;
   margin-top: auto;
+  flex-wrap: wrap;
 }
 
 .nexa-escrow-order-item__initiator {
@@ -691,6 +704,13 @@ body {
 
 .nexa-escrow-order-item__initiator--seller {
   color: #27bf69;
+}
+
+.nexa-escrow-order-item__countdown {
+  color: #27bf69;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .nexa-escrow-order-item__view {

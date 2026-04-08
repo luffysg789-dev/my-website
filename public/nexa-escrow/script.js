@@ -87,6 +87,9 @@
       statusCompleted: '已完成，资金已释放',
       statusRefunded: '已退款给买家',
       statusCancelled: '已取消',
+      paymentCountdown: '付款倒计时',
+      shipCountdown: '等发货倒计时',
+      receiptCountdown: '倒计时确认收货',
       progressCreatedTitle: '创建交易',
       progressCreatedBody: '买卖双方达成一致',
       progressFundedTitle: '资金托管',
@@ -175,6 +178,8 @@
       statusDisputed: 'Disputed and awaiting platform arbitration',
       statusCompleted: 'Completed and released to seller',
       statusRefunded: 'Refunded to buyer',
+      paymentCountdown: 'Payment countdown',
+      shipCountdown: 'Ship countdown',
       progressCreatedTitle: 'Order Created',
       progressCreatedBody: 'Buyer and seller agreed on the deal',
       progressFundedTitle: 'Escrow Funded',
@@ -655,7 +660,10 @@
 
   function renderCreateRole(appState) {
     appState.elements.roleButtons.forEach((button) => {
-      button.classList.toggle('is-active', button.dataset.role === appState.role);
+      const isActive = button.dataset.role === appState.role;
+      button.classList.toggle('is-active', isActive);
+      button.classList.toggle('is-buyer', isActive && appState.role === 'buyer');
+      button.classList.toggle('is-seller', isActive && appState.role === 'seller');
     });
     appState.elements.counterpartyLabel.textContent = appState.role === 'buyer'
       ? t(appState.locale, 'counterpartySellerLabel')
@@ -667,6 +675,8 @@
       appState.elements.createButton.textContent = appState.role === 'buyer'
         ? t(appState.locale, 'createAndPayAction')
         : t(appState.locale, 'createAction');
+      appState.elements.createButton.classList.toggle('is-buyer', appState.role === 'buyer');
+      appState.elements.createButton.classList.toggle('is-seller', appState.role === 'seller');
     }
   }
 
@@ -840,6 +850,53 @@
     return '';
   }
 
+  function formatEscrowCountdown(secondsRemaining) {
+    const safeSeconds = Math.max(0, Number(secondsRemaining || 0) || 0);
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const seconds = safeSeconds % 60;
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function getEscrowPaymentCountdownText(appState, order) {
+    const viewerRole = String(order?.viewerRole || '').trim().toLowerCase();
+    const status = String(order?.status || '').trim().toUpperCase();
+    const paymentDueAt = String(order?.paymentDueAt || '').trim();
+    if (viewerRole !== 'buyer') return '';
+    if (status !== 'AWAITING_PAYMENT' && status !== 'PAYMENT_PENDING') return '';
+    if (!paymentDueAt) return '';
+    const deadlineMs = new Date(String(paymentDueAt).replace(' ', 'T') + 'Z').getTime();
+    if (!Number.isFinite(deadlineMs)) return '';
+    const secondsRemaining = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
+    return `${t(appState.locale, 'paymentCountdown')}: ${formatEscrowCountdown(secondsRemaining)}`;
+  }
+
+  function getEscrowShipCountdownText(appState, order) {
+    const viewerRole = String(order?.viewerRole || '').trim().toLowerCase();
+    const status = String(order?.status || '').trim().toUpperCase();
+    const shipDueAt = String(order?.shipDueAt || '').trim();
+    if (viewerRole !== 'seller') return '';
+    if (status !== 'FUNDED') return '';
+    if (!shipDueAt) return '';
+    const deadlineMs = new Date(String(shipDueAt).replace(' ', 'T') + 'Z').getTime();
+    if (!Number.isFinite(deadlineMs)) return '';
+    const secondsRemaining = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
+    return `${t(appState.locale, 'shipCountdown')}: ${formatEscrowCountdown(secondsRemaining)}`;
+  }
+
+  function getEscrowReceiptCountdownText(appState, order) {
+    const viewerRole = String(order?.viewerRole || '').trim().toLowerCase();
+    const status = String(order?.status || '').trim().toUpperCase();
+    const autoReleaseAt = String(order?.autoReleaseAt || '').trim();
+    if (viewerRole !== 'buyer') return '';
+    if (status !== 'DELIVERED') return '';
+    if (!autoReleaseAt) return '';
+    const deadlineMs = new Date(String(autoReleaseAt).replace(' ', 'T') + 'Z').getTime();
+    if (!Number.isFinite(deadlineMs)) return '';
+    const secondsRemaining = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
+    return `${t(appState.locale, 'receiptCountdown')}: ${formatEscrowCountdown(secondsRemaining)}`;
+  }
+
   function renderOrders(appState) {
     const list = appState.elements.ordersList;
     if (!list) return;
@@ -869,6 +926,9 @@
         <div class="nexa-escrow-order-item__desc">${order.description || '--'}</div>
         <div class="nexa-escrow-order-item__footer">
           ${describeViewerRole(appState, order) ? `<span class="nexa-escrow-order-item__initiator nexa-escrow-order-item__initiator--${getViewerRoleType(appState, order)}">${describeViewerRole(appState, order)}</span>` : ''}
+          ${getEscrowPaymentCountdownText(appState, order) ? `<span class="nexa-escrow-order-item__countdown">${getEscrowPaymentCountdownText(appState, order)}</span>` : ''}
+          ${getEscrowShipCountdownText(appState, order) ? `<span class="nexa-escrow-order-item__countdown">${getEscrowShipCountdownText(appState, order)}</span>` : ''}
+          ${getEscrowReceiptCountdownText(appState, order) ? `<span class="nexa-escrow-order-item__countdown">${getEscrowReceiptCountdownText(appState, order)}</span>` : ''}
           <button class="nexa-escrow-order-item__view" type="button" data-detail-trigger="${order.tradeCode}">${hasExpandedDetail && order.tradeCode === appState.selectedTradeCode ? t(appState.locale, 'closeDetail') : t(appState.locale, 'viewDetail')}</button>
         </div>
       </article>
@@ -989,6 +1049,55 @@
     return new Promise((resolve) => {
       globalScope.window.setTimeout(resolve, ms);
     });
+  }
+
+  function startEscrowOrderTick(appState) {
+    if (appState.orderTickTimer) {
+      globalScope.window.clearInterval(appState.orderTickTimer);
+    }
+    appState.orderTickTimer = globalScope.window.setInterval(() => {
+      const orders = Array.isArray(appState.orders) ? appState.orders : [];
+      const hasCountdown = orders.some((order) => (
+        Boolean(getEscrowPaymentCountdownText(appState, order))
+        || Boolean(getEscrowShipCountdownText(appState, order))
+        || Boolean(getEscrowReceiptCountdownText(appState, order))
+      ));
+      if (hasCountdown && appState.activeTab === 'orders') {
+        renderOrders(appState);
+      }
+      const hasExpiredUnpaid = orders.some((order) => {
+        const status = String(order?.status || '').trim().toUpperCase();
+        const paymentDueAt = String(order?.paymentDueAt || '').trim();
+        if (!paymentDueAt || (status !== 'AWAITING_PAYMENT' && status !== 'PAYMENT_PENDING')) return false;
+        const deadlineMs = new Date(String(paymentDueAt).replace(' ', 'T') + 'Z').getTime();
+        return Number.isFinite(deadlineMs) && deadlineMs <= Date.now();
+      });
+      if (hasExpiredUnpaid && !appState.bootstrapRefreshing && !appState.ordersRefreshing) {
+        refreshEscrowOrders(appState).catch(() => {});
+        return;
+      }
+      const hasExpiredShipment = orders.some((order) => {
+        const status = String(order?.status || '').trim().toUpperCase();
+        const shipDueAt = String(order?.shipDueAt || '').trim();
+        if (!shipDueAt || status !== 'FUNDED') return false;
+        const deadlineMs = new Date(String(shipDueAt).replace(' ', 'T') + 'Z').getTime();
+        return Number.isFinite(deadlineMs) && deadlineMs <= Date.now();
+      });
+      if (hasExpiredShipment && !appState.bootstrapRefreshing && !appState.ordersRefreshing) {
+        refreshEscrowOrders(appState).catch(() => {});
+        return;
+      }
+      const hasExpiredReceipt = orders.some((order) => {
+        const status = String(order?.status || '').trim().toUpperCase();
+        const autoReleaseAt = String(order?.autoReleaseAt || '').trim();
+        if (!autoReleaseAt || status !== 'DELIVERED') return false;
+        const deadlineMs = new Date(String(autoReleaseAt).replace(' ', 'T') + 'Z').getTime();
+        return Number.isFinite(deadlineMs) && deadlineMs <= Date.now();
+      });
+      if (hasExpiredReceipt && !appState.bootstrapRefreshing && !appState.ordersRefreshing) {
+        refreshEscrowOrders(appState).catch(() => {});
+      }
+    }, 1000);
   }
 
   async function refreshCurrentEscrowTab(appState) {
@@ -1114,6 +1223,7 @@
       accountPullStartY: 0,
       accountPullDistance: 0,
       accountRefreshing: false,
+      orderTickTimer: 0,
       activeInputNode: null,
       elements: {
         tabButtons: Array.from(root.querySelectorAll('[data-tab-target]')),
@@ -1396,6 +1506,7 @@
 
     applyTranslations(appState);
     renderCreateRole(appState);
+    startEscrowOrderTick(appState);
     switchTab(appState, 'create');
     renderOrders(appState);
     return appState;
