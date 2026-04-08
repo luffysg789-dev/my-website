@@ -827,6 +827,17 @@ function normalizeNexaEscrowCode(value) {
   return `n${normalized.slice(1)}`;
 }
 
+function normalizeEscrowNickname(value) {
+  return String(value || '').trim();
+}
+
+function isValidEscrowNickname(value) {
+  const normalized = normalizeEscrowNickname(value);
+  const charLength = Array.from(normalized).length;
+  if (charLength < 2 || charLength > 12) return false;
+  return /^[\u4e00-\u9fa5A-Za-z0-9]+$/u.test(normalized);
+}
+
 function requireNexaEscrowSession(req) {
   const session = decodeNexaEscrowSessionCookie(req.cookies?.[NEXA_ESCROW_SESSION_COOKIE_NAME]);
   if (!session) {
@@ -871,6 +882,7 @@ function ensureNexaEscrowUserAccount(session) {
       id: Number(user.id),
       openId: String(user.openid || '').trim(),
       nickname: String(user.nickname || '').trim(),
+      escrowNickname: normalizeEscrowNickname(user.escrow_nickname),
       avatar: String(user.avatar || '').trim(),
       escrowCode: normalizeNexaEscrowCode(user.escrow_code) || createNexaEscrowAccountCode()
     },
@@ -920,6 +932,7 @@ function getEscrowUserSummary(userId) {
     userId: Number(row.id),
     openId: String(row.openid || '').trim(),
     nickname: String(row.nickname || '').trim(),
+    escrowNickname: normalizeEscrowNickname(row.escrow_nickname),
     avatar: String(row.avatar || '').trim(),
     escrowCode: normalizeNexaEscrowCode(row.escrow_code)
   };
@@ -985,6 +998,8 @@ function formatNexaEscrowOrder(order, viewerUserId = 0) {
     sellerOpenId: String(seller?.openId || '').trim(),
     buyerNickname: String(buyer?.nickname || '').trim(),
     sellerNickname: String(seller?.nickname || '').trim(),
+    buyerEscrowNickname: normalizeEscrowNickname(buyer?.escrowNickname),
+    sellerEscrowNickname: normalizeEscrowNickname(seller?.escrowNickname),
     buyerEscrowCode: normalizeNexaEscrowCode(order?.buyer_escrow_code || buyer?.escrowCode || ''),
     sellerEscrowCode: normalizeNexaEscrowCode(order?.seller_escrow_code || seller?.escrowCode || ''),
     amount: String(order?.amount || '0.00').trim(),
@@ -1063,6 +1078,7 @@ function buildNexaEscrowBootstrapPayload(session) {
       userId: ensured.user.id,
       openId: ensured.user.openId,
       nickname: ensured.user.nickname,
+      escrowNickname: ensured.user.escrowNickname,
       escrowCode: ensured.user.escrowCode,
       wallet: ensured.wallet.availableBalance
     },
@@ -3759,6 +3775,32 @@ app.get('/api/nexa-escrow/bootstrap', (req, res) => {
   }
 });
 
+app.post('/api/nexa-escrow/profile/nickname', (req, res) => {
+  try {
+    const session = requireNexaEscrowSession(req);
+    const ensured = ensureNexaEscrowUserAccount(session);
+    if (ensured.user.escrowNickname) {
+      return res.status(400).json({ ok: false, error: 'ESCROW_NICKNAME_LOCKED' });
+    }
+    const escrowNickname = normalizeEscrowNickname(req.body?.nickname);
+    if (!escrowNickname) {
+      return res.status(400).json({ ok: false, error: 'ESCROW_NICKNAME_REQUIRED' });
+    }
+    if (!isValidEscrowNickname(escrowNickname)) {
+      return res.status(400).json({ ok: false, error: 'ESCROW_NICKNAME_INVALID' });
+    }
+    updateGameUserEscrowNicknameStmt.run(escrowNickname, ensured.user.id);
+    const payload = buildNexaEscrowBootstrapPayload(session);
+    return res.json({
+      ok: true,
+      account: payload.account
+    });
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 400) || 400;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'ESCROW_NICKNAME_SAVE_FAILED') });
+  }
+});
+
 app.post('/api/nexa-escrow/orders', (req, res) => {
   try {
     const session = requireNexaEscrowSession(req);
@@ -4577,19 +4619,22 @@ const selectNexaEscrowWalletStmt = db.prepare(
   'SELECT user_id, available_balance, frozen_balance FROM nexa_escrow_wallets WHERE user_id = ?'
 );
 const selectXiangqiUserByIdStmt = db.prepare(
-  'SELECT id, openid, nickname, avatar, escrow_code, created_at FROM game_users WHERE id = ?'
+  'SELECT id, openid, nickname, avatar, escrow_code, escrow_nickname, created_at FROM game_users WHERE id = ?'
 );
 const selectXiangqiUserByOpenIdStmt = db.prepare(
-  'SELECT id, openid, nickname, avatar, escrow_code, created_at FROM game_users WHERE openid = ?'
+  'SELECT id, openid, nickname, avatar, escrow_code, escrow_nickname, created_at FROM game_users WHERE openid = ?'
 );
 const selectXiangqiUserByEscrowCodeStmt = db.prepare(
-  'SELECT id, openid, nickname, avatar, escrow_code, created_at FROM game_users WHERE escrow_code = ?'
+  'SELECT id, openid, nickname, avatar, escrow_code, escrow_nickname, created_at FROM game_users WHERE escrow_code = ?'
 );
 const insertXiangqiUserStmt = db.prepare(
   'INSERT INTO game_users (openid, nickname, avatar, escrow_code) VALUES (?, ?, ?, ?)'
 );
 const updateGameUserEscrowCodeStmt = db.prepare(
   'UPDATE game_users SET escrow_code = ?, updated_at = datetime(\'now\') WHERE id = ?'
+);
+const updateGameUserEscrowNicknameStmt = db.prepare(
+  'UPDATE game_users SET escrow_nickname = ?, updated_at = datetime(\'now\') WHERE id = ?'
 );
 const selectPMiningUserByUserIdStmt = db.prepare(`
   SELECT

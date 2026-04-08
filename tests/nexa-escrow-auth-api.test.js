@@ -308,6 +308,79 @@ test('nexa-escrow bootstrap wallet only reflects the dedicated escrow wallet bal
   }
 });
 
+test('nexa-escrow nickname can be saved once and is returned in bootstrap and orders', async () => {
+  const harness = createHarness();
+
+  try {
+    const buyerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-nickname-buyer-open-id',
+      sessionKey: 'escrow-nickname-buyer-session-key',
+      nickname: 'Buyer User'
+    });
+    const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
+
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-nickname-seller-open-id',
+      sessionKey: 'escrow-nickname-seller-session-key',
+      nickname: 'Seller User'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+
+    const buyerNicknameResponse = await harness.request('POST', '/api/nexa-escrow/profile/nickname', {
+      nickname: '苹果'
+    }, {
+      cookies: { [buyerCookie.name]: buyerCookie.value }
+    });
+    assert.equal(buyerNicknameResponse.statusCode, 200);
+    assert.equal(buyerNicknameResponse.body.ok, true);
+    assert.equal(buyerNicknameResponse.body.account.escrowNickname, '苹果');
+
+    const sellerNicknameResponse = await harness.request('POST', '/api/nexa-escrow/profile/nickname', {
+      nickname: '香蕉'
+    }, {
+      cookies: { [sellerCookie.name]: sellerCookie.value }
+    });
+    assert.equal(sellerNicknameResponse.statusCode, 200);
+    assert.equal(sellerNicknameResponse.body.ok, true);
+    assert.equal(sellerNicknameResponse.body.account.escrowNickname, '香蕉');
+
+    const buyerNicknameRetry = await harness.request('POST', '/api/nexa-escrow/profile/nickname', {
+      nickname: '西瓜'
+    }, {
+      cookies: { [buyerCookie.name]: buyerCookie.value }
+    });
+    assert.equal(buyerNicknameRetry.statusCode, 400);
+    assert.equal(buyerNicknameRetry.body.ok, false);
+
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: { [sellerCookie.name]: sellerCookie.value }
+    });
+
+    const createResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '12.88',
+      counterpartyEscrowCode: sellerBootstrap.body.account.escrowCode,
+      description: '昵称展示测试'
+    }, {
+      cookies: { [buyerCookie.name]: buyerCookie.value }
+    });
+    assert.equal(createResponse.statusCode, 200);
+    assert.equal(createResponse.body.ok, true);
+    assert.equal(createResponse.body.order.buyerEscrowNickname, '苹果');
+    assert.equal(createResponse.body.order.sellerEscrowNickname, '香蕉');
+
+    const buyerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: { [buyerCookie.name]: buyerCookie.value }
+    });
+    assert.equal(buyerBootstrap.statusCode, 200);
+    assert.equal(buyerBootstrap.body.account.escrowNickname, '苹果');
+    assert.equal(buyerBootstrap.body.orders[0].buyerEscrowNickname, '苹果');
+    assert.equal(buyerBootstrap.body.orders[0].sellerEscrowNickname, '香蕉');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('nexa-escrow withdrawal enters review-pending status and debits the dedicated wallet', async () => {
   const harness = createHarness();
 

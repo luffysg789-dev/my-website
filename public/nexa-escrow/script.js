@@ -34,6 +34,12 @@
       filterCompleted: '完成',
       escrowCodeLabel: '担保号',
       walletLabel: '钱包余额',
+      nicknameLabel: '昵称',
+      nicknameHint: '昵称一旦生成，无法修改',
+      nicknameSaved: '昵称已保存',
+      nicknameLocked: '昵称已生成，无法修改',
+      nicknameRequired: '请填写昵称',
+      nicknameInvalid: '昵称仅支持中文、英文、数字，长度 2-12 位',
       copyAction: '复制',
       withdrawAction: '提现',
       withdrawPrompt: '输入要提现到 Nexa 余额的 USDT 金额',
@@ -53,8 +59,8 @@
       notSupported: '仅支持在 Nexa App 内使用担保交易。',
       emptyOrders: '还没有担保单，先去发起一个。',
       detailAmount: '金额',
-      detailBuyer: '买方担保号',
-      detailSeller: '卖方担保号',
+      detailBuyer: '买方',
+      detailSeller: '卖方',
       detailDescription: '描述',
       detailCreatedAt: '创建时间',
       progressTitle: '交易进度',
@@ -116,6 +122,12 @@
       filterCompleted: 'Completed',
       escrowCodeLabel: 'Escrow ID',
       walletLabel: 'Wallet Balance',
+      nicknameLabel: 'Nickname',
+      nicknameHint: 'Nickname can only be created once.',
+      nicknameSaved: 'Nickname saved.',
+      nicknameLocked: 'Nickname is already locked.',
+      nicknameRequired: 'Please enter a nickname',
+      nicknameInvalid: 'Nickname only supports letters, numbers, and Chinese, 2-12 chars',
       copyAction: 'Copy',
       withdrawAction: 'Withdraw',
       withdrawPrompt: 'Enter the USDT amount to withdraw to Nexa balance',
@@ -135,8 +147,8 @@
       notSupported: 'Escrow is only available inside the Nexa App.',
       emptyOrders: 'No escrow orders yet. Create one first.',
       detailAmount: 'Amount',
-      detailBuyer: 'Buyer Escrow ID',
-      detailSeller: 'Seller Escrow ID',
+      detailBuyer: 'Buyer',
+      detailSeller: 'Seller',
       detailDescription: 'Description',
       detailCreatedAt: 'Created At',
       progressTitle: 'Progress',
@@ -696,8 +708,8 @@
     appState.elements.detailBody.innerHTML = `
       <div class="nexa-escrow-order-detail__line nexa-escrow-order-detail__line--block"><span>${t(appState.locale, 'detailDescription')}</span><strong>${order.description || '--'}</strong></div>
       <div class="nexa-escrow-detail-grid">
-        <div class="nexa-escrow-order-detail__line nexa-escrow-order-detail__line--card nexa-escrow-order-detail__line--buyer"><span>${t(appState.locale, 'detailBuyer')}</span><strong>${order.buyerEscrowCode || '--'}</strong></div>
-        <div class="nexa-escrow-order-detail__line nexa-escrow-order-detail__line--card nexa-escrow-order-detail__line--seller"><span>${t(appState.locale, 'detailSeller')}</span><strong>${order.sellerEscrowCode || '--'}</strong></div>
+        <div class="nexa-escrow-order-detail__line nexa-escrow-order-detail__line--card nexa-escrow-order-detail__line--buyer">${formatEscrowIdentityLine(t(appState.locale, 'detailBuyer'), order.buyerEscrowNickname, order.buyerEscrowCode)}</div>
+        <div class="nexa-escrow-order-detail__line nexa-escrow-order-detail__line--card nexa-escrow-order-detail__line--seller">${formatEscrowIdentityLine(t(appState.locale, 'detailSeller'), order.sellerEscrowNickname, order.sellerEscrowCode)}</div>
       </div>
     `;
     renderOrderProgress(appState, order);
@@ -853,8 +865,22 @@
 
   function renderAccount(appState) {
     const escrowCode = normalizeEscrowCode(appState.account?.escrowCode) || 'n000000';
+    const escrowNickname = String(appState.account?.escrowNickname || '').trim();
     if (appState.elements.headerCode) {
       appState.elements.headerCode.textContent = escrowCode;
+    }
+    if (appState.elements.nicknameInput) {
+      appState.elements.nicknameInput.value = escrowNickname;
+      appState.elements.nicknameInput.disabled = Boolean(escrowNickname);
+    }
+    if (appState.elements.nicknameSaveBtn) {
+      appState.elements.nicknameSaveBtn.hidden = Boolean(escrowNickname);
+      appState.elements.nicknameSaveBtn.disabled = Boolean(escrowNickname);
+    }
+    if (appState.elements.nicknameHint) {
+      appState.elements.nicknameHint.textContent = escrowNickname
+        ? t(appState.locale, 'nicknameLocked')
+        : t(appState.locale, 'nicknameHint');
     }
     if (appState.elements.accountWallet) {
       appState.elements.accountWallet.textContent = `${String(appState.account?.wallet || '0.00')} USDT`;
@@ -886,6 +912,38 @@
     appState.orders = Array.isArray(response.orders) ? response.orders : [];
     renderOrders(appState);
     renderAccount(appState);
+  }
+
+  function maskEscrowNickname(nickname) {
+    const normalized = String(nickname || '').trim();
+    if (!normalized) return 'nexa玩家';
+    const [firstChar] = Array.from(normalized);
+    return `${firstChar}x**`;
+  }
+
+  function formatEscrowIdentityLine(roleLabel, nickname, escrowCode) {
+    const maskedNickname = maskEscrowNickname(nickname);
+    const normalizedCode = normalizeEscrowCode(escrowCode) || '--';
+    return `
+      <span>${roleLabel}:${maskedNickname}</span>
+      <strong>担保号: ${normalizedCode}</strong>
+    `;
+  }
+
+  async function saveEscrowNickname(appState) {
+    const nickname = String(appState.elements.nicknameInput?.value || '').trim();
+    if (!nickname) {
+      setStatus(appState.elements.accountStatus, t(appState.locale, 'nicknameRequired'), 'error');
+      return;
+    }
+    setStatus(appState.elements.accountStatus, t(appState.locale, 'processing'));
+    const response = await postJson('/api/nexa-escrow/profile/nickname', { nickname });
+    appState.account = {
+      ...(appState.account || {}),
+      ...(response.account || {})
+    };
+    renderAccount(appState);
+    setStatus(appState.elements.accountStatus, t(appState.locale, 'nicknameSaved'), 'success');
   }
 
   function delay(ms) {
@@ -1049,10 +1107,13 @@
         infoAction: root.querySelector('#nexaEscrowInfoAction'),
         primaryAction: root.querySelector('#nexaEscrowPrimaryAction'),
         secondaryAction: root.querySelector('#nexaEscrowSecondaryAction'),
-            headerCode: root.querySelector('#nexaEscrowHeaderCode'),
-            headerCopy: root.querySelector('#nexaEscrowHeaderCopy'),
-            accountCode: root.querySelector('#nexaEscrowAccountCode'),
-            accountWallet: root.querySelector('#nexaEscrowAccountWallet'),
+        headerCode: root.querySelector('#nexaEscrowHeaderCode'),
+        headerCopy: root.querySelector('#nexaEscrowHeaderCopy'),
+        nicknameInput: root.querySelector('#nexaEscrowNicknameInput'),
+        nicknameSaveBtn: root.querySelector('#nexaEscrowNicknameSaveBtn'),
+        nicknameHint: root.querySelector('#nexaEscrowNicknameHint'),
+        accountCode: root.querySelector('#nexaEscrowAccountCode'),
+        accountWallet: root.querySelector('#nexaEscrowAccountWallet'),
             accountCodeCopy: root.querySelector('#nexaEscrowAccountCodeCopy'),
             withdrawBtn: root.querySelector('#nexaEscrowWithdrawBtn'),
             accountStatus: root.querySelector('#nexaEscrowAccountStatus'),
@@ -1256,14 +1317,23 @@
         } catch {}
       });
     });
-    appState.elements.withdrawBtn?.addEventListener('click', () => {
-      beginEscrowWithdrawFlow(appState).catch((error) => {
-        setStatus(appState.elements.accountStatus, error instanceof Error ? error.message : '提现失败', 'error');
-      });
-    });
-    appState.elements.withdrawCancel?.addEventListener('click', () => {
-      closeEscrowWithdrawModal(appState);
-    });
+        appState.elements.withdrawBtn?.addEventListener('click', () => {
+          beginEscrowWithdrawFlow(appState).catch((error) => {
+            setStatus(appState.elements.accountStatus, error instanceof Error ? error.message : '提现失败', 'error');
+          });
+        });
+        appState.elements.nicknameSaveBtn?.addEventListener('click', () => {
+          saveEscrowNickname(appState).catch((error) => {
+            const message = error instanceof Error ? error.message : '';
+            const resolvedMessage = message === 'ESCROW_NICKNAME_REQUIRED'
+              ? t(appState.locale, 'nicknameRequired')
+              : (message === 'ESCROW_NICKNAME_INVALID' ? t(appState.locale, 'nicknameInvalid') : (message === 'ESCROW_NICKNAME_LOCKED' ? t(appState.locale, 'nicknameLocked') : message || '保存失败'));
+            setStatus(appState.elements.accountStatus, resolvedMessage, 'error');
+          });
+        });
+        appState.elements.withdrawCancel?.addEventListener('click', () => {
+          closeEscrowWithdrawModal(appState);
+        });
     appState.elements.withdrawConfirm?.addEventListener('click', () => {
       submitEscrowWithdraw(appState).catch((error) => {
         setStatus(appState.elements.accountStatus, error instanceof Error ? error.message : '提现失败', 'error');

@@ -210,6 +210,7 @@ db.exec(`
     nickname TEXT NOT NULL DEFAULT '',
     avatar TEXT NOT NULL DEFAULT '',
     escrow_code TEXT NOT NULL DEFAULT '',
+    escrow_nickname TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -218,6 +219,11 @@ db.exec(`
 const hasGameUserEscrowCode = db.prepare("SELECT 1 FROM pragma_table_info('game_users') WHERE name = 'escrow_code'").get();
 if (!hasGameUserEscrowCode) {
   db.exec("ALTER TABLE game_users ADD COLUMN escrow_code TEXT NOT NULL DEFAULT ''");
+}
+
+const hasGameUserEscrowNickname = db.prepare("SELECT 1 FROM pragma_table_info('game_users') WHERE name = 'escrow_nickname'").get();
+if (!hasGameUserEscrowNickname) {
+  db.exec("ALTER TABLE game_users ADD COLUMN escrow_nickname TEXT NOT NULL DEFAULT ''");
 }
 
 db.exec(`

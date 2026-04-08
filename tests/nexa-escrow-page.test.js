@@ -81,6 +81,9 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowHeaderCode"/);
   assert.match(html, /id="nexaEscrowHeaderCopy"/);
   assert.match(html, /id="nexaEscrowWithdrawBtn"/);
+  assert.match(html, /id="nexaEscrowNicknameInput"/);
+  assert.match(html, /id="nexaEscrowNicknameSaveBtn"/);
+  assert.match(html, /id="nexaEscrowNicknameHint"/);
   assert.match(html, /id="nexaEscrowWithdrawModal"/);
   assert.match(html, /id="nexaEscrowWithdrawAmountInput"/);
   assert.match(html, /id="nexaEscrowAccountStatus"/);
@@ -125,6 +128,17 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /viewerBuyer: '我是买家'/);
   assert.match(js, /viewerSeller: '我是卖家'/);
   assert.match(js, /descriptionTooLong: '交易描述最多 30 个字'/);
+  assert.match(js, /nicknameLabel: '昵称'/);
+  assert.match(js, /nicknameHint: '昵称一旦生成，无法修改'/);
+  assert.match(js, /nicknameSaved: '昵称已保存'/);
+  assert.match(js, /nicknameLocked: '昵称已生成，无法修改'/);
+  assert.match(js, /nicknameRequired: '请填写昵称'/);
+  assert.match(js, /nicknameInvalid: '昵称仅支持中文、英文、数字，长度 2-12 位'/);
+  assert.match(js, /\/api\/nexa-escrow\/profile\/nickname/);
+  assert.match(js, /function maskEscrowNickname\(/);
+  assert.match(js, /function formatEscrowIdentityLine\(/);
+  assert.match(js, /if \(!normalized\) return 'nexa玩家';/);
+  assert.match(js, /担保号:/);
   assert.match(js, /function describeViewerRole\(/);
   assert.match(js, /function getViewerRoleType\(/);
   assert.match(js, /nexa-escrow-order-item__initiator--\$\{getViewerRoleType\(appState, order\)\}/);

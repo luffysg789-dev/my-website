@@ -715,6 +715,7 @@ body {
 .nexa-escrow-order-detail__line strong {
   color: var(--escrow-text);
   font-size: 1rem;
+  display: block;
 }
 
 .nexa-escrow-order-detail__line--block,
@@ -740,6 +741,11 @@ body {
 .nexa-escrow-order-detail__line--seller span,
 .nexa-escrow-order-detail__line--seller strong {
   color: #fff;
+}
+
+.nexa-escrow-order-detail__line--buyer span,
+.nexa-escrow-order-detail__line--seller span {
+  font-weight: 700;
 }
 
 .nexa-escrow-order-progress,

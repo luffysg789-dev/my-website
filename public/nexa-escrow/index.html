@@ -98,6 +98,19 @@
           <article class="nexa-escrow-card">
             <div class="nexa-escrow-account-grid">
               <div class="nexa-escrow-account-item">
+                <span class="nexa-escrow-label" data-i18n="nicknameLabel">昵称</span>
+                <input
+                  id="nexaEscrowNicknameInput"
+                  class="nexa-escrow-input"
+                  type="text"
+                  maxlength="12"
+                  placeholder="请输入昵称"
+                  autocomplete="off"
+                />
+                <button id="nexaEscrowNicknameSaveBtn" class="nexa-escrow-secondary nexa-escrow-account-item__save" type="button">保存</button>
+                <p id="nexaEscrowNicknameHint" class="nexa-escrow-status">昵称一旦生成，无法修改</p>
+              </div>
+              <div class="nexa-escrow-account-item">
                 <span class="nexa-escrow-label" data-i18n="walletLabel">钱包余额</span>
                 <strong id="nexaEscrowAccountWallet">0.00 USDT</strong>
                 <button id="nexaEscrowWithdrawBtn" class="nexa-escrow-primary nexa-escrow-account-item__action" type="button">提现</button>
