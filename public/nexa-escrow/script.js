@@ -23,7 +23,6 @@
       descriptionPlaceholder: '例如：购买虚拟主机服务、设计稿定金等',
       createAction: '确认发起',
       createAndPayAction: '确认发起并付款',
-      ordersHeadline: '我的担保订单',
       accountHeadline: '你的 Nexa 担保身份',
       filterAll: '全部',
       filterActive: '进行中',
@@ -55,17 +54,19 @@
       detailCreatedAt: '创建时间',
       progressTitle: '交易进度',
       safeTitle: '安全提醒',
-      safeBody: '请务必在平台内完成所有沟通。不要在确认收到商品/服务前点击“收到货”。如有疑问，请立即点击“申请仲裁”。',
+      safeBody: '请务必收到货物/服务后再点击“确认收货”。如有疑问，请立即点击“申请仲裁”。',
       actionFund: '支付担保金',
       actionDeliver: '发货',
       actionConfirmReceipt: '收到货',
       actionDispute: '申请仲裁',
       actionCancel: '取消订单',
+      actionDeliveredDone: '已发货',
+      confirmDeliverPrompt: '确认已经发货吗？',
       viewerPending: '待确认',
       statusAwaitingPayment: '待买家支付担保金',
       statusPaymentPending: '支付处理中',
       statusFunded: '资金已托管',
-      statusDelivered: '卖家已发货，等待买家确认',
+      statusDelivered: '已发货，等买家放款',
       statusDisputed: '争议中，等待平台仲裁',
       statusCompleted: '已完成，资金已释放',
       statusRefunded: '已退款给买家',
@@ -95,7 +96,6 @@
       descriptionPlaceholder: 'Example: VPS service, design deposit, etc.',
       createAction: 'Create Order',
       createAndPayAction: 'Create & Pay',
-      ordersHeadline: 'Buyer pays, seller delivers, buyer releases',
       accountHeadline: 'Your Nexa escrow identity',
       filterAll: 'All',
       filterActive: 'Active',
@@ -133,6 +133,8 @@
       actionConfirmReceipt: 'Confirm Receipt',
       actionDispute: 'Open Dispute',
       actionCancel: 'Cancel Order',
+      actionDeliveredDone: 'Delivered',
+      confirmDeliverPrompt: 'Confirm that you have delivered the goods or service?',
       viewerPending: 'Pending',
       statusAwaitingPayment: 'Waiting for buyer escrow payment',
       statusPaymentPending: 'Payment pending',
@@ -625,12 +627,19 @@
       dispute: t(appState.locale, 'actionDispute'),
       cancel: t(appState.locale, 'actionCancel')
     };
+    const showDeliveredInfo = String(order?.status || '').trim().toUpperCase() === 'DELIVERED'
+      && String(order?.viewerRole || '').trim().toLowerCase() === 'seller';
+    const infoAction = showDeliveredInfo ? t(appState.locale, 'actionDeliveredDone') : '';
+    appState.elements.infoAction.hidden = !infoAction;
+    appState.elements.infoAction.textContent = infoAction;
     appState.elements.primaryAction.hidden = !primaryAction;
     appState.elements.secondaryAction.hidden = !secondaryAction;
     appState.elements.primaryAction.textContent = actionText[primaryAction] || primaryAction || '';
     appState.elements.secondaryAction.textContent = actionText[secondaryAction] || secondaryAction || '';
     appState.elements.primaryAction.dataset.action = primaryAction || '';
     appState.elements.secondaryAction.dataset.action = secondaryAction || '';
+    appState.elements.primaryAction.classList.toggle('is-dispute', primaryAction === 'dispute');
+    appState.elements.secondaryAction.classList.toggle('is-dispute', secondaryAction === 'dispute');
     setStatus(appState.elements.detailStatus, describeOrderStatus(appState, order), 'success');
     const selectedOrderNode = appState.elements.ordersList?.querySelector?.(`[data-trade-code="${appState.selectedTradeCode}"]`);
     if (selectedOrderNode && card) {
@@ -807,6 +816,7 @@
         detailProgress: root.querySelector('#nexaEscrowDetailProgress'),
         safetyNotice: root.querySelector('#nexaEscrowSafetyNotice'),
         detailStatus: root.querySelector('#nexaEscrowDetailStatusText'),
+        infoAction: root.querySelector('#nexaEscrowInfoAction'),
         primaryAction: root.querySelector('#nexaEscrowPrimaryAction'),
         secondaryAction: root.querySelector('#nexaEscrowSecondaryAction'),
             headerCode: root.querySelector('#nexaEscrowHeaderCode'),
@@ -875,6 +885,13 @@
               if (action === 'fund') {
                 await beginEscrowPayment(appState, tradeCode);
                 return;
+              }
+              if (action === 'mark_delivered') {
+                const confirmed = globalScope.window.confirm(t(appState.locale, 'confirmDeliverPrompt'));
+                if (!confirmed) {
+                  setStatus(appState.elements.detailStatus, '');
+                  return;
+                }
               }
               await submitEscrowAction(appState, action, tradeCode);
               const nextOrder = appState.orders.find((item) => item.tradeCode === tradeCode);

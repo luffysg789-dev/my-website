@@ -273,6 +273,17 @@ body {
   color: #fff;
 }
 
+.nexa-escrow-secondary--muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.nexa-escrow-secondary.is-dispute,
+.nexa-escrow-primary.is-dispute {
+  background: linear-gradient(180deg, #27bf69, #169955);
+  color: #fff;
+}
+
 .nexa-escrow-status {
   margin: 0;
   font-size: 0.88rem;
