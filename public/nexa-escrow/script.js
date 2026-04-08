@@ -694,10 +694,6 @@
       appState.elements.detailPill.textContent = describeOrderStatus(appState, order);
     }
     appState.elements.detailBody.innerHTML = `
-      <div class="nexa-escrow-detail-grid">
-        <div class="nexa-escrow-order-detail__line"><span>${t(appState.locale, 'detailAmount')}</span><strong>${order.amount} ${order.currency}</strong></div>
-        <div class="nexa-escrow-order-detail__line"><span>${t(appState.locale, 'detailCreatedAt')}</span><strong>${order.createdAt || '--'}</strong></div>
-      </div>
       <div class="nexa-escrow-order-detail__line nexa-escrow-order-detail__line--block"><span>${t(appState.locale, 'detailDescription')}</span><strong>${order.description || '--'}</strong></div>
       <div class="nexa-escrow-detail-grid">
         <div class="nexa-escrow-order-detail__line nexa-escrow-order-detail__line--card nexa-escrow-order-detail__line--buyer"><span>${t(appState.locale, 'detailBuyer')}</span><strong>${order.buyerEscrowCode || '--'}</strong></div>
