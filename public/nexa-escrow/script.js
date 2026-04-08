@@ -673,7 +673,6 @@
         </div>
         <div class="nexa-escrow-order-item__summary">
           <div class="nexa-escrow-order-item__amount">
-            <span class="nexa-escrow-label">${describeOrderStatus(appState, order)}</span>
             <strong>${order.amount} ${order.currency}</strong>
           </div>
           <div class="nexa-escrow-order-item__time">${order.createdAt || '--'}</div>
