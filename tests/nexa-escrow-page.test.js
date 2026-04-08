@@ -65,7 +65,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /class="nexa-escrow-field nexa-escrow-field--inline"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"[\s\S]*maxlength="30"/);
-  assert.match(html, /手续费仅需千分之2/);
+  assert.match(html, /注:手续费仅需千分之2 目前优惠期间免费/);
   assert.match(html, /id="nexaEscrowCreateButton"[\s\S]*data-i18n="createAndPayAction"[\s\S]*确认发起并付款/);
   assert.match(html, /data-order-filter="all"/);
   assert.match(html, /data-order-filter="active"/);
