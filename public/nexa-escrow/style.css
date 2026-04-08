@@ -641,9 +641,16 @@ body {
 }
 
 .nexa-escrow-order-item__initiator {
-  color: #6fa0ff;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.nexa-escrow-order-item__initiator--buyer {
+  color: #ef5858;
+}
+
+.nexa-escrow-order-item__initiator--seller {
+  color: #27bf69;
 }
 
 .nexa-escrow-order-item__view {
@@ -675,24 +682,6 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.nexa-escrow-detail-close {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  min-width: 46px;
-  min-height: 46px;
-  padding: 0 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--escrow-muted);
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
 }
 
 .nexa-escrow-order-detail__body {

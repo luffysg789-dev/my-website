@@ -72,7 +72,6 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowAccountPullToRefresh"/);
   assert.match(html, /id="nexaEscrowAccountPullSpinner"/);
   assert.match(html, /id="nexaEscrowOrderDetail"/);
-  assert.match(html, /id="nexaEscrowOrderDetailClose"/);
   assert.match(html, /id="nexaEscrowPrimaryAction"/);
   assert.match(html, /id="nexaEscrowSecondaryAction"/);
   assert.match(html, /id="nexaEscrowHeaderCode"/);
@@ -114,6 +113,11 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function openEscrowCodeModal\(/);
   assert.match(js, /function closeOrderDetail\(/);
   assert.match(js, /function openEscrowOrderFromList\(/);
+  assert.match(js, /viewerBuyer: '我是买家'/);
+  assert.match(js, /viewerSeller: '我是卖家'/);
+  assert.match(js, /function describeViewerRole\(/);
+  assert.match(js, /function getViewerRoleType\(/);
+  assert.match(js, /nexa-escrow-order-item__initiator--\$\{getViewerRoleType\(appState, order\)\}/);
   assert.match(js, /closeDetail: '关闭详情'/);
   assert.match(js, /order\.tradeCode === appState\.selectedTradeCode \? t\(appState\.locale, 'closeDetail'\) : t\(appState\.locale, 'viewDetail'\)/);
   assert.match(js, /function applyTranslations\(/);
@@ -122,7 +126,6 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /\/api\/nexa-escrow\/withdraw\/create/);
   assert.match(js, /\/api\/nexa-escrow\/withdraw\/query/);
   assert.match(js, /orderFilterButtons/);
-  assert.match(js, /orderDetailClose/);
   assert.match(js, /AWAITING_PAYMENT', 'PAYMENT_PENDING', 'FUNDED', 'DELIVERED'/);
   assert.match(js, /actionDispute/);
   assert.match(js, /actionConfirmReceipt/);

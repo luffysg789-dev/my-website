@@ -86,7 +86,9 @@
       progressReceivedTitle: '确认收货',
       progressReceivedBody: '买方确认无误，资金释放',
       viewDetail: '查看详情',
-      closeDetail: '关闭详情'
+      closeDetail: '关闭详情',
+      viewerBuyer: '我是买家',
+      viewerSeller: '我是卖家'
     },
     en: {
       tabCreate: 'Create',
@@ -162,7 +164,9 @@
       progressReceivedTitle: 'Buyer Confirmed',
       progressReceivedBody: 'Buyer confirmed receipt and funds were released',
       viewDetail: 'View Details',
-      closeDetail: 'Close Details'
+      closeDetail: 'Close Details',
+      viewerBuyer: 'I am Buyer',
+      viewerSeller: 'I am Seller'
     }
   };
 
@@ -705,19 +709,29 @@
     return allOrders;
   }
 
-  function isOrderInitiatedByCurrentUser(appState, order) {
+  function describeViewerRole(appState, order) {
+    const viewerRole = String(order?.viewerRole || '').trim().toLowerCase();
+    if (viewerRole === 'buyer') return t(appState.locale, 'viewerBuyer');
+    if (viewerRole === 'seller') return t(appState.locale, 'viewerSeller');
     const accountEscrowCode = normalizeEscrowCode(appState.account?.escrowCode);
-    if (!accountEscrowCode) return false;
-    const creatorRole = String(order?.creatorRole || '').trim().toLowerCase();
+    if (!accountEscrowCode) return '';
     const buyerEscrowCode = normalizeEscrowCode(order?.buyerEscrowCode);
     const sellerEscrowCode = normalizeEscrowCode(order?.sellerEscrowCode);
-    if (creatorRole === 'buyer') {
-      return accountEscrowCode === buyerEscrowCode;
-    }
-    if (creatorRole === 'seller') {
-      return accountEscrowCode === sellerEscrowCode;
-    }
-    return false;
+    if (accountEscrowCode === buyerEscrowCode) return t(appState.locale, 'viewerBuyer');
+    if (accountEscrowCode === sellerEscrowCode) return t(appState.locale, 'viewerSeller');
+    return '';
+  }
+
+  function getViewerRoleType(appState, order) {
+    const viewerRole = String(order?.viewerRole || '').trim().toLowerCase();
+    if (viewerRole === 'buyer' || viewerRole === 'seller') return viewerRole;
+    const accountEscrowCode = normalizeEscrowCode(appState.account?.escrowCode);
+    if (!accountEscrowCode) return '';
+    const buyerEscrowCode = normalizeEscrowCode(order?.buyerEscrowCode);
+    const sellerEscrowCode = normalizeEscrowCode(order?.sellerEscrowCode);
+    if (accountEscrowCode === buyerEscrowCode) return 'buyer';
+    if (accountEscrowCode === sellerEscrowCode) return 'seller';
+    return '';
   }
 
   function renderOrders(appState) {
@@ -748,7 +762,7 @@
         </div>
         <div class="nexa-escrow-order-item__desc">${order.description || '--'}</div>
         <div class="nexa-escrow-order-item__footer">
-          ${isOrderInitiatedByCurrentUser(appState, order) ? '<span class="nexa-escrow-order-item__initiator">我发起的</span>' : ''}
+          ${describeViewerRole(appState, order) ? `<span class="nexa-escrow-order-item__initiator nexa-escrow-order-item__initiator--${getViewerRoleType(appState, order)}">${describeViewerRole(appState, order)}</span>` : ''}
           <button class="nexa-escrow-order-item__view" type="button" data-detail-trigger="${order.tradeCode}">${order.tradeCode === appState.selectedTradeCode ? t(appState.locale, 'closeDetail') : t(appState.locale, 'viewDetail')}</button>
         </div>
       </article>
@@ -953,7 +967,6 @@
         accountPanel: root.querySelector('[data-tab="account"]'),
         accountPullRefresh: root.querySelector('#nexaEscrowAccountPullToRefresh'),
         orderDetail: root.querySelector('#nexaEscrowOrderDetail'),
-        orderDetailClose: root.querySelector('#nexaEscrowOrderDetailClose'),
         detailTitle: root.querySelector('#nexaEscrowDetailTitle'),
         detailPill: root.querySelector('#nexaEscrowDetailStatus'),
         detailBody: root.querySelector('#nexaEscrowDetailBody'),
@@ -1128,10 +1141,6 @@
     });
     appState.elements.codeModalConfirm?.addEventListener('click', () => {
       closeEscrowCodeModal(appState);
-    });
-    appState.elements.orderDetailClose?.addEventListener('click', () => {
-      closeOrderDetail(appState);
-      renderOrders(appState);
     });
     appState.elements.accountCodeCopy?.addEventListener('click', async () => {
       try {
