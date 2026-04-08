@@ -63,7 +63,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowCounterpartyInput"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"[\s\S]*maxlength="30"/);
-  assert.match(html, /id="nexaEscrowCreateButton"/);
+  assert.match(html, /id="nexaEscrowCreateButton"[\s\S]*data-i18n="createAndPayAction"[\s\S]*确认发起并付款/);
   assert.match(html, /data-order-filter="all"/);
   assert.match(html, /data-order-filter="active"/);
   assert.match(html, /data-order-filter="disputed"/);
