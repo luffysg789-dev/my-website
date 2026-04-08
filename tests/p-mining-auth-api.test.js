@@ -558,6 +558,9 @@ test('p-mining claim writes balance and claim records on the backend', async () 
     assert.equal(bootstrapResponse.body.records.claims.length, 1);
     assert.equal(bootstrapResponse.body.account.firstClaimAt > 0, true);
     assert.equal(bootstrapResponse.body.network.firstMiningAt, bootstrapResponse.body.account.firstClaimAt);
+    assert.equal(Number(claimResponse.body.network.todayMined || 0), Number(bootstrapResponse.body.network.todayMined || 0));
+    assert.equal(Number(claimResponse.body.network.totalMined || 0), Number(bootstrapResponse.body.network.totalMined || 0));
+    assert.equal(Number(claimResponse.body.network.remainingSupply || 0), Number(bootstrapResponse.body.network.remainingSupply || 0));
   } finally {
     harness.cleanup();
   }

@@ -4052,7 +4052,6 @@ app.post('/api/p-mining/claim', (req, res) => {
       return res.status(404).json({ ok: false, error: 'ACCOUNT_NOT_FOUND' });
     }
     const payload = buildPMiningBootstrapPayload(session);
-    payload.network = applyPMiningClaimNetworkDelta(payload.network, result.reward);
     return res.json({
       ok: true,
       reward: result.reward,
