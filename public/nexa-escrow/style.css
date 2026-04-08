@@ -90,7 +90,7 @@ body {
 
 .nexa-escrow-header__identity {
   color: #cfe0ff;
-  font-size: 0.88rem;
+  font-size: 1.08rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -102,8 +102,8 @@ body {
 .nexa-escrow-pill {
   border-radius: 999px;
   padding: 8px 12px;
-  background: var(--escrow-primary-soft);
-  color: #cfe0ff;
+  background: linear-gradient(180deg, #3f7bff, #2f5fff);
+  color: #fff;
   font-size: 0.82rem;
   white-space: nowrap;
 }
@@ -283,6 +283,12 @@ body {
   gap: 12px;
 }
 
+.nexa-escrow-account-item__code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .nexa-escrow-account-item strong,
 .nexa-escrow-code-chip {
   font-size: 1.42rem;
@@ -294,12 +300,13 @@ body {
   appearance: none;
   border: 0;
   cursor: pointer;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(47, 109, 255, 0.14);
-  color: #dce8ff;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  color: #6fa0ff;
+  font-size: 1.42rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .nexa-escrow-account-item__action {
@@ -471,7 +478,7 @@ body {
 }
 
 .nexa-escrow-order-item__initiator {
-  color: #8ea3cf;
+  color: #6fa0ff;
   font-size: 0.85rem;
   font-weight: 700;
 }
@@ -479,12 +486,12 @@ body {
 .nexa-escrow-order-item__view {
   margin-left: auto;
   appearance: none;
-  border: 1px solid rgba(47, 109, 255, 0.28);
+  border: 1px solid rgba(47, 109, 255, 0.55);
   border-radius: 999px;
   min-height: 34px;
   padding: 0 14px;
-  background: rgba(47, 109, 255, 0.14);
-  color: #dce8ff;
+  background: linear-gradient(180deg, #3f7bff, #2f5fff);
+  color: #fff;
   font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
@@ -657,7 +664,7 @@ body {
 
   .nexa-escrow-header__identity {
     flex-shrink: 0;
-    font-size: 0.72rem;
+    font-size: 0.96rem;
   }
 
   .nexa-escrow-brand__icon {

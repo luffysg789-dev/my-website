@@ -846,6 +846,7 @@
     appState.elements.accountCodeCopy?.addEventListener('click', async () => {
       try {
         await copyEscrowCode(appState);
+        setStatus(appState.elements.accountStatus, '复制成功', 'success');
       } catch {}
     });
     appState.elements.withdrawBtn?.addEventListener('click', () => {
