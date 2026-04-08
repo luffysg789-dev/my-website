@@ -10,11 +10,22 @@ const serverPath = path.join(rootDir, 'src', 'server.js');
 const htmlPath = path.join(rootDir, 'public', 'nexa-escrow', 'index.html');
 const cssPath = path.join(rootDir, 'public', 'nexa-escrow', 'style.css');
 const jsPath = path.join(rootDir, 'public', 'nexa-escrow', 'script.js');
+const adminHtmlPath = path.join(rootDir, 'public', 'admin.html');
+const adminJsPath = path.join(rootDir, 'public', 'admin.js');
 
 test('nexa-escrow game files exist', () => {
   assert.equal(fs.existsSync(htmlPath), true);
   assert.equal(fs.existsSync(cssPath), true);
   assert.equal(fs.existsSync(jsPath), true);
+});
+
+test('nexa-escrow shell keeps header fixed while panels scroll within remaining height', () => {
+  const css = fs.readFileSync(cssPath, 'utf8');
+
+  assert.match(css, /\.nexa-escrow-shell\s*\{[\s\S]*grid-template-rows:\s*auto auto minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.nexa-escrow-shell\s*\{[\s\S]*height:\s*100%/);
+  assert.match(css, /\.nexa-escrow-panel\s*\{[\s\S]*height:\s*100%/);
+  assert.match(css, /\.nexa-escrow-panel--scrollable\s*\{[\s\S]*overflow-y:\s*auto/);
 });
 
 test('nexa-escrow is listed in frontend config and backend defaults as a standalone page hidden from the public hub', () => {
@@ -112,4 +123,29 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /actionDispute/);
   assert.match(js, /actionConfirmReceipt/);
   assert.doesNotMatch(js, /已登录/);
+});
+
+test('admin panel includes nexa escrow orders, users, and withdrawal review entry points', () => {
+  const html = fs.readFileSync(adminHtmlPath, 'utf8');
+  const js = fs.readFileSync(adminJsPath, 'utf8');
+
+  assert.match(html, /id="navNexaEscrowOrders"/);
+  assert.match(html, /id="navNexaEscrowUsers"/);
+  assert.match(html, /id="navNexaEscrowWithdrawals"/);
+  assert.match(html, /id="adminNexaEscrowSection"/);
+  assert.match(html, /id="adminNexaEscrowUsersSection"/);
+  assert.match(html, /id="adminNexaEscrowWithdrawalsSection"/);
+  assert.match(html, /id="nexaEscrowOrdersList"/);
+  assert.match(html, /id="nexaEscrowUsersList"/);
+  assert.match(html, /id="nexaEscrowWithdrawalsList"/);
+  assert.match(js, /const adminNexaEscrowUsersSection = document\.getElementById\('adminNexaEscrowUsersSection'\);/);
+  assert.match(js, /const adminNexaEscrowWithdrawalsSection = document\.getElementById\('adminNexaEscrowWithdrawalsSection'\);/);
+  assert.match(js, /const nexaEscrowUsersList = document\.getElementById\('nexaEscrowUsersList'\);/);
+  assert.match(js, /const nexaEscrowWithdrawalsList = document\.getElementById\('nexaEscrowWithdrawalsList'\);/);
+  assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-orders'\]/);
+  assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-users'\]/);
+  assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-withdrawals\?status=review_pending'/);
+  assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-users\/\$\{encodeURIComponent\(String\(userId\)\)\}\/code`\]/);
+  assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-withdrawals\/\$\{encodeURIComponent\(partnerOrderNo\)\}\/approve`\]/);
+  assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-withdrawals\/\$\{encodeURIComponent\(partnerOrderNo\)\}\/reject`\]/);
 });

@@ -57,6 +57,8 @@ const adminSkillsFetchSection = document.getElementById('adminSkillsFetchSection
 const adminSkillsSection = document.getElementById('adminSkillsSection');
 const adminGamesSection = document.getElementById('adminGamesSection');
 const adminNexaEscrowSection = document.getElementById('adminNexaEscrowSection');
+const adminNexaEscrowUsersSection = document.getElementById('adminNexaEscrowUsersSection');
+const adminNexaEscrowWithdrawalsSection = document.getElementById('adminNexaEscrowWithdrawalsSection');
 const adminXiangqiDepositsSection = document.getElementById('adminXiangqiDepositsSection');
 const adminXiangqiWithdrawalsSection = document.getElementById('adminXiangqiWithdrawalsSection');
 const adminSkillsCreateForm = document.getElementById('adminSkillsCreateForm');
@@ -68,6 +70,10 @@ const gamesList = document.getElementById('gamesList');
 const gamesMessage = document.getElementById('gamesMessage');
 const nexaEscrowOrdersList = document.getElementById('nexaEscrowOrdersList');
 const nexaEscrowOrdersMessage = document.getElementById('nexaEscrowOrdersMessage');
+const nexaEscrowUsersList = document.getElementById('nexaEscrowUsersList');
+const nexaEscrowUsersMessage = document.getElementById('nexaEscrowUsersMessage');
+const nexaEscrowWithdrawalsList = document.getElementById('nexaEscrowWithdrawalsList');
+const nexaEscrowWithdrawalsMessage = document.getElementById('nexaEscrowWithdrawalsMessage');
 const xiangqiDepositsList = document.getElementById('xiangqiDepositsList');
 const xiangqiDepositsMessage = document.getElementById('xiangqiDepositsMessage');
 const xiangqiWithdrawalsList = document.getElementById('xiangqiWithdrawalsList');
@@ -196,6 +202,8 @@ const texts = {
     navSkills: '技能列表',
     navGames: '游戏列表',
     navNexaEscrowOrders: '担保订单',
+    navNexaEscrowUsers: '担保用户',
+    navNexaEscrowWithdrawals: '担保提现审核',
     navXiangqiDeposits: '象棋充值订单',
     navXiangqiWithdrawals: '象棋提现审核',
     navPassword: '修改密码',
@@ -302,11 +310,21 @@ const texts = {
     skillsCreateRouteMissing: '技能新增接口不存在（404）。请重启后端后再试。',
     gamesListTitle: '游戏列表',
     nexaEscrowOrdersTitle: '担保订单',
+    nexaEscrowUsersTitle: '担保用户',
+    nexaEscrowWithdrawalsTitle: '担保提现审核',
     xiangqiDepositsTitle: '象棋充值订单',
     nexaEscrowOrdersEmpty: '当前没有担保订单。',
+    nexaEscrowUsersEmpty: '当前没有担保用户。',
+    nexaEscrowUsersSave: '保存担保号',
+    nexaEscrowUsersSaved: '担保号已更新。',
     nexaEscrowResolveSeller: '判给卖家',
     nexaEscrowResolveBuyer: '退款买家',
     nexaEscrowResolved: '担保订单已处理。',
+    nexaEscrowWithdrawalsApprove: '通过提现',
+    nexaEscrowWithdrawalsReject: '驳回提现',
+    nexaEscrowWithdrawalsEmpty: '当前没有待审核的担保提现申请。',
+    nexaEscrowWithdrawalsApproved: '担保提现已通过审核。',
+    nexaEscrowWithdrawalsRejected: '担保提现已驳回，金额已退回担保钱包。',
     xiangqiDepositsEmpty: '当前没有象棋充值订单。',
     xiangqiWithdrawalsTitle: '象棋提现审核',
     xiangqiWithdrawalsApprove: '通过并打款',
@@ -444,6 +462,8 @@ const texts = {
     navSkills: 'Skills',
     navGames: 'Games',
     navNexaEscrowOrders: 'Escrow Orders',
+    navNexaEscrowUsers: 'Escrow Users',
+    navNexaEscrowWithdrawals: 'Escrow Withdrawals',
     navXiangqiDeposits: 'Xiangqi Deposits',
     navXiangqiWithdrawals: 'Xiangqi Withdrawals',
     navPassword: 'Change Password',
@@ -550,11 +570,21 @@ const texts = {
     skillsCreateRouteMissing: 'Skill create API not found (404). Please restart the backend and try again.',
     gamesListTitle: 'Games',
     nexaEscrowOrdersTitle: 'Escrow Orders',
+    nexaEscrowUsersTitle: 'Escrow Users',
+    nexaEscrowWithdrawalsTitle: 'Escrow Withdrawals',
     xiangqiDepositsTitle: 'Xiangqi Deposit Orders',
     nexaEscrowOrdersEmpty: 'No escrow orders yet.',
+    nexaEscrowUsersEmpty: 'No escrow users yet.',
+    nexaEscrowUsersSave: 'Save Escrow ID',
+    nexaEscrowUsersSaved: 'Escrow ID updated.',
     nexaEscrowResolveSeller: 'Release to Seller',
     nexaEscrowResolveBuyer: 'Refund Buyer',
     nexaEscrowResolved: 'Escrow order resolved.',
+    nexaEscrowWithdrawalsApprove: 'Approve Withdrawal',
+    nexaEscrowWithdrawalsReject: 'Reject Withdrawal',
+    nexaEscrowWithdrawalsEmpty: 'No escrow withdrawal requests are pending.',
+    nexaEscrowWithdrawalsApproved: 'Escrow withdrawal approved.',
+    nexaEscrowWithdrawalsRejected: 'Escrow withdrawal rejected and refunded.',
     xiangqiDepositsEmpty: 'No Xiangqi deposit orders yet.',
     xiangqiWithdrawalsTitle: 'Xiangqi Withdrawals',
     xiangqiWithdrawalsApprove: 'Approve',
@@ -998,6 +1028,8 @@ function applyLanguage() {
   document.getElementById('navSkills').textContent = dict.navSkills;
   document.getElementById('navGames').textContent = dict.navGames;
   document.getElementById('navNexaEscrowOrders').textContent = dict.navNexaEscrowOrders;
+  document.getElementById('navNexaEscrowUsers').textContent = dict.navNexaEscrowUsers;
+  document.getElementById('navNexaEscrowWithdrawals').textContent = dict.navNexaEscrowWithdrawals;
   document.getElementById('navXiangqiDeposits').textContent = dict.navXiangqiDeposits;
   document.getElementById('navXiangqiWithdrawals').textContent = dict.navXiangqiWithdrawals;
   document.getElementById('navPassword').textContent = dict.navPassword;
@@ -1058,6 +1090,8 @@ function applyLanguage() {
   document.getElementById('skillsListTitle').textContent = dict.skillsListTitle;
   document.getElementById('gamesListTitle').textContent = dict.gamesListTitle;
   document.getElementById('nexaEscrowOrdersTitle').textContent = dict.nexaEscrowOrdersTitle;
+  document.getElementById('nexaEscrowUsersTitle').textContent = dict.nexaEscrowUsersTitle;
+  document.getElementById('nexaEscrowWithdrawalsTitle').textContent = dict.nexaEscrowWithdrawalsTitle;
   document.getElementById('xiangqiDepositsTitle').textContent = dict.xiangqiDepositsTitle;
   document.getElementById('xiangqiWithdrawalsTitle').textContent = dict.xiangqiWithdrawalsTitle;
   document.getElementById('skillsSyncConfigTitle').textContent = dict.skillsSyncConfigTitle;
@@ -1129,6 +1163,8 @@ function setView(view) {
   adminSkillsSection.classList.toggle('hidden', view !== 'skills');
   adminGamesSection.classList.toggle('hidden', view !== 'games');
   adminNexaEscrowSection.classList.toggle('hidden', view !== 'nexa-escrow-orders');
+  adminNexaEscrowUsersSection.classList.toggle('hidden', view !== 'nexa-escrow-users');
+  adminNexaEscrowWithdrawalsSection.classList.toggle('hidden', view !== 'nexa-escrow-withdrawals');
   adminXiangqiDepositsSection.classList.toggle('hidden', view !== 'xiangqi-deposits');
   adminXiangqiWithdrawalsSection.classList.toggle('hidden', view !== 'xiangqi-withdrawals');
   adminPasswordSection.classList.toggle('hidden', view !== 'password');
@@ -1162,6 +1198,12 @@ function setView(view) {
   }
   if (view === 'nexa-escrow-orders') {
     loadNexaEscrowOrdersList();
+  }
+  if (view === 'nexa-escrow-users') {
+    loadNexaEscrowUsersList();
+  }
+  if (view === 'nexa-escrow-withdrawals') {
+    loadNexaEscrowWithdrawalsList();
   }
   if (view === 'xiangqi-deposits') {
     loadXiangqiDepositsList();
@@ -1253,7 +1295,7 @@ async function loadNexaEscrowOrdersList() {
   if (!nexaEscrowOrdersList || !nexaEscrowOrdersMessage) return;
   nexaEscrowOrdersMessage.textContent = '';
   nexaEscrowOrdersMessage.className = 'message';
-  const result = await requestTutorialJson(['/api/admin/nexa-escrow-orders?status=DISPUTED'], { method: 'GET' });
+  const result = await requestTutorialJson(['/api/admin/nexa-escrow-orders'], { method: 'GET' });
   if (!result.res) {
     nexaEscrowOrdersMessage.textContent = t('operationFailed');
     nexaEscrowOrdersMessage.className = 'message error';
@@ -1270,6 +1312,200 @@ async function loadNexaEscrowOrdersList() {
   }
   renderNexaEscrowOrdersList(result.data?.items || []);
 }
+
+function renderNexaEscrowUsersList(items) {
+  if (!nexaEscrowUsersList) return;
+  if (!Array.isArray(items) || !items.length) {
+    nexaEscrowUsersList.innerHTML = `<p class="empty">${escapeHtml(t('nexaEscrowUsersEmpty'))}</p>`;
+    return;
+  }
+
+  nexaEscrowUsersList.innerHTML = items
+    .map((item) => {
+      const userId = Number(item.userId || 0);
+      const openId = String(item.openId || '').trim();
+      const nickname = String(item.nickname || '').trim();
+      const escrowCode = String(item.escrowCode || '').trim();
+      const walletBalance = String(item.walletBalance || '0.00').trim();
+      const frozenBalance = String(item.frozenBalance || '0.00').trim();
+      return `
+        <article class="review-card">
+          <h3>${escapeHtml(nickname || openId || `#${userId}`)}</h3>
+          <p class="small">OpenID: ${escapeHtml(openId || '-')}</p>
+          <p class="small">钱包余额: ${escapeHtml(walletBalance)} USDT</p>
+          <p class="small">冻结余额: ${escapeHtml(frozenBalance)} USDT</p>
+          <div class="toolbar">
+            <input type="text" data-escrow-user-code="${userId}" value="${escapeHtml(escrowCode)}" />
+            <button type="button" onclick="saveNexaEscrowUserCode(${userId})">${escapeHtml(t('nexaEscrowUsersSave'))}</button>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function loadNexaEscrowUsersList() {
+  if (!nexaEscrowUsersList || !nexaEscrowUsersMessage) return;
+  nexaEscrowUsersMessage.textContent = '';
+  nexaEscrowUsersMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/nexa-escrow-users'], { method: 'GET' });
+  if (!result.res) {
+    nexaEscrowUsersMessage.textContent = t('operationFailed');
+    nexaEscrowUsersMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    nexaEscrowUsersMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    nexaEscrowUsersMessage.className = 'message error';
+    return;
+  }
+  renderNexaEscrowUsersList(result.data?.items || []);
+}
+
+window.saveNexaEscrowUserCode = async function saveNexaEscrowUserCode(userId) {
+  if (!nexaEscrowUsersMessage) return;
+  const input = document.querySelector(`[data-escrow-user-code="${String(userId)}"]`);
+  const escrowCode = String(input?.value || '').trim();
+  nexaEscrowUsersMessage.textContent = '';
+  nexaEscrowUsersMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/nexa-escrow-users/${encodeURIComponent(String(userId))}/code`], {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ escrowCode })
+  });
+  if (!result.res) {
+    nexaEscrowUsersMessage.textContent = t('operationFailed');
+    nexaEscrowUsersMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    nexaEscrowUsersMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    nexaEscrowUsersMessage.className = 'message error';
+    return;
+  }
+  nexaEscrowUsersMessage.textContent = t('nexaEscrowUsersSaved');
+  nexaEscrowUsersMessage.className = 'message success';
+  await loadNexaEscrowUsersList();
+};
+
+function renderNexaEscrowWithdrawalsList(items) {
+  if (!nexaEscrowWithdrawalsList) return;
+  if (!Array.isArray(items) || !items.length) {
+    nexaEscrowWithdrawalsList.innerHTML = `<p class="empty">${escapeHtml(t('nexaEscrowWithdrawalsEmpty'))}</p>`;
+    return;
+  }
+
+  nexaEscrowWithdrawalsList.innerHTML = items
+    .map((item) => {
+      const partnerOrderNo = String(item.partnerOrderNo || '').trim();
+      const openId = String(item.openId || '').trim();
+      const escrowCode = String(item.escrowCode || '').trim();
+      const amount = String(item.amount || '0.00').trim();
+      const status = String(item.status || '').trim();
+      const createdAt = String(item.createdAt || '').trim();
+      return `
+        <article class="review-card">
+          <h3>${escapeHtml(partnerOrderNo)}</h3>
+          <p class="small">OpenID: ${escapeHtml(openId || '-')}</p>
+          <p class="small">担保号: ${escapeHtml(escrowCode || '-')}</p>
+          <p class="small">金额: ${escapeHtml(amount)} USDT</p>
+          <p class="small">状态: ${escapeHtml(status || '-')}</p>
+          <p class="small">申请时间: ${escapeHtml(createdAt || '-')}</p>
+          <div class="review-actions">
+            <button type="button" onclick="approveNexaEscrowWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('nexaEscrowWithdrawalsApprove'))}</button>
+            <button type="button" class="danger" onclick="rejectNexaEscrowWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('nexaEscrowWithdrawalsReject'))}</button>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function loadNexaEscrowWithdrawalsList() {
+  if (!nexaEscrowWithdrawalsList || !nexaEscrowWithdrawalsMessage) return;
+  nexaEscrowWithdrawalsMessage.textContent = '';
+  nexaEscrowWithdrawalsMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/nexa-escrow-withdrawals?status=review_pending'], { method: 'GET' });
+  if (!result.res) {
+    nexaEscrowWithdrawalsMessage.textContent = t('operationFailed');
+    nexaEscrowWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    nexaEscrowWithdrawalsMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    nexaEscrowWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  renderNexaEscrowWithdrawalsList(result.data?.items || []);
+}
+
+window.approveNexaEscrowWithdrawal = async function approveNexaEscrowWithdrawal(partnerOrderNo) {
+  const note = window.prompt('请输入审核备注（可留空）', '') || '';
+  nexaEscrowWithdrawalsMessage.textContent = '';
+  nexaEscrowWithdrawalsMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/nexa-escrow-withdrawals/${encodeURIComponent(partnerOrderNo)}/approve`], {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note })
+  });
+  if (!result.res) {
+    nexaEscrowWithdrawalsMessage.textContent = t('operationFailed');
+    nexaEscrowWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    nexaEscrowWithdrawalsMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    nexaEscrowWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  nexaEscrowWithdrawalsMessage.textContent = t('nexaEscrowWithdrawalsApproved');
+  nexaEscrowWithdrawalsMessage.className = 'message success';
+  await loadNexaEscrowWithdrawalsList();
+};
+
+window.rejectNexaEscrowWithdrawal = async function rejectNexaEscrowWithdrawal(partnerOrderNo) {
+  const note = window.prompt('请输入驳回备注（可留空）', '') || '';
+  nexaEscrowWithdrawalsMessage.textContent = '';
+  nexaEscrowWithdrawalsMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/nexa-escrow-withdrawals/${encodeURIComponent(partnerOrderNo)}/reject`], {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note })
+  });
+  if (!result.res) {
+    nexaEscrowWithdrawalsMessage.textContent = t('operationFailed');
+    nexaEscrowWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    nexaEscrowWithdrawalsMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    nexaEscrowWithdrawalsMessage.className = 'message error';
+    return;
+  }
+  nexaEscrowWithdrawalsMessage.textContent = t('nexaEscrowWithdrawalsRejected');
+  nexaEscrowWithdrawalsMessage.className = 'message success';
+  await loadNexaEscrowWithdrawalsList();
+};
 
 window.resolveNexaEscrowOrder = async function resolveNexaEscrowOrder(tradeCode, resolution) {
   const note = window.prompt(t('rejectPrompt'), '') || '';
@@ -3395,6 +3631,8 @@ document.getElementById('navSkillsFetch').addEventListener('click', () => setVie
 document.getElementById('navSkills').addEventListener('click', () => setView('skills'));
 document.getElementById('navGames').addEventListener('click', () => setView('games'));
 document.getElementById('navNexaEscrowOrders').addEventListener('click', () => setView('nexa-escrow-orders'));
+document.getElementById('navNexaEscrowUsers').addEventListener('click', () => setView('nexa-escrow-users'));
+document.getElementById('navNexaEscrowWithdrawals').addEventListener('click', () => setView('nexa-escrow-withdrawals'));
 document.getElementById('navXiangqiDeposits').addEventListener('click', () => setView('xiangqi-deposits'));
 document.getElementById('navXiangqiWithdrawals').addEventListener('click', () => setView('xiangqi-withdrawals'));
 document.getElementById('navPassword').addEventListener('click', () => setView('password'));

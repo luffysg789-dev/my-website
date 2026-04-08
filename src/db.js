@@ -428,6 +428,19 @@ db.exec(`
   ON nexa_escrow_withdrawals(user_id, created_at DESC);
 `);
 
+const hasEscrowWithdrawalReviewNote = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_withdrawals') WHERE name = 'review_note'").get();
+if (!hasEscrowWithdrawalReviewNote) {
+  db.exec("ALTER TABLE nexa_escrow_withdrawals ADD COLUMN review_note TEXT NOT NULL DEFAULT ''");
+}
+const hasEscrowWithdrawalReviewedBy = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_withdrawals') WHERE name = 'reviewed_by'").get();
+if (!hasEscrowWithdrawalReviewedBy) {
+  db.exec("ALTER TABLE nexa_escrow_withdrawals ADD COLUMN reviewed_by TEXT NOT NULL DEFAULT ''");
+}
+const hasEscrowWithdrawalReviewedAt = db.prepare("SELECT 1 FROM pragma_table_info('nexa_escrow_withdrawals') WHERE name = 'reviewed_at'").get();
+if (!hasEscrowWithdrawalReviewedAt) {
+  db.exec("ALTER TABLE nexa_escrow_withdrawals ADD COLUMN reviewed_at TEXT NOT NULL DEFAULT ''");
+}
+
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_nexa_escrow_orders_participants
   ON nexa_escrow_orders(creator_user_id, buyer_user_id, seller_user_id, created_at DESC);

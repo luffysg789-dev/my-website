@@ -42,7 +42,9 @@ body {
   width: min(100%, 560px);
   margin: 0 auto;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
+  height: 100%;
   max-height: 100%;
   overflow: hidden;
 }
@@ -197,6 +199,7 @@ body {
   display: grid;
   gap: 12px;
   min-height: 0;
+  height: 100%;
 }
 
 .nexa-escrow-panel[hidden] {
@@ -209,6 +212,7 @@ body {
   -webkit-overflow-scrolling: touch;
   padding-top: 0;
   touch-action: pan-y;
+  min-height: 0;
 }
 
 .nexa-escrow-pull-refresh {
