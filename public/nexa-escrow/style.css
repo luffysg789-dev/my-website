@@ -222,6 +222,14 @@ body {
   grid-auto-rows: max-content;
 }
 
+.nexa-escrow-panel[data-tab="create"] {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
 .nexa-escrow-panel[data-tab="account"] > .nexa-escrow-card {
   align-self: start;
 }

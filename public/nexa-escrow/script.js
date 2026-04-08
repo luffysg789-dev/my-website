@@ -540,6 +540,38 @@
     }, 1600);
   }
 
+  function getScrollableEscrowContainer(appState, node) {
+    if (!node) return null;
+    if (appState.elements.withdrawModal && appState.elements.withdrawModal.hidden === false && appState.elements.withdrawModal.contains(node)) {
+      return null;
+    }
+    return node.closest('[data-tab]') || null;
+  }
+
+  function scrollEscrowFieldIntoView(appState, node) {
+    if (!node) return;
+    const container = getScrollableEscrowContainer(appState, node);
+    globalScope.window.setTimeout(() => {
+      try {
+        node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+      } catch {
+        try {
+          node.scrollIntoView();
+        } catch {}
+      }
+      if (container && typeof container.scrollTop === 'number') {
+        const containerRect = container.getBoundingClientRect();
+        const nodeRect = node.getBoundingClientRect();
+        const padding = 18;
+        if (nodeRect.bottom > containerRect.bottom - padding) {
+          container.scrollTop += nodeRect.bottom - containerRect.bottom + padding;
+        } else if (nodeRect.top < containerRect.top + padding) {
+          container.scrollTop -= containerRect.top - nodeRect.top + padding;
+        }
+      }
+    }, 80);
+  }
+
   function switchTab(appState, tab) {
     appState.activeTab = String(tab || 'create');
     if (appState.activeTab !== 'orders') {
@@ -954,6 +986,7 @@
       accountPullStartY: 0,
       accountPullDistance: 0,
       accountRefreshing: false,
+      activeInputNode: null,
       elements: {
         tabButtons: Array.from(root.querySelectorAll('[data-tab-target]')),
         panels: Array.from(root.querySelectorAll('[data-tab]')),
@@ -967,6 +1000,7 @@
         descriptionInput: root.querySelector('#nexaEscrowDescriptionInput'),
         createButton: root.querySelector('#nexaEscrowCreateButton'),
         createStatus: root.querySelector('#nexaEscrowCreateStatus'),
+        createPanel: root.querySelector('[data-tab="create"]'),
         ordersList: root.querySelector('#nexaEscrowOrdersList'),
         ordersCard: root.querySelector('#nexaEscrowOrdersCard'),
         ordersPanel: root.querySelector('[data-tab="orders"]'),
@@ -1097,6 +1131,22 @@
         appState.role = button.dataset.role;
         renderCreateRole(appState);
       });
+    });
+    [appState.elements.amountInput, appState.elements.counterpartyInput, appState.elements.descriptionInput, appState.elements.withdrawAmountInput].forEach((input) => {
+      input?.addEventListener('focus', () => {
+        appState.activeInputNode = input;
+        scrollEscrowFieldIntoView(appState, input);
+      });
+      input?.addEventListener('blur', () => {
+        if (appState.activeInputNode === input) {
+          appState.activeInputNode = null;
+        }
+      });
+    });
+    globalScope.window.visualViewport?.addEventListener?.('resize', () => {
+      if (appState.activeInputNode) {
+        scrollEscrowFieldIntoView(appState, appState.activeInputNode);
+      }
     });
     appState.elements.createButton?.addEventListener('click', async () => {
       try {

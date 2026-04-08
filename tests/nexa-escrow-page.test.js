@@ -27,6 +27,7 @@ test('nexa-escrow shell keeps header fixed while panels scroll within remaining 
   assert.match(css, /\.nexa-escrow-panel\s*\{[\s\S]*height:\s*100%/);
   assert.match(css, /\.nexa-escrow-panel--scrollable\s*\{[\s\S]*overflow-y:\s*auto/);
   assert.match(css, /\.nexa-escrow-panel--scrollable\s*\{[\s\S]*align-content:\s*start/);
+  assert.match(css, /\.nexa-escrow-panel\[data-tab="create"\]\s*\{[\s\S]*overflow-y:\s*auto/);
   assert.match(css, /\.nexa-escrow-panel\[data-tab="account"\]\s*\{[\s\S]*align-content:\s*start/);
   assert.match(css, /\.nexa-escrow-panel\[data-tab="account"\]\s*>\s*\.nexa-escrow-card\s*\{[\s\S]*align-self:\s*start/);
 });
@@ -115,6 +116,8 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function openEscrowCodeModal\(/);
   assert.match(js, /function closeOrderDetail\(/);
   assert.match(js, /function openEscrowOrderFromList\(/);
+  assert.match(js, /function scrollEscrowFieldIntoView\(/);
+  assert.match(js, /visualViewport\?\.addEventListener\?\.\('resize'/);
   assert.match(js, /renderOrderDetail\(appState\);\s*renderOrders\(appState\);/);
   assert.match(js, /viewerBuyer: '我是买家'/);
   assert.match(js, /viewerSeller: '我是卖家'/);
