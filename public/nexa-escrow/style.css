@@ -426,10 +426,10 @@ body {
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.03);
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   text-align: left;
 }
 
@@ -443,11 +443,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .nexa-escrow-order-item__code {
   font-weight: 800;
+  font-size: 0.88rem;
   letter-spacing: 0.08em;
 }
 
@@ -460,25 +461,25 @@ body {
 .nexa-escrow-order-item__summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 8px;
   align-items: end;
 }
 
 .nexa-escrow-order-item__amount {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nexa-escrow-order-item__amount strong {
   color: var(--escrow-text);
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   line-height: 1;
 }
 
 .nexa-escrow-order-item__time {
   text-align: right;
   color: var(--escrow-muted);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
 }
 
 .nexa-escrow-order-item__grid {
@@ -527,7 +528,7 @@ body {
 
 .nexa-escrow-order-item__desc {
   color: var(--escrow-muted);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -537,13 +538,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  gap: 8px;
   margin-top: auto;
 }
 
 .nexa-escrow-order-item__initiator {
   color: #6fa0ff;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -552,11 +553,11 @@ body {
   appearance: none;
   border: 1px solid rgba(47, 109, 255, 0.55);
   border-radius: 999px;
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 30px;
+  padding: 0 12px;
   background: linear-gradient(180deg, #3f7bff, #2f5fff);
   color: #fff;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

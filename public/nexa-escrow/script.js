@@ -26,7 +26,7 @@
       accountHeadline: '你的 Nexa 担保身份',
       filterAll: '全部',
       filterActive: '进行中',
-      filterDisputed: '争议中',
+      filterDisputed: '申诉中',
       filterCancelled: '已取消',
       filterCompleted: '完成',
       escrowCodeLabel: '担保号',

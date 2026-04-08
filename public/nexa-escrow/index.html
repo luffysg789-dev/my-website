@@ -15,22 +15,7 @@
           <div class="nexa-escrow-brand">
             <div class="nexa-escrow-brand__icon" aria-hidden="true">
               <svg viewBox="0 0 64 64" class="nexa-escrow-brand__icon-svg">
-                <defs>
-                  <linearGradient id="nexaEscrowShieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#f7fbff" />
-                    <stop offset="100%" stop-color="#d8e6ff" />
-                  </linearGradient>
-                  <linearGradient id="nexaEscrowShieldAccent" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#ff8b66" />
-                    <stop offset="100%" stop-color="#d93f3f" />
-                  </linearGradient>
-                </defs>
-                <path d="M32 7c7 5 15 7 22 7v15c0 15-8.8 23.8-22 28-13.2-4.2-22-13-22-28V14c7 0 15-2 22-7z" fill="url(#nexaEscrowShieldBg)" />
-                <path d="M32 12c5.9 3.9 12.4 5.8 18 5.8v11.4c0 12.2-6.9 19.5-18 23.2-11.1-3.7-18-11-18-23.2V17.8c5.6 0 12.1-1.9 18-5.8z" fill="#eef4ff" />
-                <path d="M17 20h17v28c-7.7-3.2-12.6-9.5-12.6-18.8V20z" fill="url(#nexaEscrowShieldAccent)" />
-                <path d="M34 20h13v9.5L34 42.5V20z" fill="#97b8ff" />
-                <path d="M34 42.5 47 29.5V34c0 6-3.8 10.6-13 14.1v-5.6z" fill="#6d90ff" />
-                <path d="M25.8 32.8 21.6 28.6l-2.8 2.8 7 7 14-14-2.8-2.8-11.2 11.2z" fill="#fff" />
+                <path d="M32 8c6.7 4.5 14.4 6.8 21.5 6.8v14c0 15-8.9 24.4-21.5 28.5C19.4 53.2 10.5 43.8 10.5 28.8v-14C17.6 14.8 25.3 12.5 32 8z" fill="#fff" />
               </svg>
             </div>
             <div class="nexa-escrow-brand__title">
@@ -53,10 +38,6 @@
 
         <section class="nexa-escrow-panel is-active" data-tab="create">
           <article class="nexa-escrow-card">
-            <div class="nexa-escrow-card__head">
-              <p class="nexa-escrow-label" data-i18n="tabCreate">发起担保</p>
-            </div>
-
             <div class="nexa-escrow-role-toggle">
               <button id="nexaEscrowRoleBuyer" class="nexa-escrow-role-toggle__item is-active" type="button" data-role="buyer" data-i18n="roleBuyer">我是买家</button>
               <button id="nexaEscrowRoleSeller" class="nexa-escrow-role-toggle__item" type="button" data-role="seller" data-i18n="roleSeller">我是卖家</button>
@@ -123,20 +104,7 @@
 
         <section class="nexa-escrow-panel" data-tab="account" hidden>
           <article class="nexa-escrow-card">
-            <div class="nexa-escrow-card__head">
-              <div>
-                <p class="nexa-escrow-label">账户中心</p>
-                <h2 data-i18n="accountHeadline">你的 Nexa 担保身份</h2>
-              </div>
-            </div>
             <div class="nexa-escrow-account-grid">
-              <div class="nexa-escrow-account-item">
-                <span class="nexa-escrow-label" data-i18n="escrowCodeLabel">担保号</span>
-                <div class="nexa-escrow-account-item__code-row">
-                  <strong id="nexaEscrowAccountCode">N000000</strong>
-                  <button id="nexaEscrowAccountCodeCopy" class="nexa-escrow-copy-button" type="button" data-i18n="copyAction">复制</button>
-                </div>
-              </div>
               <div class="nexa-escrow-account-item">
                 <span class="nexa-escrow-label" data-i18n="walletLabel">钱包余额</span>
                 <strong id="nexaEscrowAccountWallet">0.00 USDT</strong>

@@ -58,8 +58,8 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowOrderDetailClose"/);
   assert.match(html, /id="nexaEscrowPrimaryAction"/);
   assert.match(html, /id="nexaEscrowSecondaryAction"/);
-  assert.match(html, /id="nexaEscrowAccountCode"/);
-  assert.match(html, /id="nexaEscrowAccountCodeCopy"/);
+  assert.match(html, /id="nexaEscrowHeaderCode"/);
+  assert.match(html, /id="nexaEscrowHeaderCopy"/);
   assert.match(html, /id="nexaEscrowWithdrawBtn"/);
   assert.match(html, /id="nexaEscrowAccountStatus"/);
   assert.match(html, /id="nexaEscrowCodeModal"/);
