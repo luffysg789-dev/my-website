@@ -529,6 +529,9 @@
     if (appState.activeTab !== 'orders') {
       resetOrdersPullRefresh(appState);
     }
+    if (appState.activeTab !== 'account') {
+      resetAccountPullRefresh(appState);
+    }
     appState.elements.panels.forEach((panel) => {
       const active = panel.dataset.tab === appState.activeTab;
       panel.hidden = !active;
@@ -795,6 +798,16 @@
     renderAccount(appState);
   }
 
+  async function refreshCurrentEscrowTab(appState) {
+    if (appState.bootstrapRefreshing) return;
+    appState.bootstrapRefreshing = true;
+    try {
+      await loadBootstrap(appState);
+    } finally {
+      appState.bootstrapRefreshing = false;
+    }
+  }
+
   function resetOrdersPullRefresh(appState) {
     appState.ordersPullStartY = 0;
     appState.ordersPullDistance = 0;
@@ -833,6 +846,44 @@
     }
   }
 
+  function resetAccountPullRefresh(appState) {
+    appState.accountPullStartY = 0;
+    appState.accountPullDistance = 0;
+    const indicator = appState.elements.accountPullRefresh;
+    if (!indicator) return;
+    indicator.style.height = '0px';
+    indicator.classList.remove('is-ready');
+    if (!appState.accountRefreshing) {
+      indicator.classList.remove('is-refreshing');
+    }
+  }
+
+  function updateAccountPullRefresh(appState, distance) {
+    const indicator = appState.elements.accountPullRefresh;
+    if (!indicator) return;
+    const clamped = Math.max(0, Math.min(distance, NEXA_ESCROW_PULL_REFRESH_MAX_PX));
+    appState.accountPullDistance = clamped;
+    indicator.style.height = `${clamped}px`;
+    indicator.classList.toggle('is-ready', clamped >= NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX);
+  }
+
+  async function refreshEscrowAccount(appState) {
+    if (appState.accountRefreshing) return;
+    appState.accountRefreshing = true;
+    const indicator = appState.elements.accountPullRefresh;
+    if (indicator) {
+      indicator.style.height = `${NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX}px`;
+      indicator.classList.remove('is-ready');
+      indicator.classList.add('is-refreshing');
+    }
+    try {
+      await loadBootstrap(appState);
+    } finally {
+      appState.accountRefreshing = false;
+      resetAccountPullRefresh(appState);
+    }
+  }
+
   function createApp(root) {
     const storage = getStorage();
     const appState = {
@@ -845,9 +896,13 @@
       role: 'buyer',
       activeTab: 'create',
       orderFilter: 'all',
+      bootstrapRefreshing: false,
       ordersPullStartY: 0,
       ordersPullDistance: 0,
       ordersRefreshing: false,
+      accountPullStartY: 0,
+      accountPullDistance: 0,
+      accountRefreshing: false,
       elements: {
         tabButtons: Array.from(root.querySelectorAll('[data-tab-target]')),
         panels: Array.from(root.querySelectorAll('[data-tab]')),
@@ -864,6 +919,8 @@
         ordersList: root.querySelector('#nexaEscrowOrdersList'),
         ordersPanel: root.querySelector('[data-tab="orders"]'),
         ordersPullRefresh: root.querySelector('#nexaEscrowOrdersPullToRefresh'),
+        accountPanel: root.querySelector('[data-tab="account"]'),
+        accountPullRefresh: root.querySelector('#nexaEscrowAccountPullToRefresh'),
         orderDetail: root.querySelector('#nexaEscrowOrderDetail'),
         orderDetailClose: root.querySelector('#nexaEscrowOrderDetailClose'),
         detailTitle: root.querySelector('#nexaEscrowDetailTitle'),
@@ -894,7 +951,13 @@
     };
 
     appState.elements.tabButtons.forEach((button) => {
-      button.addEventListener('click', () => switchTab(appState, button.dataset.tabTarget));
+      button.addEventListener('click', () => {
+        const nextTab = String(button.dataset.tabTarget || 'create');
+        switchTab(appState, nextTab);
+        if (nextTab === 'orders' || nextTab === 'account') {
+          refreshCurrentEscrowTab(appState).catch(() => {});
+        }
+      });
     });
     appState.elements.orderFilterButtons.forEach((button) => {
       button.addEventListener('click', () => {
@@ -944,6 +1007,38 @@
         return;
       }
       resetOrdersPullRefresh(appState);
+    });
+    appState.elements.accountPanel?.addEventListener('touchstart', (event) => {
+      if (appState.activeTab !== 'account' || appState.accountRefreshing) return;
+      if (appState.elements.accountPanel.scrollTop > 0) return;
+      appState.accountPullStartY = Number(event.touches?.[0]?.clientY || 0);
+      appState.accountPullDistance = 0;
+    }, { passive: true });
+    appState.elements.accountPanel?.addEventListener('touchmove', (event) => {
+      if (appState.activeTab !== 'account' || appState.accountRefreshing) return;
+      if (appState.elements.accountPanel.scrollTop > 0 || !appState.accountPullStartY) {
+        resetAccountPullRefresh(appState);
+        return;
+      }
+      const currentY = Number(event.touches?.[0]?.clientY || 0);
+      const delta = currentY - appState.accountPullStartY;
+      if (delta <= 0) {
+        resetAccountPullRefresh(appState);
+        return;
+      }
+      event.preventDefault();
+      updateAccountPullRefresh(appState, delta * 0.6);
+    }, { passive: false });
+    appState.elements.accountPanel?.addEventListener('touchend', () => {
+      if (appState.activeTab !== 'account' || appState.accountRefreshing) return;
+      const shouldRefresh = appState.accountPullDistance >= NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX;
+      if (shouldRefresh) {
+        refreshEscrowAccount(appState).catch(() => {
+          resetAccountPullRefresh(appState);
+        });
+        return;
+      }
+      resetAccountPullRefresh(appState);
     });
     appState.elements.roleButtons.forEach((button) => {
       button.addEventListener('click', () => {
