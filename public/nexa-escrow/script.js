@@ -589,7 +589,7 @@
   function filterOrders(appState) {
     const allOrders = Array.isArray(appState.orders) ? appState.orders : [];
     if (appState.orderFilter === 'active') {
-      return allOrders.filter((order) => ['AWAITING_PAYMENT', 'FUNDED', 'DELIVERED'].includes(String(order?.status || '').trim().toUpperCase()));
+      return allOrders.filter((order) => ['AWAITING_PAYMENT', 'PAYMENT_PENDING', 'FUNDED', 'DELIVERED'].includes(String(order?.status || '').trim().toUpperCase()));
     }
     if (appState.orderFilter === 'disputed') {
       return allOrders.filter((order) => String(order?.status || '').trim().toUpperCase() === 'DISPUTED');
@@ -630,11 +630,11 @@
           <div class="nexa-escrow-order-item__time">${order.createdAt || '--'}</div>
         </div>
         <div class="nexa-escrow-order-item__grid">
-          <div class="nexa-escrow-order-item__cell">
+          <div class="nexa-escrow-order-item__cell nexa-escrow-order-item__cell--buyer">
             <span class="nexa-escrow-label">${t(appState.locale, 'detailBuyer')}</span>
             <strong>${order.buyerEscrowCode || '--'}</strong>
           </div>
-          <div class="nexa-escrow-order-item__cell">
+          <div class="nexa-escrow-order-item__cell nexa-escrow-order-item__cell--seller">
             <span class="nexa-escrow-label">${t(appState.locale, 'detailSeller')}</span>
             <strong>${order.sellerEscrowCode || '--'}</strong>
           </div>

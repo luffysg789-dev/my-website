@@ -93,6 +93,7 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function copyEscrowCode\(/);
   assert.match(js, /orderFilterButtons/);
   assert.match(js, /orderDetailClose/);
+  assert.match(js, /AWAITING_PAYMENT', 'PAYMENT_PENDING', 'FUNDED', 'DELIVERED'/);
   assert.match(js, /actionDispute/);
   assert.match(js, /actionConfirmReceipt/);
   assert.doesNotMatch(js, /已登录/);

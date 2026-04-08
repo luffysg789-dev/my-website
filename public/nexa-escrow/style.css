@@ -423,6 +423,23 @@ body {
   white-space: nowrap;
 }
 
+.nexa-escrow-order-item__cell--buyer {
+  background: rgba(220, 66, 66, 0.92);
+  border-color: rgba(255, 110, 110, 0.3);
+}
+
+.nexa-escrow-order-item__cell--seller {
+  background: rgba(30, 156, 87, 0.92);
+  border-color: rgba(102, 216, 148, 0.3);
+}
+
+.nexa-escrow-order-item__cell--buyer .nexa-escrow-label,
+.nexa-escrow-order-item__cell--seller .nexa-escrow-label,
+.nexa-escrow-order-item__cell--buyer strong,
+.nexa-escrow-order-item__cell--seller strong {
+  color: #fff;
+}
+
 .nexa-escrow-order-item__desc {
   color: var(--escrow-muted);
   font-size: 0.9rem;
