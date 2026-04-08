@@ -233,6 +233,12 @@ db.exec(`
 `);
 
 db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_game_users_escrow_nickname
+  ON game_users(escrow_nickname)
+  WHERE escrow_nickname <> '';
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS game_wallets (
     user_id INTEGER PRIMARY KEY,
     currency TEXT NOT NULL DEFAULT 'USDT',

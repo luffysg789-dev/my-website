@@ -115,6 +115,14 @@
                 <span class="nexa-escrow-label" data-i18n="walletLabel">钱包余额</span>
                 <strong id="nexaEscrowAccountWallet">0.00 USDT</strong>
                 <button id="nexaEscrowWithdrawBtn" class="nexa-escrow-primary nexa-escrow-account-item__action" type="button">提现</button>
+                <div id="nexaEscrowLatestWithdrawal" class="nexa-escrow-withdrawal-record" hidden>
+                  <span class="nexa-escrow-label" data-i18n="latestWithdrawalLabel">最新提现记录</span>
+                  <div class="nexa-escrow-withdrawal-record__row">
+                    <strong id="nexaEscrowLatestWithdrawalAmount">0.00 USDT</strong>
+                    <span id="nexaEscrowLatestWithdrawalStatus" class="nexa-escrow-withdrawal-record__status">待审核</span>
+                  </div>
+                  <span id="nexaEscrowLatestWithdrawalTime" class="nexa-escrow-withdrawal-record__time">--</span>
+                </div>
               </div>
             </div>
             <p id="nexaEscrowAccountStatus" class="nexa-escrow-status" hidden></p>

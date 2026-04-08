@@ -311,7 +311,7 @@ const texts = {
     gamesListTitle: '游戏列表',
     nexaEscrowOrdersTitle: '担保订单',
     nexaEscrowUsersTitle: '担保用户',
-    nexaEscrowWithdrawalsTitle: '担保提现审核',
+    nexaEscrowWithdrawalsTitle: '担保提现记录',
     xiangqiDepositsTitle: '象棋充值订单',
     nexaEscrowOrdersEmpty: '当前没有担保订单。',
     nexaEscrowUsersEmpty: '当前没有担保用户。',
@@ -322,7 +322,7 @@ const texts = {
     nexaEscrowResolved: '担保订单已处理。',
     nexaEscrowWithdrawalsApprove: '通过提现',
     nexaEscrowWithdrawalsReject: '驳回提现',
-    nexaEscrowWithdrawalsEmpty: '当前没有待审核的担保提现申请。',
+    nexaEscrowWithdrawalsEmpty: '当前没有担保提现记录。',
     nexaEscrowWithdrawalsApproved: '担保提现已通过审核。',
     nexaEscrowWithdrawalsRejected: '担保提现已驳回，金额已退回担保钱包。',
     xiangqiDepositsEmpty: '当前没有象棋充值订单。',
@@ -571,7 +571,7 @@ const texts = {
     gamesListTitle: 'Games',
     nexaEscrowOrdersTitle: 'Escrow Orders',
     nexaEscrowUsersTitle: 'Escrow Users',
-    nexaEscrowWithdrawalsTitle: 'Escrow Withdrawals',
+    nexaEscrowWithdrawalsTitle: 'Escrow Withdrawal Records',
     xiangqiDepositsTitle: 'Xiangqi Deposit Orders',
     nexaEscrowOrdersEmpty: 'No escrow orders yet.',
     nexaEscrowUsersEmpty: 'No escrow users yet.',
@@ -582,7 +582,7 @@ const texts = {
     nexaEscrowResolved: 'Escrow order resolved.',
     nexaEscrowWithdrawalsApprove: 'Approve Withdrawal',
     nexaEscrowWithdrawalsReject: 'Reject Withdrawal',
-    nexaEscrowWithdrawalsEmpty: 'No escrow withdrawal requests are pending.',
+    nexaEscrowWithdrawalsEmpty: 'No escrow withdrawal records yet.',
     nexaEscrowWithdrawalsApproved: 'Escrow withdrawal approved.',
     nexaEscrowWithdrawalsRejected: 'Escrow withdrawal rejected and refunded.',
     xiangqiDepositsEmpty: 'No Xiangqi deposit orders yet.',
@@ -1324,7 +1324,7 @@ function renderNexaEscrowUsersList(items) {
     .map((item) => {
       const userId = Number(item.userId || 0);
       const openId = String(item.openId || '').trim();
-      const nickname = String(item.nickname || '').trim();
+      const nickname = String(item.escrowNickname || item.nickname || '').trim();
       const escrowCode = String(item.escrowCode || '').trim();
       const walletBalance = String(item.walletBalance || '0.00').trim();
       const frozenBalance = String(item.frozenBalance || '0.00').trim();
@@ -1411,6 +1411,7 @@ function renderNexaEscrowWithdrawalsList(items) {
       const amount = String(item.amount || '0.00').trim();
       const status = String(item.status || '').trim();
       const createdAt = String(item.createdAt || '').trim();
+      const canReview = String(status || '').trim().toLowerCase() === 'review_pending';
       return `
         <article class="review-card">
           <h3>${escapeHtml(partnerOrderNo)}</h3>
@@ -1419,10 +1420,12 @@ function renderNexaEscrowWithdrawalsList(items) {
           <p class="small">金额: ${escapeHtml(amount)} USDT</p>
           <p class="small">状态: ${escapeHtml(status || '-')}</p>
           <p class="small">申请时间: ${escapeHtml(createdAt || '-')}</p>
-          <div class="review-actions">
-            <button type="button" onclick="approveNexaEscrowWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('nexaEscrowWithdrawalsApprove'))}</button>
-            <button type="button" class="danger" onclick="rejectNexaEscrowWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('nexaEscrowWithdrawalsReject'))}</button>
-          </div>
+          ${canReview ? `
+            <div class="review-actions">
+              <button type="button" onclick="approveNexaEscrowWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('nexaEscrowWithdrawalsApprove'))}</button>
+              <button type="button" class="danger" onclick="rejectNexaEscrowWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('nexaEscrowWithdrawalsReject'))}</button>
+            </div>
+          ` : ''}
         </article>
       `;
     })
@@ -1433,7 +1436,7 @@ async function loadNexaEscrowWithdrawalsList() {
   if (!nexaEscrowWithdrawalsList || !nexaEscrowWithdrawalsMessage) return;
   nexaEscrowWithdrawalsMessage.textContent = '';
   nexaEscrowWithdrawalsMessage.className = 'message';
-  const result = await requestTutorialJson(['/api/admin/nexa-escrow-withdrawals?status=review_pending'], { method: 'GET' });
+  const result = await requestTutorialJson(['/api/admin/nexa-escrow-withdrawals'], { method: 'GET' });
   if (!result.res) {
     nexaEscrowWithdrawalsMessage.textContent = t('operationFailed');
     nexaEscrowWithdrawalsMessage.className = 'message error';

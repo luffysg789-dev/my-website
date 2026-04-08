@@ -87,6 +87,10 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /id="nexaEscrowNicknameInput"/);
   assert.match(html, /id="nexaEscrowNicknameSaveBtn"/);
   assert.match(html, /id="nexaEscrowNicknameHint"/);
+  assert.match(html, /id="nexaEscrowLatestWithdrawal"/);
+  assert.match(html, /id="nexaEscrowLatestWithdrawalAmount"/);
+  assert.match(html, /id="nexaEscrowLatestWithdrawalStatus"/);
+  assert.match(html, /id="nexaEscrowLatestWithdrawalTime"/);
   assert.match(html, /id="nexaEscrowWithdrawModal"/);
   assert.match(html, /id="nexaEscrowWithdrawAmountInput"/);
   assert.match(html, /id="nexaEscrowAccountStatus"/);
@@ -116,7 +120,9 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function createEscrowOrder\(/);
   assert.match(js, /function beginEscrowPayment\(/);
   assert.match(js, /function settlePendingEscrowPayment\(/);
+  assert.match(js, /if \(String\(response\.status \|\| ''\)\.trim\(\)\.toUpperCase\(\) === 'SUCCESS'\) \{[\s\S]*switchTab\(appState, 'orders'\);/);
   assert.match(js, /function submitEscrowAction\(/);
+  assert.match(js, /appState\.orders = mergeOrder\(appState\.orders, response\.order\);[\s\S]*renderOrderDetail\(appState\);[\s\S]*renderOrders\(appState\);/);
   assert.match(js, /function filterOrders\(/);
   assert.match(js, /function refreshEscrowOrders\(/);
   assert.match(js, /function refreshEscrowAccount\(/);
@@ -144,7 +150,8 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /nicknameSaved: '昵称已保存'/);
   assert.match(js, /nicknameLocked: '昵称已生成，无法修改'/);
   assert.match(js, /nicknameRequired: '请填写昵称'/);
-  assert.match(js, /nicknameInvalid: '昵称仅支持中文、英文、数字，长度 2-12 位'/);
+  assert.match(js, /nicknameInvalid: '昵称最多 6 个中文或 12 个字母数字'/);
+  assert.match(js, /nicknameTaken: '此昵称已被占用，请重新填写'/);
   assert.match(js, /\/api\/nexa-escrow\/profile\/nickname/);
   assert.match(js, /if \(!String\(appState\.account\?\.escrowNickname \|\| ''\)\.trim\(\)\) \{/);
   assert.match(js, /function maskEscrowNickname\(/);
@@ -173,6 +180,11 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function beginEscrowWithdrawFlow\(/);
   assert.match(js, /\/api\/nexa-escrow\/withdraw\/create/);
   assert.match(js, /\/api\/nexa-escrow\/withdraw\/query/);
+  assert.match(js, /latestWithdrawalLabel: '最新提现记录'/);
+  assert.match(js, /withdrawStatusReviewPending: '待审核'/);
+  assert.match(js, /withdrawStatusPending: '处理中'/);
+  assert.match(js, /withdrawStatusSuccess: '已通过到账'/);
+  assert.match(js, /function syncLatestEscrowWithdrawalStatus\(/);
   assert.match(js, /orderFilterButtons/);
   assert.match(js, /AWAITING_PAYMENT', 'PAYMENT_PENDING', 'FUNDED', 'DELIVERED'/);
   assert.match(js, /actionDispute/);
@@ -180,8 +192,12 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /actionCancelledDone: '已取消'/);
   assert.match(js, /confirmCancelPrompt: '确认取消这笔订单吗？'/);
   assert.match(js, /const showCancelledInfo = normalizedStatus === 'CANCELLED';/);
+  assert.match(js, /const sellerDeliveredDisputeAction = showDeliveredInfo && primaryAction === 'dispute' \? primaryAction : '';/);
+  assert.match(js, /const showCompletedDisputeOnly = showCompletedInfo && primaryAction === 'dispute';/);
+  assert.match(js, /const effectivePrimaryAction = showDeliveredInfo \|\| showCompletedInfo \? '' : primaryAction;/);
+  assert.match(js, /const effectiveSecondaryAction = showDeliveredInfo[\s\S]*sellerDeliveredDisputeAction[\s\S]*showCompletedInfo \? '' : secondaryAction/);
   assert.match(js, /showCancelledInfo\s*\?\s*t\(appState\.locale, 'actionCancelledDone'\)/);
-  assert.match(js, /primaryAction\.hidden = !primaryAction \|\| showCancelledInfo/);
+  assert.match(js, /primaryAction\.hidden = !effectivePrimaryAction \|\| showCancelledInfo/);
   assert.doesNotMatch(js, /已登录/);
   assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-order-item__desc\s*\{[\s\S]*white-space:\s*nowrap/);
   assert.match(fs.readFileSync(cssPath, 'utf8'), /\.nexa-escrow-order-item__countdown\s*\{/);
@@ -209,7 +225,7 @@ test('admin panel includes nexa escrow orders, users, and withdrawal review entr
   assert.match(js, /const nexaEscrowWithdrawalsList = document\.getElementById\('nexaEscrowWithdrawalsList'\);/);
   assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-orders'\]/);
   assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-users'\]/);
-  assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-withdrawals\?status=review_pending'/);
+  assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-withdrawals'\]/);
   assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-users\/\$\{encodeURIComponent\(String\(userId\)\)\}\/code`\]/);
   assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-withdrawals\/\$\{encodeURIComponent\(partnerOrderNo\)\}\/approve`\]/);
   assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-withdrawals\/\$\{encodeURIComponent\(partnerOrderNo\)\}\/reject`\]/);

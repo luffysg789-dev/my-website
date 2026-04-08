@@ -34,17 +34,24 @@
       filterCompleted: '完成',
       escrowCodeLabel: '担保号',
       walletLabel: '钱包余额',
+      latestWithdrawalLabel: '最新提现记录',
       nicknameLabel: '昵称',
       nicknameHint: '昵称一旦生成，无法修改',
       nicknameSaved: '昵称已保存',
       nicknameLocked: '昵称已生成，无法修改',
       nicknameRequired: '请填写昵称',
-      nicknameInvalid: '昵称仅支持中文、英文、数字，长度 2-12 位',
+      nicknameInvalid: '昵称最多 6 个中文或 12 个字母数字',
+      nicknameTaken: '此昵称已被占用，请重新填写',
       copyAction: '复制',
       withdrawAction: '提现',
       withdrawPrompt: '输入要提现到 Nexa 余额的 USDT 金额',
       withdrawCreated: '提现申请已提交到 Nexa。',
       withdrawOnlyNexa: '请在 Nexa App 内提现。',
+      withdrawStatusReviewPending: '待审核',
+      withdrawStatusPending: '处理中',
+      withdrawStatusSuccess: '已通过到账',
+      withdrawStatusFailed: '提现失败',
+      withdrawStatusRejected: '已驳回',
       invalidEscrowCode: '请填写正确担保号',
       invalidAmount: '金额最多支持两位小数',
       descriptionTooLong: '交易描述最多 30 个字',
@@ -126,17 +133,24 @@
       filterCompleted: 'Completed',
       escrowCodeLabel: 'Escrow ID',
       walletLabel: 'Wallet Balance',
+      latestWithdrawalLabel: 'Latest Withdrawal',
       nicknameLabel: 'Nickname',
       nicknameHint: 'Nickname can only be created once.',
       nicknameSaved: 'Nickname saved.',
       nicknameLocked: 'Nickname is already locked.',
       nicknameRequired: 'Please enter a nickname',
-      nicknameInvalid: 'Nickname only supports letters, numbers, and Chinese, 2-12 chars',
+      nicknameInvalid: 'Nickname supports up to 6 Chinese characters or 12 letters/numbers',
+      nicknameTaken: 'Nickname is already taken. Please choose another one.',
       copyAction: 'Copy',
       withdrawAction: 'Withdraw',
       withdrawPrompt: 'Enter the USDT amount to withdraw to Nexa balance',
       withdrawCreated: 'Withdrawal has been submitted to Nexa.',
       withdrawOnlyNexa: 'Please withdraw inside the Nexa App.',
+      withdrawStatusReviewPending: 'Pending Review',
+      withdrawStatusPending: 'Processing',
+      withdrawStatusSuccess: 'Credited',
+      withdrawStatusFailed: 'Failed',
+      withdrawStatusRejected: 'Rejected',
       invalidEscrowCode: 'Please enter a valid escrow ID',
       invalidAmount: 'Amount supports at most 2 decimal places',
       descriptionTooLong: 'Description must be 30 characters or fewer',
@@ -462,6 +476,8 @@
     }
     if (String(response.status || '').trim().toUpperCase() === 'SUCCESS') {
       clearPendingPayment(appState.storage);
+      switchTab(appState, 'orders');
+      renderOrders(appState);
     }
   }
 
@@ -472,6 +488,7 @@
     });
     appState.orders = mergeOrder(appState.orders, response.order);
     appState.selectedTradeCode = response.order.tradeCode;
+    renderOrderDetail(appState);
     renderOrders(appState);
   }
 
@@ -582,6 +599,16 @@
     appState.toastTimer = globalScope.window.setTimeout(() => {
       toast.hidden = true;
     }, 1600);
+  }
+
+  function describeEscrowWithdrawalStatus(appState, status) {
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    if (normalizedStatus === 'review_pending') return t(appState.locale, 'withdrawStatusReviewPending');
+    if (normalizedStatus === 'pending') return t(appState.locale, 'withdrawStatusPending');
+    if (normalizedStatus === 'success') return t(appState.locale, 'withdrawStatusSuccess');
+    if (normalizedStatus === 'failed') return t(appState.locale, 'withdrawStatusFailed');
+    if (normalizedStatus === 'rejected') return t(appState.locale, 'withdrawStatusRejected');
+    return normalizedStatus || '--';
   }
 
   function getScrollableEscrowContainer(appState, node) {
@@ -765,6 +792,12 @@
     const showDeliveredInfo = normalizedStatus === 'DELIVERED' && normalizedViewerRole === 'seller';
     const showCompletedInfo = normalizedStatus === 'COMPLETED';
     const showCancelledInfo = normalizedStatus === 'CANCELLED';
+    const sellerDeliveredDisputeAction = showDeliveredInfo && primaryAction === 'dispute' ? primaryAction : '';
+    const showCompletedDisputeOnly = showCompletedInfo && primaryAction === 'dispute';
+    const effectivePrimaryAction = showDeliveredInfo || showCompletedInfo ? '' : primaryAction;
+    const effectiveSecondaryAction = showDeliveredInfo
+      ? sellerDeliveredDisputeAction
+      : (showCompletedInfo ? '' : secondaryAction);
     const infoAction = showCompletedInfo
       ? t(appState.locale, 'actionCompletedDone')
       : (showCancelledInfo
@@ -772,14 +805,14 @@
           : (showDeliveredInfo ? t(appState.locale, 'actionDeliveredDone') : ''));
     appState.elements.infoAction.hidden = !infoAction;
     appState.elements.infoAction.textContent = infoAction;
-    appState.elements.primaryAction.hidden = !primaryAction || showCancelledInfo;
-    appState.elements.secondaryAction.hidden = !secondaryAction;
-    appState.elements.primaryAction.textContent = actionText[primaryAction] || primaryAction || '';
-    appState.elements.secondaryAction.textContent = actionText[secondaryAction] || secondaryAction || '';
-    appState.elements.primaryAction.dataset.action = primaryAction || '';
-    appState.elements.secondaryAction.dataset.action = secondaryAction || '';
-    appState.elements.primaryAction.classList.toggle('is-dispute', primaryAction === 'dispute');
-    appState.elements.secondaryAction.classList.toggle('is-dispute', secondaryAction === 'dispute');
+    appState.elements.primaryAction.hidden = !effectivePrimaryAction || showCancelledInfo;
+    appState.elements.secondaryAction.hidden = !effectiveSecondaryAction;
+    appState.elements.primaryAction.textContent = actionText[effectivePrimaryAction] || effectivePrimaryAction || '';
+    appState.elements.secondaryAction.textContent = actionText[effectiveSecondaryAction] || effectiveSecondaryAction || '';
+    appState.elements.primaryAction.dataset.action = effectivePrimaryAction || '';
+    appState.elements.secondaryAction.dataset.action = effectiveSecondaryAction || '';
+    appState.elements.primaryAction.classList.toggle('is-dispute', effectivePrimaryAction === 'dispute');
+    appState.elements.secondaryAction.classList.toggle('is-dispute', effectiveSecondaryAction === 'dispute' || showCompletedDisputeOnly);
     setStatus(appState.elements.detailStatus, describeOrderStatus(appState, order), 'success');
     const selectedOrderNode = appState.elements.ordersList?.querySelector?.(`[data-trade-code="${appState.selectedTradeCode}"]`);
     if (selectedOrderNode && card) {
@@ -919,7 +952,7 @@
         </div>
         <div class="nexa-escrow-order-item__summary">
           <div class="nexa-escrow-order-item__amount">
-            <strong>${order.amount} ${order.currency}</strong>
+            <strong>${order.amount} <span class="nexa-escrow-order-item__currency">${order.currency}</span></strong>
           </div>
           <div class="nexa-escrow-order-item__time">${order.createdAt || '--'}</div>
         </div>
@@ -975,6 +1008,25 @@
     if (appState.elements.withdrawBtn) {
       appState.elements.withdrawBtn.textContent = t(appState.locale, 'withdrawAction');
     }
+    const latestWithdrawal = appState.account?.latestWithdrawal || null;
+    if (appState.elements.latestWithdrawal) {
+      appState.elements.latestWithdrawal.hidden = !latestWithdrawal;
+    }
+    if (appState.elements.latestWithdrawalAmount) {
+      appState.elements.latestWithdrawalAmount.textContent = latestWithdrawal
+        ? `${String(latestWithdrawal.amount || '0.00')} USDT`
+        : '0.00 USDT';
+    }
+    if (appState.elements.latestWithdrawalStatus) {
+      appState.elements.latestWithdrawalStatus.textContent = latestWithdrawal
+        ? describeEscrowWithdrawalStatus(appState, latestWithdrawal.status)
+        : '--';
+    }
+    if (appState.elements.latestWithdrawalTime) {
+      appState.elements.latestWithdrawalTime.textContent = latestWithdrawal
+        ? String(latestWithdrawal.finishedAt || latestWithdrawal.createdAt || '--').trim() || '--'
+        : '--';
+    }
   }
 
   function openEscrowCodeModal(appState) {
@@ -997,6 +1049,27 @@
     appState.account = response.account || null;
     appState.orders = Array.isArray(response.orders) ? response.orders : [];
     renderOrders(appState);
+    renderAccount(appState);
+  }
+
+  async function syncLatestEscrowWithdrawalStatus(appState) {
+    const latestWithdrawal = appState.account?.latestWithdrawal || null;
+    const partnerOrderNo = String(latestWithdrawal?.partnerOrderNo || '').trim();
+    const status = String(latestWithdrawal?.status || '').trim().toLowerCase();
+    if (!partnerOrderNo || (status !== 'review_pending' && status !== 'pending')) return;
+    const response = await queryEscrowWithdrawalStatus(partnerOrderNo);
+    if (!response?.item) return;
+    appState.account = {
+      ...(appState.account || {}),
+      latestWithdrawal: {
+        ...(latestWithdrawal || {}),
+        partnerOrderNo,
+        amount: String(response.item.amount || latestWithdrawal?.amount || '0.00'),
+        status: String(response.item.status || status).trim().toLowerCase(),
+        createdAt: String(latestWithdrawal?.createdAt || '').trim(),
+        finishedAt: String(response.item.finishedAt || latestWithdrawal?.finishedAt || '').trim()
+      }
+    };
     renderAccount(appState);
   }
 
@@ -1032,6 +1105,10 @@
     const targetStatus = appState.elements.codeModal?.hidden === false
       ? appState.elements.codeModalHint
       : appState.elements.accountStatus;
+    if (!isValidEscrowNickname(nickname)) {
+      setStatus(targetStatus, t(appState.locale, 'nicknameInvalid'), 'error');
+      return;
+    }
     setStatus(targetStatus, t(appState.locale, 'processing'));
     const response = await postJson('/api/nexa-escrow/profile/nickname', { nickname });
     appState.account = {
@@ -1112,6 +1189,9 @@
         loadBootstrap(appState),
         delay(NEXA_ESCROW_REFRESH_FEEDBACK_MS)
       ]);
+      if (appState.activeTab === 'account') {
+        await syncLatestEscrowWithdrawalStatus(appState).catch(() => null);
+      }
     } finally {
       activePanel?.classList.remove('nexa-escrow-panel--refreshing');
       appState.bootstrapRefreshing = false;
@@ -1182,6 +1262,20 @@
     indicator.classList.toggle('is-ready', clamped >= NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX);
   }
 
+  function getEscrowNicknameLengthWeight(value) {
+    return Array.from(String(value || '').trim()).reduce((total, char) => (
+      /[\u4e00-\u9fa5]/u.test(char) ? total + 2 : total + 1
+    ), 0);
+  }
+
+  function isValidEscrowNickname(value) {
+    const normalized = String(value || '').trim();
+    if (!normalized) return false;
+    if (!/^[\u4e00-\u9fa5A-Za-z0-9]+$/u.test(normalized)) return false;
+    const lengthWeight = getEscrowNicknameLengthWeight(normalized);
+    return lengthWeight >= 2 && lengthWeight <= 12;
+  }
+
   async function refreshEscrowAccount(appState) {
     if (appState.accountRefreshing) return;
     appState.accountRefreshing = true;
@@ -1197,6 +1291,7 @@
         loadBootstrap(appState),
         delay(NEXA_ESCROW_REFRESH_FEEDBACK_MS)
       ]);
+      await syncLatestEscrowWithdrawalStatus(appState).catch(() => null);
     } finally {
       appState.elements.accountPanel?.classList.remove('nexa-escrow-panel--refreshing');
       appState.accountRefreshing = false;
@@ -1263,6 +1358,10 @@
         nicknameHint: root.querySelector('#nexaEscrowNicknameHint'),
         accountCode: root.querySelector('#nexaEscrowAccountCode'),
         accountWallet: root.querySelector('#nexaEscrowAccountWallet'),
+        latestWithdrawal: root.querySelector('#nexaEscrowLatestWithdrawal'),
+        latestWithdrawalAmount: root.querySelector('#nexaEscrowLatestWithdrawalAmount'),
+        latestWithdrawalStatus: root.querySelector('#nexaEscrowLatestWithdrawalStatus'),
+        latestWithdrawalTime: root.querySelector('#nexaEscrowLatestWithdrawalTime'),
             accountCodeCopy: root.querySelector('#nexaEscrowAccountCodeCopy'),
             withdrawBtn: root.querySelector('#nexaEscrowWithdrawBtn'),
             accountStatus: root.querySelector('#nexaEscrowAccountStatus'),
@@ -1462,7 +1561,11 @@
         const message = error instanceof Error ? error.message : '';
         const resolvedMessage = message === 'ESCROW_NICKNAME_REQUIRED'
           ? t(appState.locale, 'nicknameRequired')
-          : (message === 'ESCROW_NICKNAME_INVALID' ? t(appState.locale, 'nicknameInvalid') : (message === 'ESCROW_NICKNAME_LOCKED' ? t(appState.locale, 'nicknameLocked') : message || '保存失败'));
+          : (message === 'ESCROW_NICKNAME_INVALID'
+            ? t(appState.locale, 'nicknameInvalid')
+            : (message === 'ESCROW_NICKNAME_TAKEN'
+              ? t(appState.locale, 'nicknameTaken')
+              : (message === 'ESCROW_NICKNAME_LOCKED' ? t(appState.locale, 'nicknameLocked') : message || '保存失败')));
         setStatus(appState.elements.codeModalHint, resolvedMessage, 'error');
       });
     });
@@ -1491,7 +1594,11 @@
             const message = error instanceof Error ? error.message : '';
             const resolvedMessage = message === 'ESCROW_NICKNAME_REQUIRED'
               ? t(appState.locale, 'nicknameRequired')
-              : (message === 'ESCROW_NICKNAME_INVALID' ? t(appState.locale, 'nicknameInvalid') : (message === 'ESCROW_NICKNAME_LOCKED' ? t(appState.locale, 'nicknameLocked') : message || '保存失败'));
+              : (message === 'ESCROW_NICKNAME_INVALID'
+                ? t(appState.locale, 'nicknameInvalid')
+                : (message === 'ESCROW_NICKNAME_TAKEN'
+                  ? t(appState.locale, 'nicknameTaken')
+                  : (message === 'ESCROW_NICKNAME_LOCKED' ? t(appState.locale, 'nicknameLocked') : message || '保存失败')));
             setStatus(appState.elements.accountStatus, resolvedMessage, 'error');
           });
         });

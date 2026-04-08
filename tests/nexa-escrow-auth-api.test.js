@@ -244,6 +244,40 @@ test('admin can list all nexa escrow orders and update escrow user codes', async
   }
 });
 
+test('admin nexa escrow user list shows escrow nickname after user saves it', async () => {
+  const harness = createHarness();
+
+  try {
+    const syncResponse = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-admin-nickname-open-id',
+      sessionKey: 'escrow-admin-nickname-session-key',
+      nickname: 'Origin User'
+    });
+    const serialized = JSON.parse(syncResponse.headers['set-cookie'][0]);
+
+    const saveNicknameResponse = await harness.request('POST', '/api/nexa-escrow/profile/nickname', {
+      nickname: '苹果'
+    }, {
+      cookies: {
+        [serialized.name]: serialized.value
+      }
+    });
+    assert.equal(saveNicknameResponse.statusCode, 200);
+
+    const adminCookies = await loginAdmin(harness);
+    const usersResponse = await harness.request('GET', '/api/admin/nexa-escrow-users', undefined, {
+      cookies: adminCookies
+    });
+    assert.equal(usersResponse.statusCode, 200);
+    assert.equal(usersResponse.body.ok, true);
+    const targetUser = usersResponse.body.items.find((item) => item.openId === 'escrow-admin-nickname-open-id');
+    assert.ok(targetUser);
+    assert.equal(targetUser.escrowNickname, '苹果');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('nexa-escrow bootstrap returns synced account state and empty orders for a new user', async () => {
   const harness = createHarness();
 
@@ -418,6 +452,45 @@ test('nexa-escrow nickname can be saved once and is returned in bootstrap and or
   }
 });
 
+test('nexa-escrow nickname must be unique across users', async () => {
+  const harness = createHarness();
+
+  try {
+    const firstSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-nickname-unique-open-id-1',
+      sessionKey: 'escrow-nickname-unique-session-key-1',
+      nickname: 'Unique One'
+    });
+    const firstCookie = JSON.parse(firstSync.headers['set-cookie'][0]);
+
+    const secondSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-nickname-unique-open-id-2',
+      sessionKey: 'escrow-nickname-unique-session-key-2',
+      nickname: 'Unique Two'
+    });
+    const secondCookie = JSON.parse(secondSync.headers['set-cookie'][0]);
+
+    const firstNicknameResponse = await harness.request('POST', '/api/nexa-escrow/profile/nickname', {
+      nickname: '苹果123'
+    }, {
+      cookies: { [firstCookie.name]: firstCookie.value }
+    });
+    assert.equal(firstNicknameResponse.statusCode, 200);
+    assert.equal(firstNicknameResponse.body.ok, true);
+
+    const secondNicknameResponse = await harness.request('POST', '/api/nexa-escrow/profile/nickname', {
+      nickname: '苹果123'
+    }, {
+      cookies: { [secondCookie.name]: secondCookie.value }
+    });
+    assert.equal(secondNicknameResponse.statusCode, 400);
+    assert.equal(secondNicknameResponse.body.ok, false);
+    assert.equal(secondNicknameResponse.body.error, 'ESCROW_NICKNAME_TAKEN');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('nexa-escrow withdrawal enters review-pending status and debits the dedicated wallet', async () => {
   const harness = createHarness();
 
@@ -464,6 +537,16 @@ test('nexa-escrow withdrawal enters review-pending status and debits the dedicat
     assert.equal(queryResponse.statusCode, 200);
     assert.equal(queryResponse.body.ok, true);
     assert.equal(String(queryResponse.body.item.status || '').toLowerCase(), 'review_pending');
+
+    const bootstrapAfterCreate = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: {
+        [serialized.name]: serialized.value
+      }
+    });
+    assert.equal(bootstrapAfterCreate.statusCode, 200);
+    assert.equal(bootstrapAfterCreate.body.ok, true);
+    assert.equal(bootstrapAfterCreate.body.account.latestWithdrawal.partnerOrderNo, createResponse.body.partnerOrderNo);
+    assert.equal(String(bootstrapAfterCreate.body.account.latestWithdrawal.status || '').toLowerCase(), 'review_pending');
   } finally {
     harness.cleanup();
   }
@@ -481,6 +564,18 @@ test('admin can review nexa escrow withdrawals after users submit them', async (
           status: 'PENDING',
           openid: payload.openId,
           createTime: '2026-04-08 11:00:00',
+          orderNo: payload.orderNo
+        }
+      };
+    },
+    mockWithdrawQueryResponse(payload) {
+      return {
+        code: '0',
+        message: 'success',
+        data: {
+          amount: '6.50',
+          currency: 'USDT',
+          status: 'SUCCESS',
           orderNo: payload.orderNo
         }
       };
@@ -531,14 +626,35 @@ test('admin can review nexa escrow withdrawals after users submit them', async (
       }
     );
     assert.equal(approveResponse.statusCode, 200);
-    assert.deepEqual(approveResponse.body, { ok: true, status: 'success' });
+    assert.deepEqual(approveResponse.body, { ok: true, status: 'pending' });
 
     const withdrawal = harness.db
-      .prepare('SELECT status, review_note, reviewed_by FROM nexa_escrow_withdrawals WHERE partner_order_no = ?')
+      .prepare('SELECT status, review_note, reviewed_by, finished_at FROM nexa_escrow_withdrawals WHERE partner_order_no = ?')
       .get(createResponse.body.partnerOrderNo);
-    assert.equal(withdrawal.status, 'success');
+    assert.equal(withdrawal.status, 'pending');
     assert.equal(withdrawal.review_note, '人工审核通过');
     assert.equal(withdrawal.reviewed_by, 'admin');
+    assert.equal(String(withdrawal.finished_at || ''), '');
+
+    const queryResponse = await harness.request('POST', '/api/nexa-escrow/withdraw/query', {
+      partnerOrderNo: createResponse.body.partnerOrderNo
+    }, {
+      cookies: {
+        [serialized.name]: serialized.value
+      }
+    });
+    assert.equal(queryResponse.statusCode, 200);
+    assert.equal(queryResponse.body.ok, true);
+    assert.equal(String(queryResponse.body.item.status || '').toLowerCase(), 'success');
+
+    const listAfterApproveResponse = await harness.request('GET', '/api/admin/nexa-escrow-withdrawals', undefined, {
+      cookies: adminCookies
+    });
+    assert.equal(listAfterApproveResponse.statusCode, 200);
+    assert.equal(listAfterApproveResponse.body.ok, true);
+    const approvedItem = listAfterApproveResponse.body.items.find((item) => item.partnerOrderNo === createResponse.body.partnerOrderNo);
+    assert.ok(approvedItem);
+    assert.equal(String(approvedItem.status || '').toLowerCase(), 'success');
   } finally {
     harness.cleanup();
   }

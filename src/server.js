@@ -831,11 +831,18 @@ function normalizeEscrowNickname(value) {
   return String(value || '').trim();
 }
 
+function getEscrowNicknameLengthWeight(value) {
+  return Array.from(normalizeEscrowNickname(value)).reduce((total, char) => (
+    /[\u4e00-\u9fa5]/u.test(char) ? total + 2 : total + 1
+  ), 0);
+}
+
 function isValidEscrowNickname(value) {
   const normalized = normalizeEscrowNickname(value);
-  const charLength = Array.from(normalized).length;
-  if (charLength < 2 || charLength > 12) return false;
-  return /^[\u4e00-\u9fa5A-Za-z0-9]+$/u.test(normalized);
+  if (!normalized) return false;
+  if (!/^[\u4e00-\u9fa5A-Za-z0-9]+$/u.test(normalized)) return false;
+  const lengthWeight = getEscrowNicknameLengthWeight(normalized);
+  return lengthWeight >= 2 && lengthWeight <= 12;
 }
 
 function requireNexaEscrowSession(req) {
@@ -1105,6 +1112,7 @@ function buildNexaEscrowBootstrapPayload(session) {
   maybeAutoCancelPendingPaymentEscrowOrders();
   maybeAutoCancelPendingShipmentEscrowOrders();
   maybeAutoReleaseDeliveredEscrowOrders();
+  const latestWithdrawal = selectLatestNexaEscrowWithdrawalByUserStmt.get(ensured.user.id);
   const orders = listNexaEscrowOrdersByUserStmt.all(
     ensured.user.id,
     ensured.user.id,
@@ -1119,7 +1127,14 @@ function buildNexaEscrowBootstrapPayload(session) {
       nickname: ensured.user.nickname,
       escrowNickname: ensured.user.escrowNickname,
       escrowCode: ensured.user.escrowCode,
-      wallet: ensured.wallet.availableBalance
+      wallet: ensured.wallet.availableBalance,
+      latestWithdrawal: latestWithdrawal ? {
+        partnerOrderNo: String(latestWithdrawal.partner_order_no || '').trim(),
+        amount: String(latestWithdrawal.amount || '0.00').trim(),
+        status: String(latestWithdrawal.status || '').trim().toLowerCase(),
+        createdAt: String(latestWithdrawal.created_at || '').trim(),
+        finishedAt: String(latestWithdrawal.finished_at || '').trim()
+      } : null
     },
     orders
   };
@@ -1569,16 +1584,29 @@ const settleReviewedEscrowWithdrawalApproval = db.transaction((payload) => {
     return { kind: 'failed' };
   }
 
+  if (normalizedStatus === 'SUCCESS') {
+    markReviewedEscrowWithdrawal({
+      partnerOrderNo: withdrawal.partner_order_no,
+      status: 'success',
+      nexaOrderNo: payload.orderNo || '',
+      rawBody: payload.rawBody,
+      reviewNote: payload.reviewNote,
+      reviewedBy: payload.reviewedBy,
+      finished: true
+    });
+    return { kind: 'success' };
+  }
+
   markReviewedEscrowWithdrawal({
     partnerOrderNo: withdrawal.partner_order_no,
-    status: 'success',
+    status: 'pending',
     nexaOrderNo: payload.orderNo || '',
     rawBody: payload.rawBody,
     reviewNote: payload.reviewNote,
     reviewedBy: payload.reviewedBy,
-    finished: true
+    finished: false
   });
-  return { kind: 'success' };
+  return { kind: 'pending' };
 });
 
 const markEscrowWithdrawalSuccess = db.transaction((payload) => {
@@ -3838,6 +3866,10 @@ app.post('/api/nexa-escrow/profile/nickname', (req, res) => {
     if (!isValidEscrowNickname(escrowNickname)) {
       return res.status(400).json({ ok: false, error: 'ESCROW_NICKNAME_INVALID' });
     }
+    const existingNicknameOwner = selectGameUserByEscrowNicknameStmt.get(escrowNickname);
+    if (existingNicknameOwner && Number(existingNicknameOwner.id) !== Number(ensured.user.id)) {
+      return res.status(400).json({ ok: false, error: 'ESCROW_NICKNAME_TAKEN' });
+    }
     updateGameUserEscrowNicknameStmt.run(escrowNickname, ensured.user.id);
     const payload = buildNexaEscrowBootstrapPayload(session);
     return res.json({
@@ -3845,6 +3877,9 @@ app.post('/api/nexa-escrow/profile/nickname', (req, res) => {
       account: payload.account
     });
   } catch (error) {
+    if (String(error?.code || '').trim() === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return res.status(400).json({ ok: false, error: 'ESCROW_NICKNAME_TAKEN' });
+    }
     const statusCode = Number(error?.statusCode || 400) || 400;
     return res.status(statusCode).json({ ok: false, error: String(error?.message || 'ESCROW_NICKNAME_SAVE_FAILED') });
   }
@@ -4111,6 +4146,7 @@ app.get('/api/admin/nexa-escrow-users', requireAdmin, (req, res) => {
       userId: Number(row.id || 0),
       openId: String(row.openid || '').trim(),
       nickname: String(row.nickname || '').trim(),
+      escrowNickname: normalizeEscrowNickname(row.escrow_nickname),
       escrowCode: normalizeNexaEscrowCode(row.escrow_code || ''),
       walletBalance: String(row.available_balance || '0.00'),
       frozenBalance: String(row.frozen_balance || '0.00'),
@@ -4675,6 +4711,9 @@ const selectXiangqiUserByOpenIdStmt = db.prepare(
 );
 const selectXiangqiUserByEscrowCodeStmt = db.prepare(
   'SELECT id, openid, nickname, avatar, escrow_code, escrow_nickname, created_at FROM game_users WHERE escrow_code = ?'
+);
+const selectGameUserByEscrowNicknameStmt = db.prepare(
+  'SELECT id, openid, nickname, avatar, escrow_code, escrow_nickname, created_at FROM game_users WHERE escrow_nickname = ?'
 );
 const insertXiangqiUserStmt = db.prepare(
   'INSERT INTO game_users (openid, nickname, avatar, escrow_code) VALUES (?, ?, ?, ?)'
@@ -5317,6 +5356,7 @@ const listAdminNexaEscrowUsersStmt = db.prepare(`
     u.id,
     u.openid,
     u.nickname,
+    u.escrow_nickname,
     u.escrow_code,
     u.created_at,
     COALESCE(w.available_balance, '0.00') AS available_balance,
