@@ -571,6 +571,14 @@
     }
   }
 
+  function openEscrowOrderFromList(appState, tradeCode) {
+    const normalizedTradeCode = String(tradeCode || '').trim();
+    if (!normalizedTradeCode) return;
+    appState.selectedTradeCode = normalizedTradeCode;
+    renderOrders(appState);
+    renderOrderDetail(appState);
+  }
+
   function filterOrders(appState) {
     const allOrders = Array.isArray(appState.orders) ? appState.orders : [];
     if (appState.orderFilter === 'active') {
@@ -630,21 +638,6 @@
         </div>
       </button>
     `).join('');
-    const openTradeCode = (tradeCode) => {
-      if (!tradeCode) return;
-      appState.selectedTradeCode = tradeCode;
-      renderOrders(appState);
-      renderOrderDetail(appState);
-    };
-    Array.from(list.querySelectorAll('[data-trade-code]')).forEach((button) => {
-      button.addEventListener('click', () => {
-        openTradeCode(button.dataset.tradeCode);
-      });
-      button.addEventListener('touchend', (event) => {
-        event.preventDefault();
-        openTradeCode(button.dataset.tradeCode);
-      }, { passive: false });
-    });
     if (appState.selectedTradeCode && !visibleOrders.some((item) => item.tradeCode === appState.selectedTradeCode)) {
       appState.selectedTradeCode = '';
       closeOrderDetailModal(appState);
@@ -737,6 +730,17 @@
         renderOrders(appState);
       });
     });
+    appState.elements.ordersList?.addEventListener('click', (event) => {
+      const target = event.target instanceof Element ? event.target.closest('[data-trade-code]') : null;
+      if (!target) return;
+      openEscrowOrderFromList(appState, target.dataset.tradeCode);
+    });
+    appState.elements.ordersList?.addEventListener('touchend', (event) => {
+      const target = event.target instanceof Element ? event.target.closest('[data-trade-code]') : null;
+      if (!target) return;
+      event.preventDefault();
+      openEscrowOrderFromList(appState, target.dataset.tradeCode);
+    }, { passive: false });
     appState.elements.roleButtons.forEach((button) => {
       button.addEventListener('click', () => {
         appState.role = button.dataset.role;
