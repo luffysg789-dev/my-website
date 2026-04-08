@@ -323,32 +323,6 @@ body {
   gap: 14px;
 }
 
-.nexa-escrow-modal__dialog--wide {
-  width: min(100%, 560px);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.nexa-escrow-modal__close {
-  appearance: none;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  width: 40px;
-  height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  background: rgba(12, 14, 18, 0.82);
-  color: #fff;
-  font-size: 1.4rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
 .nexa-escrow-modal__dialog h2 {
   margin: 0;
 }
@@ -467,6 +441,24 @@ body {
 .nexa-escrow-order-detail {
   gap: 12px;
   margin: 0;
+}
+
+.nexa-escrow-order-detail__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nexa-escrow-detail-close {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  min-height: 34px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--escrow-muted);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .nexa-escrow-order-detail__body {
@@ -588,10 +580,5 @@ body {
     min-height: 36px;
     padding: 0 6px;
     font-size: 0.8rem;
-  }
-
-  .nexa-escrow-modal__close {
-    top: 8px;
-    right: 8px;
   }
 }

@@ -513,9 +513,12 @@
     const order = appState.orders.find((item) => String(item.tradeCode) === String(appState.selectedTradeCode || ''));
     const card = appState.elements.orderDetail;
     if (!order) {
-      closeOrderDetailModal(appState);
+      closeOrderDetail(appState);
       setStatus(appState.elements.detailStatus, '');
       return;
+    }
+    if (card) {
+      card.hidden = false;
     }
     appState.elements.detailTitle.textContent = appState.locale === 'zh'
       ? `交易码 ${order.tradeCode}`
@@ -554,21 +557,13 @@
     appState.elements.primaryAction.dataset.action = primaryAction || '';
     appState.elements.secondaryAction.dataset.action = secondaryAction || '';
     setStatus(appState.elements.detailStatus, describeOrderStatus(appState, order), 'success');
-    openOrderDetailModal(appState);
   }
 
-  function openOrderDetailModal(appState) {
-    const modal = appState.elements.orderModal;
-    if (modal) {
-      modal.hidden = false;
+  function closeOrderDetail(appState) {
+    if (appState.elements.orderDetail) {
+      appState.elements.orderDetail.hidden = true;
     }
-  }
-
-  function closeOrderDetailModal(appState) {
-    const modal = appState.elements.orderModal;
-    if (modal) {
-      modal.hidden = true;
-    }
+    appState.selectedTradeCode = '';
   }
 
   function openEscrowOrderFromList(appState, tradeCode) {
@@ -606,7 +601,7 @@
     if (!visibleOrders.length) {
       list.innerHTML = `<article class="nexa-escrow-order-item"><div class="nexa-escrow-order-item__meta">${t(appState.locale, 'emptyOrders')}</div></article>`;
       appState.selectedTradeCode = '';
-      closeOrderDetailModal(appState);
+      closeOrderDetail(appState);
       return;
     }
     list.innerHTML = visibleOrders.map((order) => `
@@ -640,7 +635,7 @@
     `).join('');
     if (appState.selectedTradeCode && !visibleOrders.some((item) => item.tradeCode === appState.selectedTradeCode)) {
       appState.selectedTradeCode = '';
-      closeOrderDetailModal(appState);
+      closeOrderDetail(appState);
     }
   }
 
@@ -700,10 +695,8 @@
         createButton: root.querySelector('#nexaEscrowCreateButton'),
         createStatus: root.querySelector('#nexaEscrowCreateStatus'),
         ordersList: root.querySelector('#nexaEscrowOrdersList'),
-        orderModal: globalScope.document.querySelector('#nexaEscrowOrderModal'),
-        orderModalClose: globalScope.document.querySelector('#nexaEscrowOrderModalClose'),
-        orderModalBackdrops: Array.from(globalScope.document.querySelectorAll('[data-escrow-order-close]')),
         orderDetail: root.querySelector('#nexaEscrowOrderDetail'),
+        orderDetailClose: root.querySelector('#nexaEscrowOrderDetailClose'),
         detailTitle: root.querySelector('#nexaEscrowDetailTitle'),
         detailPill: root.querySelector('#nexaEscrowDetailStatus'),
         detailBody: root.querySelector('#nexaEscrowDetailBody'),
@@ -777,13 +770,9 @@
     appState.elements.codeModalConfirm?.addEventListener('click', () => {
       closeEscrowCodeModal(appState);
     });
-    appState.elements.orderModalClose?.addEventListener('click', () => {
-      closeOrderDetailModal(appState);
-    });
-    appState.elements.orderModalBackdrops.forEach((node) => {
-      node.addEventListener('click', () => {
-        closeOrderDetailModal(appState);
-      });
+    appState.elements.orderDetailClose?.addEventListener('click', () => {
+      closeOrderDetail(appState);
+      renderOrders(appState);
     });
     appState.elements.accountCodeCopy?.addEventListener('click', async () => {
       try {

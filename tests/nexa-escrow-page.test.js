@@ -54,10 +54,8 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /data-order-filter="cancelled"/);
   assert.match(html, /data-order-filter="completed"/);
   assert.match(html, /id="nexaEscrowOrdersList"/);
-  assert.match(html, /id="nexaEscrowOrderModal"/);
-  assert.match(html, /id="nexaEscrowOrderModalClose"/);
-  assert.match(html, /data-escrow-order-close/);
   assert.match(html, /id="nexaEscrowOrderDetail"/);
+  assert.match(html, /id="nexaEscrowOrderDetailClose"/);
   assert.match(html, /id="nexaEscrowPrimaryAction"/);
   assert.match(html, /id="nexaEscrowSecondaryAction"/);
   assert.match(html, /id="nexaEscrowAccountCode"/);
@@ -89,13 +87,12 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function submitEscrowAction\(/);
   assert.match(js, /function filterOrders\(/);
   assert.match(js, /function openEscrowCodeModal\(/);
-  assert.match(js, /function openOrderDetailModal\(/);
-  assert.match(js, /function closeOrderDetailModal\(/);
+  assert.match(js, /function closeOrderDetail\(/);
+  assert.match(js, /function openEscrowOrderFromList\(/);
   assert.match(js, /function applyTranslations\(/);
   assert.match(js, /function copyEscrowCode\(/);
   assert.match(js, /orderFilterButtons/);
-  assert.match(js, /orderModalClose/);
-  assert.match(js, /orderModalBackdrops/);
+  assert.match(js, /orderDetailClose/);
   assert.match(js, /actionDispute/);
   assert.match(js, /actionConfirmReceipt/);
   assert.doesNotMatch(js, /已登录/);

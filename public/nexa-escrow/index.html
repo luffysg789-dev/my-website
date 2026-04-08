@@ -74,6 +74,27 @@
             </div>
             <div id="nexaEscrowOrdersList" class="nexa-escrow-orders-list"></div>
           </article>
+
+          <article class="nexa-escrow-card nexa-escrow-order-detail" id="nexaEscrowOrderDetail" hidden>
+            <div class="nexa-escrow-card__head">
+              <div>
+                <p class="nexa-escrow-label">订单详情</p>
+                <h2 id="nexaEscrowDetailTitle">交易单</h2>
+              </div>
+              <div class="nexa-escrow-order-detail__head-actions">
+                <span id="nexaEscrowDetailStatus" class="nexa-escrow-pill">状态</span>
+                <button id="nexaEscrowOrderDetailClose" class="nexa-escrow-detail-close" type="button" aria-label="关闭">关闭</button>
+              </div>
+            </div>
+            <div id="nexaEscrowDetailBody" class="nexa-escrow-order-detail__body"></div>
+            <div id="nexaEscrowDetailProgress" class="nexa-escrow-order-progress"></div>
+            <div id="nexaEscrowSafetyNotice" class="nexa-escrow-safety-card"></div>
+            <div class="nexa-escrow-order-detail__actions">
+              <button id="nexaEscrowPrimaryAction" class="nexa-escrow-primary" type="button" hidden>主操作</button>
+              <button id="nexaEscrowSecondaryAction" class="nexa-escrow-secondary" type="button" hidden>次操作</button>
+            </div>
+            <p id="nexaEscrowDetailStatusText" class="nexa-escrow-status" hidden></p>
+          </article>
         </section>
 
         <section class="nexa-escrow-panel" data-tab="account" hidden>
@@ -109,30 +130,6 @@
         <h2 id="nexaEscrowCodeModalTitle" data-i18n="codeModalTitle">您的担保号是多少</h2>
         <div class="nexa-escrow-code-chip" id="nexaEscrowCodeModalValue">N000000</div>
         <button id="nexaEscrowCodeModalConfirm" class="nexa-escrow-primary" type="button" data-i18n="codeModalConfirm">我知道了</button>
-      </div>
-    </div>
-
-    <div id="nexaEscrowOrderModal" class="nexa-escrow-modal" hidden>
-      <div class="nexa-escrow-modal__backdrop" data-escrow-order-close></div>
-      <div class="nexa-escrow-modal__dialog nexa-escrow-modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="nexaEscrowDetailTitle">
-        <button id="nexaEscrowOrderModalClose" class="nexa-escrow-modal__close" type="button" aria-label="关闭">×</button>
-        <article class="nexa-escrow-card nexa-escrow-order-detail" id="nexaEscrowOrderDetail">
-          <div class="nexa-escrow-card__head">
-            <div>
-              <p class="nexa-escrow-label">订单详情</p>
-              <h2 id="nexaEscrowDetailTitle">交易单</h2>
-            </div>
-            <span id="nexaEscrowDetailStatus" class="nexa-escrow-pill">状态</span>
-          </div>
-          <div id="nexaEscrowDetailBody" class="nexa-escrow-order-detail__body"></div>
-          <div id="nexaEscrowDetailProgress" class="nexa-escrow-order-progress"></div>
-          <div id="nexaEscrowSafetyNotice" class="nexa-escrow-safety-card"></div>
-          <div class="nexa-escrow-order-detail__actions">
-            <button id="nexaEscrowPrimaryAction" class="nexa-escrow-primary" type="button" hidden>主操作</button>
-            <button id="nexaEscrowSecondaryAction" class="nexa-escrow-secondary" type="button" hidden>次操作</button>
-          </div>
-          <p id="nexaEscrowDetailStatusText" class="nexa-escrow-status" hidden></p>
-        </article>
       </div>
     </div>
 
