@@ -114,6 +114,7 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function openEscrowCodeModal\(/);
   assert.match(js, /function closeOrderDetail\(/);
   assert.match(js, /function openEscrowOrderFromList\(/);
+  assert.match(js, /renderOrderDetail\(appState\);\s*renderOrders\(appState\);/);
   assert.match(js, /viewerBuyer: '我是买家'/);
   assert.match(js, /viewerSeller: '我是卖家'/);
   assert.match(js, /descriptionTooLong: '交易描述最多 30 个字'/);

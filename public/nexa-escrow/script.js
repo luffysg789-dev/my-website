@@ -697,6 +697,7 @@
     appState.selectedTradeCode = normalizedTradeCode;
     renderOrders(appState);
     renderOrderDetail(appState);
+    renderOrders(appState);
   }
 
   function filterOrders(appState) {
