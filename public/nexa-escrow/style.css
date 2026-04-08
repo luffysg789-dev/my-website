@@ -369,6 +369,9 @@ body {
   display: grid;
   gap: 12px;
   text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .nexa-escrow-order-item.is-selected {
@@ -448,6 +451,17 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.nexa-escrow-order-item__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nexa-escrow-order-item__view {
+  color: #dce8ff;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .nexa-escrow-order-detail {

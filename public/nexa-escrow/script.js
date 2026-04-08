@@ -71,7 +71,8 @@
       progressDeliveredTitle: '卖家发货',
       progressDeliveredBody: '卖家已提供商品或服务',
       progressReceivedTitle: '确认收货',
-      progressReceivedBody: '买方确认无误，资金释放'
+      progressReceivedBody: '买方确认无误，资金释放',
+      viewDetail: '查看详情'
     },
     en: {
       tabCreate: 'Create',
@@ -135,7 +136,8 @@
       progressDeliveredTitle: 'Seller Delivered',
       progressDeliveredBody: 'Seller delivered the goods or service',
       progressReceivedTitle: 'Buyer Confirmed',
-      progressReceivedBody: 'Buyer confirmed receipt and funds were released'
+      progressReceivedBody: 'Buyer confirmed receipt and funds were released',
+      viewDetail: 'View Details'
     }
   };
 
@@ -623,14 +625,25 @@
           </div>
         </div>
         <div class="nexa-escrow-order-item__desc">${order.description || '--'}</div>
+        <div class="nexa-escrow-order-item__footer">
+          <span class="nexa-escrow-order-item__view">${t(appState.locale, 'viewDetail')}</span>
+        </div>
       </button>
     `).join('');
+    const openTradeCode = (tradeCode) => {
+      if (!tradeCode) return;
+      appState.selectedTradeCode = tradeCode;
+      renderOrders(appState);
+      renderOrderDetail(appState);
+    };
     Array.from(list.querySelectorAll('[data-trade-code]')).forEach((button) => {
       button.addEventListener('click', () => {
-        appState.selectedTradeCode = button.dataset.tradeCode;
-        renderOrders(appState);
-        renderOrderDetail(appState);
+        openTradeCode(button.dataset.tradeCode);
       });
+      button.addEventListener('touchend', (event) => {
+        event.preventDefault();
+        openTradeCode(button.dataset.tradeCode);
+      }, { passive: false });
     });
     if (appState.selectedTradeCode && !visibleOrders.some((item) => item.tradeCode === appState.selectedTradeCode)) {
       appState.selectedTradeCode = '';
