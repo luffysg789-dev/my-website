@@ -27,7 +27,8 @@
       filterAll: '全部',
       filterActive: '进行中',
       filterDisputed: '争议中',
-      filterCompleted: '已完成',
+      filterCancelled: '已取消',
+      filterCompleted: '完成',
       escrowCodeLabel: '担保号',
       walletLabel: '钱包余额',
       copyAction: '复制',
@@ -62,7 +63,7 @@
       statusDisputed: '争议中，等待平台仲裁',
       statusCompleted: '已完成，资金已释放',
       statusRefunded: '已退款给买家',
-      statusCancelled: '取消',
+      statusCancelled: '已取消',
       progressCreatedTitle: '创建交易',
       progressCreatedBody: '买卖双方达成一致',
       progressFundedTitle: '资金托管',
@@ -91,6 +92,7 @@
       filterAll: 'All',
       filterActive: 'Active',
       filterDisputed: 'Disputed',
+      filterCancelled: 'Cancelled',
       filterCompleted: 'Completed',
       escrowCodeLabel: 'Escrow ID',
       walletLabel: 'Wallet Balance',
@@ -575,8 +577,11 @@
     if (appState.orderFilter === 'disputed') {
       return allOrders.filter((order) => String(order?.status || '').trim().toUpperCase() === 'DISPUTED');
     }
+    if (appState.orderFilter === 'cancelled') {
+      return allOrders.filter((order) => String(order?.status || '').trim().toUpperCase() === 'CANCELLED');
+    }
     if (appState.orderFilter === 'completed') {
-      return allOrders.filter((order) => ['COMPLETED', 'REFUNDED', 'CANCELLED'].includes(String(order?.status || '').trim().toUpperCase()));
+      return allOrders.filter((order) => ['COMPLETED', 'REFUNDED'].includes(String(order?.status || '').trim().toUpperCase()));
     }
     return allOrders;
   }

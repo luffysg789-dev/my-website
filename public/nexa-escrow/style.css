@@ -229,7 +229,7 @@ body {
 
 .nexa-escrow-order-filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -567,7 +567,7 @@ body {
   }
 
   .nexa-escrow-order-filters {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .nexa-escrow-order-filters__item {

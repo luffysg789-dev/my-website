@@ -51,6 +51,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /data-order-filter="all"/);
   assert.match(html, /data-order-filter="active"/);
   assert.match(html, /data-order-filter="disputed"/);
+  assert.match(html, /data-order-filter="cancelled"/);
   assert.match(html, /data-order-filter="completed"/);
   assert.match(html, /id="nexaEscrowOrdersList"/);
   assert.match(html, /id="nexaEscrowOrderModal"/);
