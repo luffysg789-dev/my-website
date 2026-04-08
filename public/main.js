@@ -1065,6 +1065,18 @@ function toggleFavoriteSitesView() {
   });
 }
 
+function renderHomeSitesFromCurrentState() {
+  if (favoriteSitesOnly) {
+    renderSitesChunked(getVisibleSiteItems(homeAllSitesCache.length ? homeAllSitesCache : allSitesCache));
+    return;
+  }
+  if (currentCategory || searchInput.value.trim()) {
+    renderSitesChunked(getVisibleSiteItems(allSitesCache));
+    return;
+  }
+  renderSitesChunked(getVisibleSiteItems(homeAllSitesCache.length ? homeAllSitesCache : allSitesCache));
+}
+
 window.toggleSiteFavorite = function toggleSiteFavorite(key, url, buttonEl) {
   const normalizedKey = String(key || '').trim();
   const normalizedUrl = String(url || '').trim();
@@ -1174,6 +1186,11 @@ searchInput.addEventListener('keydown', (e) => {
     renderSiteSkeletons();
   }
   markPageReady();
-  await Promise.all([loadSiteConfig(), loadCategories(), loadSites({ limit: HOME_INITIAL_SITE_LIMIT })]);
+  try {
+    await Promise.all([loadSiteConfig(), loadCategories(), loadSites({ limit: HOME_INITIAL_SITE_LIMIT })]);
+  } catch {
+    // Keep the page interactive and render whatever data/cache we have.
+  }
   applyLanguage();
+  renderHomeSitesFromCurrentState();
 })();
