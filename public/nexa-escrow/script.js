@@ -5,6 +5,7 @@
   const MAX_NEXA_ESCROW_SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX = 68;
   const NEXA_ESCROW_PULL_REFRESH_MAX_PX = 92;
+  const NEXA_ESCROW_REFRESH_FEEDBACK_MS = 520;
   const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
   const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
   const NEXA_PUBLIC_CONFIG_ENDPOINT = '/api/nexa/public-config';
@@ -19,8 +20,8 @@
       amountLabel: '交易金额 (USDT)',
       counterpartySellerLabel: '卖方担保号',
       counterpartyBuyerLabel: '买方担保号',
-      counterpartySellerPlaceholder: '输入卖方担保号，例如 N123456',
-      counterpartyBuyerPlaceholder: '输入买方担保号，例如 N123456',
+      counterpartySellerPlaceholder: '输入卖方担保号，例如 n123456',
+      counterpartyBuyerPlaceholder: '输入买方担保号，例如 n123456',
       descriptionLabel: '交易描述',
       descriptionPlaceholder: '例如：购买虚拟主机服务、设计稿定金等',
       createAction: '确认发起',
@@ -38,6 +39,7 @@
       withdrawPrompt: '输入要提现到 Nexa 余额的 USDT 金额',
       withdrawCreated: '提现申请已提交到 Nexa。',
       withdrawOnlyNexa: '请在 Nexa App 内提现。',
+      invalidEscrowCode: '请填写正确担保号',
       firstLoginHint: '首次登录提醒',
       codeModalTitle: '您的担保号是多少',
       codeModalConfirm: '我知道了',
@@ -94,8 +96,8 @@
       amountLabel: 'Amount (USDT)',
       counterpartySellerLabel: 'Seller Escrow ID',
       counterpartyBuyerLabel: 'Buyer Escrow ID',
-      counterpartySellerPlaceholder: 'Enter seller escrow ID, e.g. N123456',
-      counterpartyBuyerPlaceholder: 'Enter buyer escrow ID, e.g. N123456',
+      counterpartySellerPlaceholder: 'Enter seller escrow ID, e.g. n123456',
+      counterpartyBuyerPlaceholder: 'Enter buyer escrow ID, e.g. n123456',
       descriptionLabel: 'Trade Description',
       descriptionPlaceholder: 'Example: VPS service, design deposit, etc.',
       createAction: 'Create Order',
@@ -113,6 +115,7 @@
       withdrawPrompt: 'Enter the USDT amount to withdraw to Nexa balance',
       withdrawCreated: 'Withdrawal has been submitted to Nexa.',
       withdrawOnlyNexa: 'Please withdraw inside the Nexa App.',
+      invalidEscrowCode: 'Please enter a valid escrow ID',
       firstLoginHint: 'First login reminder',
       codeModalTitle: 'Your escrow ID',
       codeModalConfirm: 'Got it',
@@ -701,11 +704,11 @@
   }
 
   function isOrderInitiatedByCurrentUser(appState, order) {
-    const accountEscrowCode = String(appState.account?.escrowCode || '').trim().toUpperCase();
+    const accountEscrowCode = normalizeEscrowCode(appState.account?.escrowCode);
     if (!accountEscrowCode) return false;
     const creatorRole = String(order?.creatorRole || '').trim().toLowerCase();
-    const buyerEscrowCode = String(order?.buyerEscrowCode || '').trim().toUpperCase();
-    const sellerEscrowCode = String(order?.sellerEscrowCode || '').trim().toUpperCase();
+    const buyerEscrowCode = normalizeEscrowCode(order?.buyerEscrowCode);
+    const sellerEscrowCode = normalizeEscrowCode(order?.sellerEscrowCode);
     if (creatorRole === 'buyer') {
       return accountEscrowCode === buyerEscrowCode;
     }
@@ -762,7 +765,7 @@
   }
 
   function renderAccount(appState) {
-    const escrowCode = String(appState.account?.escrowCode || 'N000000');
+    const escrowCode = normalizeEscrowCode(appState.account?.escrowCode) || 'n000000';
     if (appState.elements.headerCode) {
       appState.elements.headerCode.textContent = escrowCode;
     }
@@ -798,12 +801,26 @@
     renderAccount(appState);
   }
 
+  function delay(ms) {
+    return new Promise((resolve) => {
+      globalScope.window.setTimeout(resolve, ms);
+    });
+  }
+
   async function refreshCurrentEscrowTab(appState) {
     if (appState.bootstrapRefreshing) return;
     appState.bootstrapRefreshing = true;
+    const activePanel = appState.activeTab === 'orders'
+      ? appState.elements.ordersPanel
+      : (appState.activeTab === 'account' ? appState.elements.accountPanel : null);
+    activePanel?.classList.add('nexa-escrow-panel--refreshing');
     try {
-      await loadBootstrap(appState);
+      await Promise.all([
+        loadBootstrap(appState),
+        delay(NEXA_ESCROW_REFRESH_FEEDBACK_MS)
+      ]);
     } finally {
+      activePanel?.classList.remove('nexa-escrow-panel--refreshing');
       appState.bootstrapRefreshing = false;
     }
   }
@@ -833,14 +850,19 @@
     if (appState.ordersRefreshing) return;
     appState.ordersRefreshing = true;
     const indicator = appState.elements.ordersPullRefresh;
+    appState.elements.ordersPanel?.classList.add('nexa-escrow-panel--refreshing');
     if (indicator) {
       indicator.style.height = `${NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX}px`;
       indicator.classList.remove('is-ready');
       indicator.classList.add('is-refreshing');
     }
     try {
-      await loadBootstrap(appState);
+      await Promise.all([
+        loadBootstrap(appState),
+        delay(NEXA_ESCROW_REFRESH_FEEDBACK_MS)
+      ]);
     } finally {
+      appState.elements.ordersPanel?.classList.remove('nexa-escrow-panel--refreshing');
       appState.ordersRefreshing = false;
       resetOrdersPullRefresh(appState);
     }
@@ -871,14 +893,19 @@
     if (appState.accountRefreshing) return;
     appState.accountRefreshing = true;
     const indicator = appState.elements.accountPullRefresh;
+    appState.elements.accountPanel?.classList.add('nexa-escrow-panel--refreshing');
     if (indicator) {
       indicator.style.height = `${NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX}px`;
       indicator.classList.remove('is-ready');
       indicator.classList.add('is-refreshing');
     }
     try {
-      await loadBootstrap(appState);
+      await Promise.all([
+        loadBootstrap(appState),
+        delay(NEXA_ESCROW_REFRESH_FEEDBACK_MS)
+      ]);
     } finally {
+      appState.elements.accountPanel?.classList.remove('nexa-escrow-panel--refreshing');
       appState.accountRefreshing = false;
       resetAccountPullRefresh(appState);
     }
@@ -917,8 +944,10 @@
         createButton: root.querySelector('#nexaEscrowCreateButton'),
         createStatus: root.querySelector('#nexaEscrowCreateStatus'),
         ordersList: root.querySelector('#nexaEscrowOrdersList'),
+        ordersCard: root.querySelector('#nexaEscrowOrdersCard'),
         ordersPanel: root.querySelector('[data-tab="orders"]'),
         ordersPullRefresh: root.querySelector('#nexaEscrowOrdersPullToRefresh'),
+        accountCard: root.querySelector('#nexaEscrowAccountCard'),
         accountPanel: root.querySelector('[data-tab="account"]'),
         accountPullRefresh: root.querySelector('#nexaEscrowAccountPullToRefresh'),
         orderDetail: root.querySelector('#nexaEscrowOrderDetail'),
@@ -1055,7 +1084,11 @@
           await beginEscrowPayment(appState, response.order.tradeCode);
         }
       } catch (error) {
-        setStatus(appState.elements.createStatus, error instanceof Error ? error.message : '创建失败', 'error');
+        const message = error instanceof Error ? error.message : '创建失败';
+        const resolvedMessage = message === 'INVALID_COUNTERPARTY_ESCROW_CODE'
+          ? t(appState.locale, 'invalidEscrowCode')
+          : message;
+        setStatus(appState.elements.createStatus, resolvedMessage, 'error');
       }
     });
     [appState.elements.primaryAction, appState.elements.secondaryAction].forEach((button) => {
@@ -1187,3 +1220,8 @@
     bootBrowser().catch(() => {});
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
+  function normalizeEscrowCode(code) {
+    const normalized = String(code || '').trim();
+    if (!/^[nN]\d{6}$/.test(normalized)) return '';
+    return `n${normalized.slice(1)}`;
+  }

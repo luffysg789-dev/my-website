@@ -25,7 +25,7 @@
           </div>
           <div class="nexa-escrow-header__identity">
             我的担保号:
-            <button id="nexaEscrowHeaderCode" class="nexa-escrow-header__code" type="button">N000000</button>
+            <button id="nexaEscrowHeaderCode" class="nexa-escrow-header__code" type="button">n000000</button>
             <button id="nexaEscrowHeaderCopy" class="nexa-escrow-header__copy" type="button" aria-label="复制担保号">⧉</button>
           </div>
         </header>
@@ -37,7 +37,7 @@
         </nav>
 
         <section class="nexa-escrow-panel is-active" data-tab="create">
-          <article class="nexa-escrow-card">
+          <article id="nexaEscrowOrdersCard" class="nexa-escrow-card">
             <div class="nexa-escrow-role-toggle">
               <button id="nexaEscrowRoleBuyer" class="nexa-escrow-role-toggle__item is-active" type="button" data-role="buyer" data-i18n="roleBuyer">我是买家</button>
               <button id="nexaEscrowRoleSeller" class="nexa-escrow-role-toggle__item" type="button" data-role="seller" data-i18n="roleSeller">我是卖家</button>
@@ -50,7 +50,7 @@
 
             <label class="nexa-escrow-field">
               <span id="nexaEscrowCounterpartyLabel" data-i18n="counterpartySellerLabel">卖方担保号</span>
-              <input id="nexaEscrowCounterpartyInput" class="nexa-escrow-input" type="text" placeholder="输入对方担保号，例如 N123456" data-i18n-placeholder="counterpartySellerPlaceholder" />
+              <input id="nexaEscrowCounterpartyInput" class="nexa-escrow-input" type="text" placeholder="输入对方担保号，例如 n123456" data-i18n-placeholder="counterpartySellerPlaceholder" />
             </label>
 
             <label class="nexa-escrow-field">
@@ -67,7 +67,7 @@
           <div id="nexaEscrowOrdersPullToRefresh" class="nexa-escrow-pull-refresh" aria-hidden="true">
             <div id="nexaEscrowOrdersPullSpinner" class="nexa-escrow-pull-refresh__spinner"></div>
           </div>
-          <article class="nexa-escrow-card">
+          <article id="nexaEscrowAccountCard" class="nexa-escrow-card">
             <div class="nexa-escrow-order-filters">
               <button class="nexa-escrow-order-filters__item is-active" type="button" data-order-filter="all" data-i18n="filterAll">全部</button>
               <button class="nexa-escrow-order-filters__item" type="button" data-order-filter="active" data-i18n="filterActive">进行中</button>
@@ -145,7 +145,7 @@
       <div class="nexa-escrow-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="nexaEscrowCodeModalTitle">
         <p class="nexa-escrow-label" data-i18n="firstLoginHint">首次登录提醒</p>
         <h2 id="nexaEscrowCodeModalTitle" data-i18n="codeModalTitle">您的担保号是多少</h2>
-        <div class="nexa-escrow-code-chip" id="nexaEscrowCodeModalValue">N000000</div>
+        <div class="nexa-escrow-code-chip" id="nexaEscrowCodeModalValue">n000000</div>
         <button id="nexaEscrowCodeModalConfirm" class="nexa-escrow-primary" type="button" data-i18n="codeModalConfirm">我知道了</button>
       </div>
     </div>

@@ -197,7 +197,7 @@ test('nexa-escrow bootstrap returns synced account state and empty orders for a 
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.ok, true);
     assert.equal(response.body.account.openId, 'escrow-open-id-bootstrap');
-    assert.match(response.body.account.escrowCode, /^N\d{6}$/);
+    assert.match(response.body.account.escrowCode, /^n\d{6}$/);
     assert.equal(Array.isArray(response.body.orders), true);
     assert.equal(response.body.orders.length, 0);
   } finally {
@@ -366,6 +366,63 @@ test('nexa-escrow buyer can create an order and seller sees it automatically by 
     assert.equal(sellerOrdersResponse.body.orders[0].status, 'AWAITING_PAYMENT');
     assert.equal(sellerOrdersResponse.body.orders[0].sellerOpenId, 'escrow-seller-open-id');
     assert.equal(sellerOrdersResponse.body.orders[0].sellerEscrowCode, sellerEscrowCode);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('nexa-escrow accepts uppercase counterparty escrow codes and rejects unknown escrow codes', async () => {
+  const harness = createHarness();
+
+  try {
+    const buyerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-buyer-open-id-case',
+      sessionKey: 'escrow-buyer-session-key-case',
+      nickname: 'Buyer User'
+    });
+    const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
+
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-seller-open-id-case',
+      sessionKey: 'escrow-seller-session-key-case',
+      nickname: 'Seller User'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: {
+        [sellerCookie.name]: sellerCookie.value
+      }
+    });
+    const sellerEscrowCode = sellerBootstrap.body.account.escrowCode;
+
+    const uppercaseCreate = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '10.00',
+      counterpartyEscrowCode: sellerEscrowCode.toUpperCase(),
+      description: '大小写兼容测试'
+    }, {
+      cookies: {
+        [buyerCookie.name]: buyerCookie.value
+      }
+    });
+
+    assert.equal(uppercaseCreate.statusCode, 200);
+    assert.equal(uppercaseCreate.body.order.sellerEscrowCode, sellerEscrowCode);
+
+    const invalidCreate = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '10.00',
+      counterpartyEscrowCode: 'n999999',
+      description: '无效担保号测试'
+    }, {
+      cookies: {
+        [buyerCookie.name]: buyerCookie.value
+      }
+    });
+
+    assert.equal(invalidCreate.statusCode, 400);
+    assert.equal(invalidCreate.body.ok, false);
+    assert.equal(invalidCreate.body.error, 'INVALID_COUNTERPARTY_ESCROW_CODE');
   } finally {
     harness.cleanup();
   }

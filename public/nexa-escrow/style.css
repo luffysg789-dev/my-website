@@ -208,6 +208,7 @@ body {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding-top: 0;
+  touch-action: pan-y;
 }
 
 .nexa-escrow-pull-refresh {
@@ -226,6 +227,12 @@ body {
 
 .nexa-escrow-pull-refresh.is-refreshing .nexa-escrow-pull-refresh__spinner {
   animation: nexaEscrowSpin 700ms linear infinite;
+}
+
+.nexa-escrow-panel--refreshing .nexa-escrow-card {
+  opacity: 0.72;
+  transform: translateY(2px);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .nexa-escrow-pull-refresh__spinner {
