@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <title>Claw800 Nexa 担保</title>
     <meta name="description" content="Claw800 Nexa 担保，支持 Nexa App 内 USDT 担保交易、入金与放款。" />
     <link rel="icon" href="/favicon.ico" />
@@ -65,11 +65,6 @@
 
         <section class="nexa-escrow-panel" data-tab="orders" hidden>
           <article class="nexa-escrow-card">
-            <div class="nexa-escrow-card__head">
-              <div>
-                <p class="nexa-escrow-label">我的担保单</p>
-              </div>
-            </div>
             <div class="nexa-escrow-order-filters">
               <button class="nexa-escrow-order-filters__item is-active" type="button" data-order-filter="all" data-i18n="filterAll">全部</button>
               <button class="nexa-escrow-order-filters__item" type="button" data-order-filter="active" data-i18n="filterActive">进行中</button>
@@ -116,6 +111,27 @@
         </section>
       </section>
     </main>
+
+    <div id="nexaEscrowWithdrawModal" class="nexa-escrow-modal" hidden>
+      <div class="nexa-escrow-modal__backdrop"></div>
+      <div class="nexa-escrow-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="nexaEscrowWithdrawModalTitle">
+        <p class="nexa-escrow-label">提现</p>
+        <h2 id="nexaEscrowWithdrawModalTitle">输入提现金额</h2>
+        <input
+          id="nexaEscrowWithdrawAmountInput"
+          class="nexa-escrow-input"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          placeholder="0.00"
+        />
+        <div class="nexa-escrow-modal__actions">
+          <button id="nexaEscrowWithdrawCancel" class="nexa-escrow-secondary" type="button">取消</button>
+          <button id="nexaEscrowWithdrawConfirm" class="nexa-escrow-primary" type="button">确认提现</button>
+        </div>
+      </div>
+    </div>
 
     <div id="nexaEscrowCodeModal" class="nexa-escrow-modal" hidden>
       <div class="nexa-escrow-modal__backdrop"></div>

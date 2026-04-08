@@ -22,6 +22,7 @@
       descriptionLabel: '交易描述',
       descriptionPlaceholder: '例如：购买虚拟主机服务、设计稿定金等',
       createAction: '确认发起',
+      createAndPayAction: '确认发起并付款',
       ordersHeadline: '我的担保订单',
       accountHeadline: '你的 Nexa 担保身份',
       filterAll: '全部',
@@ -93,6 +94,7 @@
       descriptionLabel: 'Trade Description',
       descriptionPlaceholder: 'Example: VPS service, design deposit, etc.',
       createAction: 'Create Order',
+      createAndPayAction: 'Create & Pay',
       ordersHeadline: 'Buyer pays, seller delivers, buyer releases',
       accountHeadline: 'Your Nexa escrow identity',
       filterAll: 'All',
@@ -372,6 +374,7 @@
       t(appState.locale, 'createSuccess').replace('{tradeCode}', response.order.tradeCode),
       'success'
     );
+    return response;
   }
 
   async function beginEscrowPayment(appState, tradeCode) {
@@ -413,8 +416,27 @@
       setStatus(appState.elements.accountStatus, t(appState.locale, 'withdrawOnlyNexa'), 'error');
       return;
     }
-    const amount = String(globalScope.window.prompt(t(appState.locale, 'withdrawPrompt')) || '').trim();
+    openEscrowWithdrawModal(appState);
+  }
+
+  function openEscrowWithdrawModal(appState) {
+    if (!appState.elements.withdrawModal) return;
+    appState.elements.withdrawAmountInput.value = '';
+    appState.elements.withdrawModal.hidden = false;
+    globalScope.window.setTimeout(() => {
+      appState.elements.withdrawAmountInput?.focus();
+    }, 60);
+  }
+
+  function closeEscrowWithdrawModal(appState) {
+    if (!appState.elements.withdrawModal) return;
+    appState.elements.withdrawModal.hidden = true;
+  }
+
+  async function submitEscrowWithdraw(appState) {
+    const amount = String(appState.elements.withdrawAmountInput?.value || '').trim();
     if (!amount) return;
+    closeEscrowWithdrawModal(appState);
     setStatus(appState.elements.accountStatus, t(appState.locale, 'processing'));
     const response = await postJson('/api/nexa-escrow/withdraw/create', { amount });
     if (String(response?.partnerOrderNo || '').trim()) {
@@ -516,6 +538,11 @@
     appState.elements.counterpartyInput.placeholder = appState.role === 'buyer'
       ? t(appState.locale, 'counterpartySellerPlaceholder')
       : t(appState.locale, 'counterpartyBuyerPlaceholder');
+    if (appState.elements.createButton) {
+      appState.elements.createButton.textContent = appState.role === 'buyer'
+        ? t(appState.locale, 'createAndPayAction')
+        : t(appState.locale, 'createAction');
+    }
   }
 
   function describeOrderStatus(appState, order) {
@@ -789,6 +816,10 @@
             accountCodeCopy: root.querySelector('#nexaEscrowAccountCodeCopy'),
             withdrawBtn: root.querySelector('#nexaEscrowWithdrawBtn'),
             accountStatus: root.querySelector('#nexaEscrowAccountStatus'),
+            withdrawModal: globalScope.document.querySelector('#nexaEscrowWithdrawModal'),
+            withdrawAmountInput: globalScope.document.querySelector('#nexaEscrowWithdrawAmountInput'),
+            withdrawCancel: globalScope.document.querySelector('#nexaEscrowWithdrawCancel'),
+            withdrawConfirm: globalScope.document.querySelector('#nexaEscrowWithdrawConfirm'),
             toast: globalScope.document.querySelector('#nexaEscrowToast'),
             codeModal: globalScope.document.querySelector('#nexaEscrowCodeModal'),
             codeModalValue: globalScope.document.querySelector('#nexaEscrowCodeModalValue'),
@@ -825,7 +856,11 @@
     appState.elements.createButton?.addEventListener('click', async () => {
       try {
         setStatus(appState.elements.createStatus, t(appState.locale, 'creatingOrder'));
-        await createEscrowOrder(appState);
+        const response = await createEscrowOrder(appState);
+        if (appState.role === 'buyer' && response?.order?.tradeCode) {
+          setStatus(appState.elements.createStatus, t(appState.locale, 'processing'));
+          await beginEscrowPayment(appState, response.order.tradeCode);
+        }
       } catch (error) {
         setStatus(appState.elements.createStatus, error instanceof Error ? error.message : '创建失败', 'error');
       }
@@ -873,6 +908,14 @@
     });
     appState.elements.withdrawBtn?.addEventListener('click', () => {
       beginEscrowWithdrawFlow(appState).catch((error) => {
+        setStatus(appState.elements.accountStatus, error instanceof Error ? error.message : '提现失败', 'error');
+      });
+    });
+    appState.elements.withdrawCancel?.addEventListener('click', () => {
+      closeEscrowWithdrawModal(appState);
+    });
+    appState.elements.withdrawConfirm?.addEventListener('click', () => {
+      submitEscrowWithdraw(appState).catch((error) => {
         setStatus(appState.elements.accountStatus, error instanceof Error ? error.message : '提现失败', 'error');
       });
     });
