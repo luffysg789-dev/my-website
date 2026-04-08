@@ -26,6 +26,8 @@ test('nexa-escrow shell keeps header fixed while panels scroll within remaining 
   assert.match(css, /\.nexa-escrow-shell\s*\{[\s\S]*height:\s*100%/);
   assert.match(css, /\.nexa-escrow-panel\s*\{[\s\S]*height:\s*100%/);
   assert.match(css, /\.nexa-escrow-panel--scrollable\s*\{[\s\S]*overflow-y:\s*auto/);
+  assert.match(css, /\.nexa-escrow-panel\[data-tab="account"\]\s*\{[\s\S]*align-content:\s*start/);
+  assert.match(css, /\.nexa-escrow-panel\[data-tab="account"\]\s*>\s*\.nexa-escrow-card\s*\{[\s\S]*align-self:\s*start/);
 });
 
 test('nexa-escrow is listed in frontend config and backend defaults as a standalone page hidden from the public hub', () => {
@@ -112,6 +114,8 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function openEscrowCodeModal\(/);
   assert.match(js, /function closeOrderDetail\(/);
   assert.match(js, /function openEscrowOrderFromList\(/);
+  assert.match(js, /closeDetail: '关闭详情'/);
+  assert.match(js, /order\.tradeCode === appState\.selectedTradeCode \? t\(appState\.locale, 'closeDetail'\) : t\(appState\.locale, 'viewDetail'\)/);
   assert.match(js, /function applyTranslations\(/);
   assert.match(js, /function copyEscrowCode\(/);
   assert.match(js, /function beginEscrowWithdrawFlow\(/);

@@ -85,7 +85,8 @@
       progressDeliveredBody: '卖家已提供商品或服务',
       progressReceivedTitle: '确认收货',
       progressReceivedBody: '买方确认无误，资金释放',
-      viewDetail: '查看详情'
+      viewDetail: '查看详情',
+      closeDetail: '关闭详情'
     },
     en: {
       tabCreate: 'Create',
@@ -160,7 +161,8 @@
       progressDeliveredBody: 'Seller delivered the goods or service',
       progressReceivedTitle: 'Buyer Confirmed',
       progressReceivedBody: 'Buyer confirmed receipt and funds were released',
-      viewDetail: 'View Details'
+      viewDetail: 'View Details',
+      closeDetail: 'Close Details'
     }
   };
 
@@ -747,7 +749,7 @@
         <div class="nexa-escrow-order-item__desc">${order.description || '--'}</div>
         <div class="nexa-escrow-order-item__footer">
           ${isOrderInitiatedByCurrentUser(appState, order) ? '<span class="nexa-escrow-order-item__initiator">我发起的</span>' : ''}
-          <button class="nexa-escrow-order-item__view" type="button" data-detail-trigger="${order.tradeCode}">${t(appState.locale, 'viewDetail')}</button>
+          <button class="nexa-escrow-order-item__view" type="button" data-detail-trigger="${order.tradeCode}">${order.tradeCode === appState.selectedTradeCode ? t(appState.locale, 'closeDetail') : t(appState.locale, 'viewDetail')}</button>
         </div>
       </article>
     `).join('');

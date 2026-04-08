@@ -215,6 +215,15 @@ body {
   min-height: 0;
 }
 
+.nexa-escrow-panel[data-tab="account"] {
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.nexa-escrow-panel[data-tab="account"] > .nexa-escrow-card {
+  align-self: start;
+}
+
 .nexa-escrow-pull-refresh {
   height: 0;
   overflow: hidden;
