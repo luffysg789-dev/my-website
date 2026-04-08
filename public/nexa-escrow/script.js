@@ -710,13 +710,13 @@
   }
 
   function renderAccount(appState) {
-    if (!appState.elements.accountCode || !appState.elements.accountWallet) return;
     const escrowCode = String(appState.account?.escrowCode || 'N000000');
-    appState.elements.accountCode.textContent = escrowCode;
     if (appState.elements.headerCode) {
       appState.elements.headerCode.textContent = escrowCode;
     }
-    appState.elements.accountWallet.textContent = `${String(appState.account?.wallet || '0.00')} USDT`;
+    if (appState.elements.accountWallet) {
+      appState.elements.accountWallet.textContent = `${String(appState.account?.wallet || '0.00')} USDT`;
+    }
     if (appState.elements.withdrawBtn) {
       appState.elements.withdrawBtn.textContent = t(appState.locale, 'withdrawAction');
     }
