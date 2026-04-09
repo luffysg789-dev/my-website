@@ -51,6 +51,11 @@ const TRUST_PROXY = String(process.env.TRUST_PROXY || 'loopback, linklocal, uniq
 const NEXA_TIP_AMOUNT = '0.10';
 const NEXA_TIP_CURRENCY = 'USDT';
 const NEXA_ESCROW_CURRENCY = 'USDT';
+const NEXA_ESCROW_DEFAULT_MIN_AMOUNT = '1.00';
+const NEXA_ESCROW_DEFAULT_MAX_AMOUNT = '100000.00';
+const NEXA_ESCROW_DEFAULT_FEE_PERMILLE = '0';
+const NEXA_ESCROW_HARD_MIN_AMOUNT_CENTS = 100n;
+const NEXA_ESCROW_HARD_MAX_AMOUNT_CENTS = 10000000n;
 const PMINING_TOTAL_SUPPLY = 210000000000;
 const PMINING_DAILY_CAP = 71917808;
 const PMINING_CLAIM_COOLDOWN_MS = 60 * 60 * 1000;
@@ -1108,6 +1113,7 @@ function maybeAutoReleaseDeliveredEscrowOrders() {
 
 function buildNexaEscrowBootstrapPayload(session) {
   const ensured = ensureNexaEscrowUserAccount(session);
+  const escrowSettings = getNexaEscrowSettings();
   claimNexaEscrowOrdersForUser(ensured.user);
   maybeAutoCancelPendingPaymentEscrowOrders();
   maybeAutoCancelPendingShipmentEscrowOrders();
@@ -1144,12 +1150,18 @@ function buildNexaEscrowBootstrapPayload(session) {
         finishedAt: String(item.finished_at || '').trim()
       }))
     },
-    orders
+    orders,
+    settings: {
+      minAmount: escrowSettings.minAmount,
+      maxAmount: escrowSettings.maxAmount,
+      feePermille: escrowSettings.feePermille
+    }
   };
 }
 
 function createNexaEscrowOrder({ session, creatorRole, counterpartyEscrowCode, amount, description }) {
   const ensured = ensureNexaEscrowUserAccount(session);
+  const escrowSettings = getNexaEscrowSettings();
   const normalizedRole = String(creatorRole || '').trim().toLowerCase();
   if (normalizedRole !== 'buyer' && normalizedRole !== 'seller') {
     throw buildNexaEscrowBanError('INVALID_CREATOR_ROLE');
@@ -1157,6 +1169,12 @@ function createNexaEscrowOrder({ session, creatorRole, counterpartyEscrowCode, a
   const amountCents = parseMoneyToCents(amount);
   if (amountCents <= 0n) {
     throw buildNexaEscrowBanError('INVALID_AMOUNT');
+  }
+  if (amountCents < escrowSettings.minAmountCents) {
+    throw buildNexaEscrowBanError('AMOUNT_TOO_LOW');
+  }
+  if (amountCents > escrowSettings.maxAmountCents) {
+    throw buildNexaEscrowBanError('AMOUNT_TOO_HIGH');
   }
   const normalizedCounterpartyEscrowCode = normalizeNexaEscrowCode(counterpartyEscrowCode);
   if (!normalizedCounterpartyEscrowCode) {
@@ -1396,17 +1414,24 @@ function creditEscrowSellerWallet({ sellerUserId, amount, tradeCode }) {
   if (!sellerUserId) return;
   const wallet = selectNexaEscrowWalletStmt.get(Number(sellerUserId));
   if (!wallet) return;
-  const nextBalance = parseMoneyToCents(wallet.available_balance) + parseMoneyToCents(amount);
+  const amountCents = parseMoneyToCents(amount);
+  const escrowSettings = getNexaEscrowSettings();
+  const feeCents = computeEscrowFeeAmountCents(amountCents, escrowSettings.feePermille);
+  const netAmountCents = amountCents > feeCents ? amountCents - feeCents : 0n;
+  const netAmount = centsToMoneyString(netAmountCents);
+  const nextBalance = parseMoneyToCents(wallet.available_balance) + netAmountCents;
   const nextBalanceString = centsToMoneyString(nextBalance);
   updateNexaEscrowWalletBalanceStmt.run(nextBalanceString, Number(sellerUserId));
   insertNexaEscrowWalletLedgerStmt.run(
     Number(sellerUserId),
     'escrow_release',
-    String(amount || '0.00').trim(),
+    netAmount,
     nextBalanceString,
     'nexa_escrow',
     String(tradeCode || '').trim(),
-    'Nexa 担保放款'
+    feeCents > 0n
+      ? `Nexa 担保放款（已扣手续费 ${centsToMoneyString(feeCents)}）`
+      : 'Nexa 担保放款'
   );
 }
 
@@ -2345,6 +2370,64 @@ function getSetting(key, fallback = '') {
   return value || String(fallback || '');
 }
 
+function normalizeEscrowConfigMoney(value, fallback) {
+  const fallbackString = String(fallback || '').trim();
+  try {
+    const cents = parseMoneyToCents(String(value || '').trim() || fallbackString);
+    return centsToMoneyString(cents);
+  } catch {
+    return fallbackString;
+  }
+}
+
+function normalizeEscrowFeePermille(value, fallback = NEXA_ESCROW_DEFAULT_FEE_PERMILLE) {
+  const raw = String(value || '').trim();
+  const fallbackString = String(fallback || '').trim() || NEXA_ESCROW_DEFAULT_FEE_PERMILLE;
+  if (!raw) return fallbackString;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) return fallbackString;
+  const numericValue = Number(raw);
+  if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 999) return fallbackString;
+  return raw.replace(/(?:\.0+|(\.\d*[1-9])0+)$/, '$1');
+}
+
+function getNexaEscrowSettings() {
+  let minAmountCents = parseMoneyToCents(
+    normalizeEscrowConfigMoney(getSetting('nexa_escrow_min_amount', NEXA_ESCROW_DEFAULT_MIN_AMOUNT), NEXA_ESCROW_DEFAULT_MIN_AMOUNT)
+  );
+  let maxAmountCents = parseMoneyToCents(
+    normalizeEscrowConfigMoney(getSetting('nexa_escrow_max_amount', NEXA_ESCROW_DEFAULT_MAX_AMOUNT), NEXA_ESCROW_DEFAULT_MAX_AMOUNT)
+  );
+  if (minAmountCents < NEXA_ESCROW_HARD_MIN_AMOUNT_CENTS) {
+    minAmountCents = NEXA_ESCROW_HARD_MIN_AMOUNT_CENTS;
+  }
+  if (maxAmountCents > NEXA_ESCROW_HARD_MAX_AMOUNT_CENTS) {
+    maxAmountCents = NEXA_ESCROW_HARD_MAX_AMOUNT_CENTS;
+  }
+  if (maxAmountCents < minAmountCents) {
+    maxAmountCents = minAmountCents;
+  }
+  const feePermille = normalizeEscrowFeePermille(
+    getSetting('nexa_escrow_fee_permille', NEXA_ESCROW_DEFAULT_FEE_PERMILLE),
+    NEXA_ESCROW_DEFAULT_FEE_PERMILLE
+  );
+  return {
+    minAmount: centsToMoneyString(minAmountCents),
+    maxAmount: centsToMoneyString(maxAmountCents),
+    feePermille,
+    minAmountCents,
+    maxAmountCents
+  };
+}
+
+function computeEscrowFeeAmountCents(amountCents, feePermille) {
+  const normalizedAmountCents = BigInt(amountCents || 0n);
+  if (normalizedAmountCents <= 0n) return 0n;
+  const normalizedFee = normalizeEscrowFeePermille(feePermille, NEXA_ESCROW_DEFAULT_FEE_PERMILLE);
+  const feeCentiPermille = BigInt(Math.round(Number(normalizedFee || '0') * 100));
+  if (feeCentiPermille <= 0n) return 0n;
+  return (normalizedAmountCents * feeCentiPermille + 50000n) / 100000n;
+}
+
 function safeJsonParse(raw, fallback) {
   try {
     return JSON.parse(String(raw || ''));
@@ -2720,6 +2803,7 @@ app.get('/api/site-config', (_req, res) => {
   const footerContactZh = getSetting('site_footer_contact_zh', '');
   const footerContactEn = getSetting('site_footer_contact_en', '');
   const footerLinks = parseFooterLinks(getSetting('site_footer_links', ''));
+  const escrowSettings = getNexaEscrowSettings();
   res.json({
     ok: true,
     title,
@@ -2743,7 +2827,10 @@ app.get('/api/site-config', (_req, res) => {
     footerCopyrightEn,
     footerContactZh,
     footerContactEn,
-    footerLinks
+    footerLinks,
+    nexaEscrowMinAmount: escrowSettings.minAmount,
+    nexaEscrowMaxAmount: escrowSettings.maxAmount,
+    nexaEscrowFeePermille: escrowSettings.feePermille
   });
 });
 
@@ -2810,6 +2897,7 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
   const nexaApiKey = getSetting('nexa_api_key', '');
   const hasNexaAppSecret = Boolean(String(getSetting('nexa_app_secret', '') || '').trim());
   const footerLinks = parseFooterLinks(footerLinksRaw);
+  const escrowSettings = getNexaEscrowSettings();
   res.json({
     ok: true,
     title,
@@ -2836,6 +2924,9 @@ app.get('/api/admin/site-config', requireAdmin, (_req, res) => {
     nexaApiKey,
     nexaAppSecret: '',
     hasNexaAppSecret,
+    nexaEscrowMinAmount: escrowSettings.minAmount,
+    nexaEscrowMaxAmount: escrowSettings.maxAmount,
+    nexaEscrowFeePermille: escrowSettings.feePermille,
     footerLinksRaw,
     footerLinks
   });
@@ -2865,6 +2956,9 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   const footerContactEn = String(req.body.footerContactEn || '').trim();
   const footerLinksRaw = String(req.body.footerLinksRaw || req.body.footerLinks || '').trim();
   const nexaApiKey = String(req.body.nexaApiKey || '').trim();
+  const nexaEscrowMinAmount = String(req.body.nexaEscrowMinAmount || '').trim();
+  const nexaEscrowMaxAmount = String(req.body.nexaEscrowMaxAmount || '').trim();
+  const nexaEscrowFeePermille = String(req.body.nexaEscrowFeePermille || '').trim();
   const nexaAppSecret = String(req.body.nexaAppSecret || '').trim();
   const keepNexaAppSecret = req.body.keepNexaAppSecret === true || String(req.body.keepNexaAppSecret || '').trim() === 'true';
 
@@ -2892,6 +2986,9 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   if (Buffer.byteLength(footerContactEn, 'utf8') > 2000) return res.status(413).json({ error: '联系客服(英文)太长' });
   if (Buffer.byteLength(footerLinksRaw, 'utf8') > 50000) return res.status(413).json({ error: '友情链接太长' });
   if (Buffer.byteLength(nexaApiKey, 'utf8') > 500) return res.status(413).json({ error: 'Nexa API Key 太长' });
+  if (Buffer.byteLength(nexaEscrowMinAmount, 'utf8') > 50) return res.status(413).json({ error: '担保最低金额太长' });
+  if (Buffer.byteLength(nexaEscrowMaxAmount, 'utf8') > 50) return res.status(413).json({ error: '担保最高金额太长' });
+  if (Buffer.byteLength(nexaEscrowFeePermille, 'utf8') > 50) return res.status(413).json({ error: '担保手续费太长' });
   if (Buffer.byteLength(nexaAppSecret, 'utf8') > 1000) return res.status(413).json({ error: 'Nexa App Secret 太长' });
 
   if (icon && !isProbablyDataUrl(icon) && !isProbablyAbsoluteUrl(icon)) {
@@ -2902,6 +2999,23 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
   }
 
   try {
+    const normalizedMinAmount = normalizeEscrowConfigMoney(nexaEscrowMinAmount, NEXA_ESCROW_DEFAULT_MIN_AMOUNT);
+    const normalizedMaxAmount = normalizeEscrowConfigMoney(nexaEscrowMaxAmount, NEXA_ESCROW_DEFAULT_MAX_AMOUNT);
+    const normalizedFeePermille = normalizeEscrowFeePermille(nexaEscrowFeePermille, NEXA_ESCROW_DEFAULT_FEE_PERMILLE);
+    const minAmountCents = parseMoneyToCents(normalizedMinAmount);
+    const maxAmountCents = parseMoneyToCents(normalizedMaxAmount);
+    if (minAmountCents < NEXA_ESCROW_HARD_MIN_AMOUNT_CENTS) {
+      return res.status(400).json({ error: '担保最低金额不能低于 1 USDT' });
+    }
+    if (maxAmountCents > NEXA_ESCROW_HARD_MAX_AMOUNT_CENTS) {
+      return res.status(400).json({ error: '担保最高金额不能超过 100000 USDT' });
+    }
+    if (maxAmountCents < minAmountCents) {
+      return res.status(400).json({ error: '担保最高金额不能低于最低金额' });
+    }
+    if (!/^\d+(?:\.\d{1,2})?$/.test(normalizedFeePermille) || Number(normalizedFeePermille) < 0 || Number(normalizedFeePermille) > 999) {
+      return res.status(400).json({ error: '担保手续费必须是 0 到 999 之间的数字' });
+    }
     const footerLinks = parseFooterLinks(footerLinksRaw);
     upsertSettingStmt.run('site_title', title);
     upsertSettingStmt.run('site_subtitle_zh', subtitleZh);
@@ -2926,6 +3040,9 @@ app.put('/api/admin/site-config', requireAdmin, (req, res) => {
     upsertSettingStmt.run('site_footer_contact_en', footerContactEn);
     upsertSettingStmt.run('site_footer_links', stringifyFooterLinks(footerLinks));
     upsertSettingStmt.run('nexa_api_key', nexaApiKey);
+    upsertSettingStmt.run('nexa_escrow_min_amount', normalizedMinAmount);
+    upsertSettingStmt.run('nexa_escrow_max_amount', normalizedMaxAmount);
+    upsertSettingStmt.run('nexa_escrow_fee_permille', normalizedFeePermille);
     if (!keepNexaAppSecret || nexaAppSecret) {
       upsertSettingStmt.run('nexa_app_secret', nexaAppSecret);
     }

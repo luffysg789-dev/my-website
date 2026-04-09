@@ -172,7 +172,10 @@ const DEFAULT_SITE_CONFIG = {
   footerContactEn: '',
   nexaApiKey: '',
   nexaAppSecret: '',
-  hasNexaAppSecret: false
+  hasNexaAppSecret: false,
+  nexaEscrowMinAmount: '1.00',
+  nexaEscrowMaxAmount: '100000.00',
+  nexaEscrowFeePermille: '0'
 };
 const GAME_ROUTE_MAP = {
   minesweeper: '/minesweeper.html',
@@ -233,6 +236,9 @@ const texts = {
     siteFooterLinksLabel: '友情链接',
     siteFooterContactZhLabel: '联系客服（中文）',
     siteFooterContactEnLabel: '联系客服（英文）',
+    siteEscrowMinAmountLabel: '担保最低金额 (USDT)',
+    siteEscrowMaxAmountLabel: '担保最高金额 (USDT)',
+    siteEscrowFeePermilleLabel: '担保手续费 (千分之)',
     siteConfigSaveBtn: '保存',
     siteConfigSaved: '已保存',
     siteConfigLoadFailed: '加载失败',
@@ -493,6 +499,9 @@ const texts = {
     siteFooterLinksLabel: 'Links',
     siteFooterContactZhLabel: 'Contact (ZH)',
     siteFooterContactEnLabel: 'Contact (EN)',
+    siteEscrowMinAmountLabel: 'Escrow Min Amount (USDT)',
+    siteEscrowMaxAmountLabel: 'Escrow Max Amount (USDT)',
+    siteEscrowFeePermilleLabel: 'Escrow Fee (permille)',
     siteConfigSaveBtn: 'Save',
     siteConfigSaved: 'Saved.',
     siteConfigLoadFailed: 'Load failed.',
@@ -1076,6 +1085,9 @@ function applyLanguage() {
   document.getElementById('siteFooterLinksLabel').childNodes[0].textContent = dict.siteFooterLinksLabel;
   document.getElementById('siteFooterContactZhLabel').childNodes[0].textContent = dict.siteFooterContactZhLabel;
   document.getElementById('siteFooterContactEnLabel').childNodes[0].textContent = dict.siteFooterContactEnLabel;
+  document.getElementById('siteEscrowMinAmountLabel').childNodes[0].textContent = dict.siteEscrowMinAmountLabel;
+  document.getElementById('siteEscrowMaxAmountLabel').childNodes[0].textContent = dict.siteEscrowMaxAmountLabel;
+  document.getElementById('siteEscrowFeePermilleLabel').childNodes[0].textContent = dict.siteEscrowFeePermilleLabel;
   document.getElementById('siteConfigSaveBtn').textContent = dict.siteConfigSaveBtn;
   document.getElementById('autoCrawlTitle').textContent = dict.autoCrawlTitle;
   autoCrawlEnableBtn.textContent = dict.autoCrawlEnable;
@@ -2464,6 +2476,9 @@ function mergeSiteConfigWithDefaults(raw) {
     footerContactZh: String(input.footerContactZh || '').trim(),
     footerContactEn: String(input.footerContactEn || '').trim(),
     nexaApiKey: String(input.nexaApiKey || '').trim(),
+    nexaEscrowMinAmount: String(input.nexaEscrowMinAmount || '').trim() || DEFAULT_SITE_CONFIG.nexaEscrowMinAmount,
+    nexaEscrowMaxAmount: String(input.nexaEscrowMaxAmount || '').trim() || DEFAULT_SITE_CONFIG.nexaEscrowMaxAmount,
+    nexaEscrowFeePermille: String(input.nexaEscrowFeePermille || '').trim() || DEFAULT_SITE_CONFIG.nexaEscrowFeePermille,
     nexaAppSecret: Boolean(input.hasNexaAppSecret) ? SAVED_NEXA_SECRET_MASK : String(input.nexaAppSecret || '').trim(),
     hasNexaAppSecret: Boolean(input.hasNexaAppSecret)
   };
@@ -2514,6 +2529,9 @@ async function loadSiteConfig() {
       const contactZhEl = getSiteConfigControl('footerContactZh');
       const contactEnEl = getSiteConfigControl('footerContactEn');
       const nexaApiKeyEl = getSiteConfigControl('nexaApiKey');
+      const nexaEscrowMinAmountEl = getSiteConfigControl('nexaEscrowMinAmount');
+      const nexaEscrowMaxAmountEl = getSiteConfigControl('nexaEscrowMaxAmount');
+      const nexaEscrowFeePermilleEl = getSiteConfigControl('nexaEscrowFeePermille');
       const nexaAppSecretEl = getSiteConfigControl('nexaAppSecret');
       const iconEl = getSiteConfigControl('icon');
       const logoEl = getSiteConfigControl('logo');
@@ -2540,6 +2558,9 @@ async function loadSiteConfig() {
       if (contactZhEl) contactZhEl.value = String(siteConfigCache.footerContactZh || '');
       if (contactEnEl) contactEnEl.value = String(siteConfigCache.footerContactEn || '');
       if (nexaApiKeyEl) nexaApiKeyEl.value = String(siteConfigCache.nexaApiKey || '');
+      if (nexaEscrowMinAmountEl) nexaEscrowMinAmountEl.value = String(siteConfigCache.nexaEscrowMinAmount || '');
+      if (nexaEscrowMaxAmountEl) nexaEscrowMaxAmountEl.value = String(siteConfigCache.nexaEscrowMaxAmount || '');
+      if (nexaEscrowFeePermilleEl) nexaEscrowFeePermilleEl.value = String(siteConfigCache.nexaEscrowFeePermille || '');
       if (nexaAppSecretEl) nexaAppSecretEl.value = String(siteConfigCache.nexaAppSecret || '');
       refreshSiteIconPreview();
       refreshSiteLogoPreview();
@@ -3591,6 +3612,9 @@ if (siteConfigForm) {
       footerContactZh: String(payload.footerContactZh || '').trim(),
       footerContactEn: String(payload.footerContactEn || '').trim(),
       nexaApiKey: String(payload.nexaApiKey || '').trim(),
+      nexaEscrowMinAmount: String(payload.nexaEscrowMinAmount || '').trim(),
+      nexaEscrowMaxAmount: String(payload.nexaEscrowMaxAmount || '').trim(),
+      nexaEscrowFeePermille: String(payload.nexaEscrowFeePermille || '').trim(),
       nexaAppSecret: String(payload.nexaAppSecret || '').trim(),
       keepNexaAppSecret: String(payload.nexaAppSecret || '').trim() === SAVED_NEXA_SECRET_MASK
     };

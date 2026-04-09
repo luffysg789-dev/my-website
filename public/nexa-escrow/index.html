@@ -6,7 +6,7 @@
     <title>Claw800 Nexa 担保</title>
     <meta name="description" content="Claw800 Nexa 担保，支持 Nexa App 内 USDT 担保交易、入金与放款。" />
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="/nexa-escrow/style.css?v=9" />
+    <link rel="stylesheet" href="/nexa-escrow/style.css?v=11" />
   </head>
   <body>
     <main class="nexa-escrow-page" data-nexa-escrow-app>
@@ -47,7 +47,7 @@
             </div>
 
             <label class="nexa-escrow-field nexa-escrow-field--inline">
-              <span data-i18n="amountLabel">交易金额 (USDT)</span>
+              <span data-i18n="amountLabel">金额 (USDT)</span>
               <input id="nexaEscrowAmountInput" class="nexa-escrow-input" type="number" min="0" step="0.01" inputmode="decimal" pattern="[0-9]*" placeholder="0.00" />
             </label>
 
@@ -61,7 +61,7 @@
               <textarea id="nexaEscrowDescriptionInput" class="nexa-escrow-textarea" maxlength="30" placeholder="例如：购买虚拟主机服务、设计稿定金等" data-i18n-placeholder="descriptionPlaceholder"></textarea>
             </label>
 
-            <p class="nexa-escrow-fee-hint">注:手续费仅需千分之2 目前优惠期间免费</p>
+            <p id="nexaEscrowFeeHint" class="nexa-escrow-fee-hint">注:最低 1.00 USDT，最高 100000.00 USDT，手续费千分之0</p>
             <button id="nexaEscrowCreateButton" class="nexa-escrow-primary" type="button" data-i18n="createAndPayAction">确认发起并付款</button>
             <p id="nexaEscrowCreateStatus" class="nexa-escrow-status" hidden></p>
           </article>
@@ -100,7 +100,7 @@
             <div id="nexaEscrowAccountPullSpinner" class="nexa-escrow-pull-refresh__spinner"></div>
           </div>
           <article class="nexa-escrow-card">
-            <div class="nexa-escrow-account-grid">
+            <div class="nexa-escrow-account-summary">
               <div class="nexa-escrow-account-item">
                 <div class="nexa-escrow-account-item__nickname-row">
                   <span class="nexa-escrow-label" data-i18n="nicknameLabel">昵称</span>
@@ -116,19 +116,21 @@
                 <button id="nexaEscrowNicknameSaveBtn" class="nexa-escrow-primary nexa-escrow-account-item__save" type="button">保存</button>
                 <p id="nexaEscrowNicknameHint" class="nexa-escrow-status">昵称一旦生成，无法修改</p>
               </div>
-              <div class="nexa-escrow-account-item">
-                <span class="nexa-escrow-label" data-i18n="walletLabel">钱包余额</span>
-                <strong id="nexaEscrowAccountWallet">0.00 USDT</strong>
-                <button id="nexaEscrowWithdrawBtn" class="nexa-escrow-primary nexa-escrow-account-item__action" type="button">提现</button>
-                <div id="nexaEscrowLatestWithdrawal" class="nexa-escrow-withdrawal-record" hidden>
-                  <span class="nexa-escrow-label" data-i18n="latestWithdrawalLabel">最新提现记录</span>
-                  <div id="nexaEscrowWithdrawalList" class="nexa-escrow-withdrawal-list"></div>
-                  <div id="nexaEscrowWithdrawalPagination" class="nexa-escrow-withdrawal-pagination" hidden>
-                    <button id="nexaEscrowWithdrawalPrev" class="nexa-escrow-secondary nexa-escrow-withdrawal-pagination__button" type="button">上一页</button>
-                    <span id="nexaEscrowWithdrawalPageInfo" class="nexa-escrow-withdrawal-pagination__info">1 / 1</span>
-                    <button id="nexaEscrowWithdrawalNext" class="nexa-escrow-secondary nexa-escrow-withdrawal-pagination__button" type="button">下一页</button>
-                  </div>
+              <div class="nexa-escrow-account-wallet">
+                <div class="nexa-escrow-account-wallet__meta">
+                  <span class="nexa-escrow-label" data-i18n="walletLabel">钱包余额</span>
+                  <strong id="nexaEscrowAccountWallet">0.00 USDT</strong>
                 </div>
+                <button id="nexaEscrowWithdrawBtn" class="nexa-escrow-primary nexa-escrow-account-item__action" type="button">提现</button>
+              </div>
+            </div>
+            <div id="nexaEscrowLatestWithdrawal" class="nexa-escrow-withdrawal-record" hidden>
+              <span class="nexa-escrow-label" data-i18n="latestWithdrawalLabel">最新提现记录</span>
+              <div id="nexaEscrowWithdrawalList" class="nexa-escrow-withdrawal-list"></div>
+              <div id="nexaEscrowWithdrawalPagination" class="nexa-escrow-withdrawal-pagination" hidden>
+                <button id="nexaEscrowWithdrawalPrev" class="nexa-escrow-secondary nexa-escrow-withdrawal-pagination__button" type="button">上一页</button>
+                <span id="nexaEscrowWithdrawalPageInfo" class="nexa-escrow-withdrawal-pagination__info">1 / 1</span>
+                <button id="nexaEscrowWithdrawalNext" class="nexa-escrow-secondary nexa-escrow-withdrawal-pagination__button" type="button">下一页</button>
               </div>
             </div>
             <p id="nexaEscrowAccountStatus" class="nexa-escrow-status" hidden></p>
@@ -182,6 +184,6 @@
     <script>
       window.ClawGamesConfig?.bootstrapGamePage?.('nexa-escrow');
     </script>
-    <script src="/nexa-escrow/script.js?v=9"></script>
+    <script src="/nexa-escrow/script.js?v=11"></script>
   </body>
 </html>

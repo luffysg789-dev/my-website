@@ -7,6 +7,11 @@
   const NEXA_ESCROW_PULL_REFRESH_MAX_PX = 92;
   const NEXA_ESCROW_REFRESH_FEEDBACK_MS = 520;
   const NEXA_ESCROW_WITHDRAWALS_PER_PAGE = 5;
+  const DEFAULT_NEXA_ESCROW_SETTINGS = Object.freeze({
+    minAmount: '1.00',
+    maxAmount: '100000.00',
+    feePermille: '0'
+  });
   const NEXA_PROTOCOL_AUTH_BASE = 'nexaauth://oauth/authorize';
   const NEXA_PROTOCOL_ORDER_BASE = 'nexaauth://order';
   const NEXA_PUBLIC_CONFIG_ENDPOINT = '/api/nexa/public-config';
@@ -55,6 +60,8 @@
       withdrawStatusRejected: '已驳回',
       invalidEscrowCode: '请填写正确担保号',
       invalidAmount: '金额最多支持两位小数',
+      amountTooLow: '金额不能低于最低担保金额',
+      amountTooHigh: '金额不能超过最高担保金额',
       descriptionTooLong: '交易描述最多 30 个字',
       firstLoginHint: '首次登录提醒',
       codeModalTitle: '请输入昵称',
@@ -154,6 +161,7 @@
       withdrawStatusRejected: 'Rejected',
       invalidEscrowCode: 'Please enter a valid escrow ID',
       invalidAmount: 'Amount supports at most 2 decimal places',
+      amountTooHigh: 'Amount cannot exceed 100000 USDT',
       descriptionTooLong: 'Description must be 30 characters or fewer',
       firstLoginHint: 'First login reminder',
       codeModalTitle: 'Set your nickname',
@@ -366,6 +374,36 @@
     return `${normalizedWhole || '0'}.${fraction}`;
   }
 
+  function normalizeEscrowSettings(input) {
+    const source = input && typeof input === 'object' ? input : {};
+    return {
+      minAmount: String(source.minAmount || DEFAULT_NEXA_ESCROW_SETTINGS.minAmount).trim() || DEFAULT_NEXA_ESCROW_SETTINGS.minAmount,
+      maxAmount: String(source.maxAmount || DEFAULT_NEXA_ESCROW_SETTINGS.maxAmount).trim() || DEFAULT_NEXA_ESCROW_SETTINGS.maxAmount,
+      feePermille: String(source.feePermille || DEFAULT_NEXA_ESCROW_SETTINGS.feePermille).trim() || DEFAULT_NEXA_ESCROW_SETTINGS.feePermille
+    };
+  }
+
+  function getEscrowMinAmount(appState) {
+    return Number(appState.settings?.minAmount || DEFAULT_NEXA_ESCROW_SETTINGS.minAmount) || Number(DEFAULT_NEXA_ESCROW_SETTINGS.minAmount);
+  }
+
+  function getEscrowMaxAmount(appState) {
+    return Number(appState.settings?.maxAmount || DEFAULT_NEXA_ESCROW_SETTINGS.maxAmount) || Number(DEFAULT_NEXA_ESCROW_SETTINGS.maxAmount);
+  }
+
+  function formatEscrowFeeHint(appState) {
+    const settings = normalizeEscrowSettings(appState.settings);
+    return `注:最低 ${settings.minAmount} USDT，最高 ${settings.maxAmount} USDT，手续费千分之${settings.feePermille}`;
+  }
+
+  function getEscrowAmountTooLowText(appState) {
+    return `金额不能低于 ${normalizeEscrowSettings(appState.settings).minAmount} USDT`;
+  }
+
+  function getEscrowAmountTooHighText(appState) {
+    return `金额不能超过 ${normalizeEscrowSettings(appState.settings).maxAmount} USDT`;
+  }
+
   async function postJson(url, body) {
     const response = await fetch(url, {
       method: 'POST',
@@ -429,9 +467,23 @@
 
   async function createEscrowOrder(appState) {
     const description = String(appState.elements.descriptionInput.value || '').trim();
-    const amount = String(appState.elements.amountInput.value || '').trim();
+    const amount = normalizeMoneyInputValue(String(appState.elements.amountInput.value || '').trim());
+    const amountNumber = Number(amount);
+    appState.elements.amountInput.value = amount;
     if (amount.includes('.') && String(amount.split('.')[1] || '').length > 2) {
       setStatus(appState.elements.createStatus, t(appState.locale, 'invalidAmount'), 'error');
+      return null;
+    }
+    if (!amount || !Number.isFinite(amountNumber) || amountNumber <= 0) {
+      setStatus(appState.elements.createStatus, t(appState.locale, 'invalidAmount'), 'error');
+      return null;
+    }
+    if (amountNumber < getEscrowMinAmount(appState)) {
+      setStatus(appState.elements.createStatus, getEscrowAmountTooLowText(appState), 'error');
+      return null;
+    }
+    if (amountNumber > getEscrowMaxAmount(appState)) {
+      setStatus(appState.elements.createStatus, getEscrowAmountTooHighText(appState), 'error');
       return null;
     }
     if (description.length > 30) {
@@ -573,6 +625,13 @@
     appState.elements.placeholderNodes.forEach((node) => {
       node.setAttribute('placeholder', t(appState.locale, node.dataset.i18nPlaceholder));
     });
+    renderEscrowSettings(appState);
+  }
+
+  function renderEscrowSettings(appState) {
+    if (appState.elements.feeHint) {
+      appState.elements.feeHint.textContent = formatEscrowFeeHint(appState);
+    }
   }
 
   async function copyEscrowCode(appState) {
@@ -1041,7 +1100,7 @@
     }
     if (appState.elements.nicknameHint) {
       appState.elements.nicknameHint.textContent = escrowNickname
-        ? t(appState.locale, 'nicknameLocked')
+        ? ''
         : t(appState.locale, 'nicknameHint');
     }
     if (appState.elements.accountWallet) {
@@ -1123,6 +1182,7 @@
     const response = await getJson('/api/nexa-escrow/bootstrap');
     appState.account = response.account || null;
     appState.orders = Array.isArray(response.orders) ? response.orders : [];
+    appState.settings = normalizeEscrowSettings(response.settings || {});
     renderOrders(appState);
     if (appState.selectedTradeCode) {
       renderOrderDetail(appState);
@@ -1130,6 +1190,7 @@
     }
     renderAccount(appState);
     syncEscrowOrdersDot(appState);
+    renderEscrowSettings(appState);
   }
 
   async function syncLatestEscrowWithdrawalStatus(appState) {
@@ -1398,6 +1459,7 @@
       locale: 'zh',
       session: loadCachedSession(storage),
       account: null,
+      settings: { ...DEFAULT_NEXA_ESCROW_SETTINGS },
       orders: [],
       selectedTradeCode: '',
       role: 'buyer',
@@ -1421,6 +1483,7 @@
         translatableNodes: Array.from(root.querySelectorAll('[data-i18n]')),
         placeholderNodes: Array.from(root.querySelectorAll('[data-i18n-placeholder]')),
         counterpartyLabel: root.querySelector('#nexaEscrowCounterpartyLabel'),
+        feeHint: root.querySelector('#nexaEscrowFeeHint'),
         amountInput: root.querySelector('#nexaEscrowAmountInput'),
         counterpartyInput: root.querySelector('#nexaEscrowCounterpartyInput'),
         descriptionInput: root.querySelector('#nexaEscrowDescriptionInput'),

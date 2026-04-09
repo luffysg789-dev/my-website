@@ -299,8 +299,91 @@ test('nexa-escrow bootstrap returns synced account state and empty orders for a 
     assert.equal(response.body.ok, true);
     assert.equal(response.body.account.openId, 'escrow-open-id-bootstrap');
     assert.match(response.body.account.escrowCode, /^n\d{6}$/);
+    assert.deepEqual(response.body.settings, {
+      minAmount: '1.00',
+      maxAmount: '100000.00',
+      feePermille: '0'
+    });
     assert.equal(Array.isArray(response.body.orders), true);
     assert.equal(response.body.orders.length, 0);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('admin escrow settings update bootstrap config and enforce dynamic min amount', async () => {
+  const harness = createHarness();
+
+  try {
+    const adminCookies = await loginAdmin(harness);
+    const updateResponse = await harness.request('PUT', '/api/admin/site-config', {
+      title: 'claw800.com',
+      subtitleZh: '龙虾学习导航网，为你的龙虾赋能。',
+      subtitleEn: 'OpenClaw ecosystem directory for AI websites',
+      htmlTitleZh: '',
+      htmlTitleEn: '',
+      skillsPageTitleZh: 'Claw800 龙虾技能大全',
+      skillsPageTitleEn: 'Claw800 Skills Directory',
+      skillsPageSubtitleZh: '同步 claw800.com 的 OpenClaw 精选技能目录，分类浏览，一键查看和复制安装提示词。',
+      skillsPageSubtitleEn: 'Synced from claw800.com. Browse curated OpenClaw skills by category and copy install prompts in one click.',
+      skillsPageBotLabelZh: '',
+      skillsPageBotLabelEn: '',
+      skillsPageBotPromptZh: '',
+      skillsPageBotPromptEn: '',
+      skillsPageInstallPromptZh: '',
+      skillsPageInstallPromptEn: '',
+      icon: '',
+      logo: '',
+      footerCopyrightZh: '',
+      footerCopyrightEn: '',
+      footerLinksRaw: '',
+      footerContactZh: '',
+      footerContactEn: '',
+      nexaApiKey: '',
+      nexaEscrowMinAmount: '5.00',
+      nexaEscrowMaxAmount: '9999.99',
+      nexaEscrowFeePermille: '2',
+      nexaAppSecret: '',
+      keepNexaAppSecret: true
+    }, {
+      cookies: adminCookies
+    });
+    assert.equal(updateResponse.statusCode, 200);
+    assert.equal(updateResponse.body.ok, true);
+
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-settings-seller-open-id',
+      sessionKey: 'escrow-settings-seller-session-key',
+      nickname: 'Settings Seller'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: { [sellerCookie.name]: sellerCookie.value }
+    });
+    assert.deepEqual(sellerBootstrap.body.settings, {
+      minAmount: '5.00',
+      maxAmount: '9999.99',
+      feePermille: '2'
+    });
+
+    const buyerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-settings-buyer-open-id',
+      sessionKey: 'escrow-settings-buyer-session-key',
+      nickname: 'Settings Buyer'
+    });
+    const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
+    const createResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '4.99',
+      counterpartyEscrowCode: sellerBootstrap.body.account.escrowCode,
+      description: '后台设置校验'
+    }, {
+      cookies: { [buyerCookie.name]: buyerCookie.value }
+    });
+
+    assert.equal(createResponse.statusCode, 400);
+    assert.equal(createResponse.body.ok, false);
+    assert.equal(createResponse.body.error, 'AMOUNT_TOO_LOW');
   } finally {
     harness.cleanup();
   }
@@ -338,6 +421,44 @@ test('nexa-escrow order creation rejects amounts with more than two decimal plac
     assert.equal(createResponse.statusCode, 400);
     assert.equal(createResponse.body.ok, false);
     assert.equal(createResponse.body.error, 'INVALID_AMOUNT');
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('nexa-escrow order creation rejects amounts above 100000 USDT', async () => {
+  const harness = createHarness();
+
+  try {
+    const buyerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-max-buyer-open-id',
+      sessionKey: 'escrow-max-buyer-session-key',
+      nickname: 'Max Buyer'
+    });
+    const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
+
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-max-seller-open-id',
+      sessionKey: 'escrow-max-seller-session-key',
+      nickname: 'Max Seller'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: { [sellerCookie.name]: sellerCookie.value }
+    });
+
+    const createResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '100000.01',
+      counterpartyEscrowCode: sellerBootstrap.body.account.escrowCode,
+      description: '金额上限测试'
+    }, {
+      cookies: { [buyerCookie.name]: buyerCookie.value }
+    });
+
+    assert.equal(createResponse.statusCode, 400);
+    assert.equal(createResponse.body.ok, false);
+    assert.equal(createResponse.body.error, 'AMOUNT_TOO_HIGH');
   } finally {
     harness.cleanup();
   }
@@ -1143,6 +1264,159 @@ test('nexa-escrow funded flow supports payment, seller delivery, and buyer relea
     `).get('escrow-seller-open-id-2');
 
     assert.equal(String(wallet.available_balance), '18.88');
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('nexa-escrow seller release uses configured fee permille and credits the net amount', async () => {
+  const harness = createHarness({
+    mockPaymentResponse() {
+      return {
+        code: '0',
+        message: 'success',
+        data: {
+          orderNo: 'escrow-order-no-fee',
+          timestamp: '1711111111',
+          nonce: 'nonce-escrow-fee',
+          signType: 'MD5',
+          paySign: 'pay-sign-escrow-fee',
+          apiKey: 'test-nexa-api-key'
+        }
+      };
+    },
+    mockQueryResponse() {
+      return {
+        code: '0',
+        message: 'success',
+        data: {
+          orderNo: 'escrow-order-no-fee',
+          status: 'SUCCESS',
+          amount: '100.00',
+          currency: 'USDT',
+          paidTime: '2026-04-07 10:00:00'
+        }
+      };
+    }
+  });
+
+  try {
+    const adminCookies = await loginAdmin(harness);
+    const updateResponse = await harness.request('PUT', '/api/admin/site-config', {
+      title: 'claw800.com',
+      subtitleZh: '龙虾学习导航网，为你的龙虾赋能。',
+      subtitleEn: 'OpenClaw ecosystem directory for AI websites',
+      htmlTitleZh: '',
+      htmlTitleEn: '',
+      skillsPageTitleZh: 'Claw800 龙虾技能大全',
+      skillsPageTitleEn: 'Claw800 Skills Directory',
+      skillsPageSubtitleZh: '同步 claw800.com 的 OpenClaw 精选技能目录，分类浏览，一键查看和复制安装提示词。',
+      skillsPageSubtitleEn: 'Synced from claw800.com. Browse curated OpenClaw skills by category and copy install prompts in one click.',
+      skillsPageBotLabelZh: '',
+      skillsPageBotLabelEn: '',
+      skillsPageBotPromptZh: '',
+      skillsPageBotPromptEn: '',
+      skillsPageInstallPromptZh: '',
+      skillsPageInstallPromptEn: '',
+      icon: '',
+      logo: '',
+      footerCopyrightZh: '',
+      footerCopyrightEn: '',
+      footerLinksRaw: '',
+      footerContactZh: '',
+      footerContactEn: '',
+      nexaApiKey: '',
+      nexaEscrowMinAmount: '1.00',
+      nexaEscrowMaxAmount: '100000.00',
+      nexaEscrowFeePermille: '2',
+      nexaAppSecret: '',
+      keepNexaAppSecret: true
+    }, {
+      cookies: adminCookies
+    });
+    assert.equal(updateResponse.statusCode, 200);
+
+    const buyerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-fee-buyer-open-id',
+      sessionKey: 'escrow-fee-buyer-session-key',
+      nickname: 'Fee Buyer'
+    });
+    const buyerCookie = JSON.parse(buyerSync.headers['set-cookie'][0]);
+
+    const sellerSync = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-fee-seller-open-id',
+      sessionKey: 'escrow-fee-seller-session-key',
+      nickname: 'Fee Seller'
+    });
+    const sellerCookie = JSON.parse(sellerSync.headers['set-cookie'][0]);
+
+    const sellerBootstrap = await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: {
+        [sellerCookie.name]: sellerCookie.value
+      }
+    });
+
+    const createResponse = await harness.request('POST', '/api/nexa-escrow/orders', {
+      creatorRole: 'buyer',
+      amount: '100.00',
+      counterpartyEscrowCode: sellerBootstrap.body.account.escrowCode,
+      description: '手续费到账测试'
+    }, {
+      cookies: {
+        [buyerCookie.name]: buyerCookie.value
+      }
+    });
+
+    const tradeCode = createResponse.body.order.tradeCode;
+
+    const paymentCreate = await harness.request('POST', '/api/nexa-escrow/payment/create', {
+      tradeCode
+    }, {
+      cookies: {
+        [buyerCookie.name]: buyerCookie.value
+      }
+    });
+    assert.equal(paymentCreate.statusCode, 200);
+
+    const paymentQuery = await harness.request('POST', '/api/nexa-escrow/payment/query', {
+      orderNo: 'escrow-order-no-fee'
+    }, {
+      cookies: {
+        [buyerCookie.name]: buyerCookie.value
+      }
+    });
+    assert.equal(paymentQuery.statusCode, 200);
+    assert.equal(paymentQuery.body.order.status, 'FUNDED');
+
+    const sellerDeliver = await harness.request('POST', '/api/nexa-escrow/orders/action', {
+      tradeCode,
+      action: 'mark_delivered'
+    }, {
+      cookies: {
+        [sellerCookie.name]: sellerCookie.value
+      }
+    });
+    assert.equal(sellerDeliver.statusCode, 200);
+
+    const buyerRelease = await harness.request('POST', '/api/nexa-escrow/orders/action', {
+      tradeCode,
+      action: 'confirm_receipt'
+    }, {
+      cookies: {
+        [buyerCookie.name]: buyerCookie.value
+      }
+    });
+    assert.equal(buyerRelease.statusCode, 200);
+    assert.equal(buyerRelease.body.order.status, 'COMPLETED');
+
+    const wallet = harness.db.prepare(`
+      SELECT available_balance
+      FROM nexa_escrow_wallets
+      JOIN game_users ON game_users.id = nexa_escrow_wallets.user_id
+      WHERE game_users.openid = ?
+    `).get('escrow-fee-seller-open-id');
+
+    assert.equal(String(wallet.available_balance), '99.80');
   } finally {
     harness.cleanup();
   }

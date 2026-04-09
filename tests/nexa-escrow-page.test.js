@@ -65,7 +65,8 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /class="nexa-escrow-field nexa-escrow-field--inline"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"[\s\S]*maxlength="30"/);
-  assert.match(html, /注:手续费仅需千分之2 目前优惠期间免费/);
+  assert.match(html, /id="nexaEscrowFeeHint"/);
+  assert.match(html, /注:最低 1\.00 USDT，最高 100000\.00 USDT，手续费千分之0/);
   assert.match(html, /id="nexaEscrowCreateButton"[\s\S]*data-i18n="createAndPayAction"[\s\S]*确认发起并付款/);
   assert.match(html, /data-order-filter="all"/);
   assert.match(html, /data-order-filter="active"/);
@@ -187,6 +188,18 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /withdrawStatusPending: '处理中'/);
   assert.match(js, /withdrawStatusSuccess: '已通过到账'/);
   assert.match(js, /const NEXA_ESCROW_WITHDRAWALS_PER_PAGE = 5;/);
+  assert.match(js, /const DEFAULT_NEXA_ESCROW_SETTINGS = Object\.freeze\(\{/);
+  assert.match(js, /minAmount:\s*'1\.00'/);
+  assert.match(js, /maxAmount:\s*'100000\.00'/);
+  assert.match(js, /feePermille:\s*'0'/);
+  assert.match(js, /amountTooLow: '金额不能低于最低担保金额'/);
+  assert.match(js, /amountTooHigh: '金额不能超过最高担保金额'/);
+  assert.match(js, /function normalizeEscrowSettings\(/);
+  assert.match(js, /function formatEscrowFeeHint\(/);
+  assert.match(js, /getEscrowAmountTooLowText\(appState\)/);
+  assert.match(js, /getEscrowAmountTooHighText\(appState\)/);
+  assert.match(js, /feeHint:\s*root\.querySelector\('#nexaEscrowFeeHint'\)/);
+  assert.match(js, /appState\.settings = normalizeEscrowSettings\(response\.settings \|\| \{\}\);/);
   assert.match(js, /function formatEscrowLocalDateTime\(/);
   assert.match(js, /function syncLatestEscrowWithdrawalStatus\(/);
   assert.match(js, /withdrawalList: root\.querySelector\('#nexaEscrowWithdrawalList'\)/);
@@ -228,6 +241,9 @@ test('admin panel includes nexa escrow orders, users, and withdrawal review entr
   assert.match(html, /id="nexaEscrowOrdersList"/);
   assert.match(html, /id="nexaEscrowUsersList"/);
   assert.match(html, /id="nexaEscrowWithdrawalsList"/);
+  assert.match(html, /name="nexaEscrowMinAmount"/);
+  assert.match(html, /name="nexaEscrowMaxAmount"/);
+  assert.match(html, /name="nexaEscrowFeePermille"/);
   assert.match(js, /const adminNexaEscrowUsersSection = document\.getElementById\('adminNexaEscrowUsersSection'\);/);
   assert.match(js, /const adminNexaEscrowWithdrawalsSection = document\.getElementById\('adminNexaEscrowWithdrawalsSection'\);/);
   assert.match(js, /const nexaEscrowUsersList = document\.getElementById\('nexaEscrowUsersList'\);/);
@@ -235,6 +251,9 @@ test('admin panel includes nexa escrow orders, users, and withdrawal review entr
   assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-orders'\]/);
   assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-users'\]/);
   assert.match(js, /requestTutorialJson\(\['\/api\/admin\/nexa-escrow-withdrawals'\]/);
+  assert.match(js, /nexaEscrowMinAmount:/);
+  assert.match(js, /nexaEscrowMaxAmount:/);
+  assert.match(js, /nexaEscrowFeePermille:/);
   assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-users\/\$\{encodeURIComponent\(String\(userId\)\)\}\/code`\]/);
   assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-withdrawals\/\$\{encodeURIComponent\(partnerOrderNo\)\}\/approve`\]/);
   assert.match(js, /requestTutorialJson\(\[`\/api\/admin\/nexa-escrow-withdrawals\/\$\{encodeURIComponent\(partnerOrderNo\)\}\/reject`\]/);
