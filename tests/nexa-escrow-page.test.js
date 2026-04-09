@@ -148,7 +148,7 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /button\.classList\.toggle\('is-seller', isActive && appState\.role === 'seller'\)/);
   assert.match(js, /createButton\.classList\.toggle\('is-buyer', appState\.role === 'buyer'\)/);
   assert.match(js, /createButton\.classList\.toggle\('is-seller', appState\.role === 'seller'\)/);
-  assert.match(js, /nicknameLabel: '昵称'/);
+  assert.match(js, /nicknameLabel: '昵称:'/);
   assert.match(js, /nicknameHint: '昵称一旦生成，无法修改'/);
   assert.match(js, /nicknameSaved: '昵称已保存'/);
   assert.match(js, /nicknameLocked: '昵称已生成，无法修改'/);

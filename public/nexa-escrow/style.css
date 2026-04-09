@@ -490,19 +490,9 @@ body {
   text-align: right;
 }
 
-.nexa-escrow-account-item__nickname-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-}
-
-.nexa-escrow-account-item__nickname-row .nexa-escrow-label {
-  white-space: nowrap;
-}
-
 .nexa-escrow-account-item__nickname-input {
   min-width: 0;
+  width: 100%;
   padding: 0;
   border: 0;
   border-radius: 0;

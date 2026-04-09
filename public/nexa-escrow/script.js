@@ -41,7 +41,7 @@
       escrowCodeLabel: '担保号',
       walletLabel: '钱包余额',
       latestWithdrawalLabel: '最新提现记录',
-      nicknameLabel: '昵称',
+      nicknameLabel: '昵称:',
       nicknameHint: '昵称一旦生成，无法修改',
       nicknameSaved: '昵称已保存',
       nicknameLocked: '昵称已生成，无法修改',
