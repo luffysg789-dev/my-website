@@ -712,6 +712,88 @@ test('nexa-escrow withdrawals below 100 USDT auto-submit and still appear in adm
   }
 });
 
+test('fresh nexa-escrow auto-withdrawals keep pending status during early failed-query grace window', async () => {
+  const harness = createHarness({
+    mockWithdrawResponse(payload) {
+      return {
+        code: '0',
+        message: 'success',
+        data: {
+          amount: payload.amount,
+          currency: payload.currency,
+          status: 'PENDING',
+          openid: payload.openId,
+          createTime: '2026-04-08 10:00:00',
+          orderNo: payload.orderNo
+        }
+      };
+    },
+    mockWithdrawQueryResponse(payload) {
+      return {
+        code: '0',
+        message: 'success',
+        data: {
+          amount: '1.00',
+          currency: 'USDT',
+          status: 'FAILED',
+          orderNo: payload.orderNo
+        }
+      };
+    }
+  });
+
+  try {
+    const syncResponse = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-open-id-withdraw-grace',
+      sessionKey: 'escrow-session-key-withdraw-grace',
+      nickname: 'Withdraw Grace User'
+    });
+    const serialized = JSON.parse(syncResponse.headers['set-cookie'][0]);
+
+    await harness.request('GET', '/api/nexa-escrow/bootstrap', null, {
+      cookies: {
+        [serialized.name]: serialized.value
+      }
+    });
+    const userId = harness.db.prepare('SELECT id FROM game_users WHERE openid = ?').get('escrow-open-id-withdraw-grace').id;
+    harness.db.prepare("UPDATE nexa_escrow_wallets SET available_balance = '20.00' WHERE user_id = ?").run(userId);
+
+    const createResponse = await harness.request('POST', '/api/nexa-escrow/withdraw/create', {
+      amount: '1.00'
+    }, {
+      cookies: {
+        [serialized.name]: serialized.value
+      }
+    });
+
+    assert.equal(createResponse.statusCode, 200);
+    assert.equal(createResponse.body.ok, true);
+    assert.equal(createResponse.body.status, 'pending');
+
+    const queryResponse = await harness.request('POST', '/api/nexa-escrow/withdraw/query', {
+      partnerOrderNo: createResponse.body.partnerOrderNo
+    }, {
+      cookies: {
+        [serialized.name]: serialized.value
+      }
+    });
+
+    assert.equal(queryResponse.statusCode, 200);
+    assert.equal(queryResponse.body.ok, true);
+    assert.equal(String(queryResponse.body.item.status || '').toLowerCase(), 'pending');
+
+    const withdrawal = harness.db
+      .prepare('SELECT status FROM nexa_escrow_withdrawals WHERE partner_order_no = ?')
+      .get(createResponse.body.partnerOrderNo);
+    assert.equal(String(withdrawal.status || '').toLowerCase(), 'pending');
+
+    const wallet = harness.db.prepare('SELECT available_balance FROM nexa_escrow_wallets WHERE user_id = ?').get(userId);
+    assert.equal(String(wallet.available_balance), '19.00');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('admin can review nexa escrow withdrawals after users submit them', async () => {
   const harness = createHarness({
     mockWithdrawResponse(payload) {
