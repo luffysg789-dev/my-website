@@ -682,6 +682,10 @@
     appState.elements.tabButtons.forEach((button) => {
       button.classList.toggle('is-active', button.dataset.tabTarget === appState.activeTab);
     });
+    if (appState.activeTab === 'orders' && String(appState.selectedTradeCode || '').trim()) {
+      renderOrderDetail(appState);
+      renderOrders(appState);
+    }
     updateEscrowKeyboardInset(appState);
   }
 
@@ -1049,7 +1053,7 @@
     appState.account = response.account || null;
     appState.orders = Array.isArray(response.orders) ? response.orders : [];
     renderOrders(appState);
-    if (appState.selectedTradeCode && appState.elements.orderDetail?.hidden === false) {
+    if (appState.selectedTradeCode) {
       renderOrderDetail(appState);
       renderOrders(appState);
     }
