@@ -1249,14 +1249,14 @@ function renderXiangqiWithdrawalsList(items) {
       const currency = String(item.currency || 'USDT').trim();
       const status = String(item.status || '').trim();
       const openId = String(item.openId || '').trim();
-      const createdAt = String(item.createdAt || '').trim();
+      const createdAt = formatAdminLocalDateTime(item.createdAt);
       return `
         <article class="review-card">
           <h3>${escapeHtml(partnerOrderNo)}</h3>
           <p class="small">OpenID: ${escapeHtml(openId || '-')}</p>
           <p class="small">金额: ${escapeHtml(amount)} ${escapeHtml(currency)}</p>
           <p class="small">状态: ${escapeHtml(status || '-')}</p>
-          <p class="small">申请时间: ${escapeHtml(createdAt || '-')}</p>
+          <p class="small">申请时间: ${escapeHtml(createdAt)}</p>
           <div class="review-actions">
             <button type="button" onclick="approveXiangqiWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('xiangqiWithdrawalsApprove'))}</button>
             <button type="button" class="danger" onclick="rejectXiangqiWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('xiangqiWithdrawalsReject'))}</button>
@@ -1436,7 +1436,7 @@ function renderNexaEscrowWithdrawalsList(items) {
       const amount = String(item.amount || '0.00').trim();
       const status = String(item.status || '').trim();
       const failureReason = String(item.failureReason || '').trim();
-      const createdAt = String(item.createdAt || '').trim();
+      const createdAt = formatAdminLocalDateTime(item.createdAt);
       const canReview = String(status || '').trim().toLowerCase() === 'review_pending';
       return `
         <article class="review-card">
@@ -1446,7 +1446,7 @@ function renderNexaEscrowWithdrawalsList(items) {
           <p class="small">金额: ${escapeHtml(amount)} USDT</p>
           <p class="small">状态: ${escapeHtml(status || '-')}</p>
           ${failureReason ? `<p class="small">失败原因: ${escapeHtml(failureReason)}</p>` : ''}
-          <p class="small">申请时间: ${escapeHtml(createdAt || '-')}</p>
+          <p class="small">申请时间: ${escapeHtml(createdAt)}</p>
           ${canReview ? `
             <div class="review-actions">
               <button type="button" onclick="approveNexaEscrowWithdrawal('${escapeHtml(partnerOrderNo)}')">${escapeHtml(t('nexaEscrowWithdrawalsApprove'))}</button>
@@ -1980,6 +1980,21 @@ function formatTime(ms) {
   } catch {
     return String(n);
   }
+}
+
+function formatAdminLocalDateTime(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '-';
+  try {
+    const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+    const date = new Date(normalized);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleString();
+    }
+  } catch {
+    // Fall through to raw string output.
+  }
+  return raw;
 }
 
 function renderAutoCrawlStatusLine(data) {
