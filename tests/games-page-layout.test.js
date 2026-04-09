@@ -9,6 +9,7 @@ const css = fs.readFileSync(path.join(rootDir, 'public', 'styles.css'), 'utf8');
 const gamesHtml = fs.readFileSync(path.join(rootDir, 'public', 'games.html'), 'utf8');
 
 test('games page uses unified start button text for all game cards', () => {
+  assert.match(config, /sbti:\s*'开始测试'/);
   assert.match(config, /gomoku:\s*'开始游戏'/);
   assert.match(config, /minesweeper:\s*'开始游戏'/);
   assert.match(config, /fortune:\s*'开始游戏'/);
@@ -23,6 +24,7 @@ test('games page loads the latest game config bundle and keeps piano cards on /p
 
 test('games page keeps standalone pages like p-mining out of the public games hub', () => {
   assert.match(config, /slug:\s*'p-mining'[\s\S]*showInGamesHub:\s*0/);
+  assert.match(config, /slug:\s*'sbti'[\s\S]*showInGamesHub:\s*1/);
   assert.match(config, /\.filter\(\(item\) => item\.is_enabled && item\.slug !== 'xiangqi' && item\.showInGamesHub !== 0\)/);
 });
 

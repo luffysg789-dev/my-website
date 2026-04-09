@@ -2570,6 +2570,7 @@ const DEFAULT_SKILLS_PAGE_BOT_PROMPT_EN = 'claw800.com is a curated OpenClaw ski
 const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_ZH = '你是 OpenClaw 用户的技能安装助手。现在请帮我安装技能「{{name}}」。\n技能简介：{{description}}\n技能分类：{{category}}\n详情链接：{{url}}\n请按这个流程执行：\n1. 先打开详情链接，阅读 README、SKILL.md 或安装说明。\n2. 用中文告诉我这个技能做什么、是否安全、安装后会影响什么。\n3. 如果需要环境变量、依赖或权限，先明确列出来，再征求我确认。\n4. 只有在我确认后，才开始安装。\n5. 安装完成后，告诉我验证方法、使用方法，以及如何卸载或回滚。\n不要跳过确认步骤，也不要一次性安装无关技能。';
 const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_EN = 'You are an OpenClaw skill installation assistant. Help me install the skill "{{name}}".\nSkill summary: {{description}}\nSkill category: {{category}}\nDetail URL: {{url}}\nFollow this process:\n1. Open the detail page and read the README, SKILL.md, or install docs.\n2. Explain what the skill does, whether it looks safe, and what it may change.\n3. List any dependencies, env vars, permissions, or prerequisites before installing.\n4. Wait for my confirmation before you run or install anything.\n5. After installation, tell me how to verify it, use it, and uninstall or roll it back.\nDo not skip confirmation and do not install unrelated skills.';
 const GAME_ROUTE_MAP = {
+  'sbti': '/sbti/',
   'nexa-escrow': '/nexa-escrow/',
   'tigang-master': '/tigang-master/',
   'p-mining': '/p-mining/',
@@ -2583,6 +2584,7 @@ const GAME_ROUTE_MAP = {
   muyu: '/muyu.html'
 };
 const GAME_ICON_MAP = {
+  'sbti': '🧠',
   'nexa-escrow': '🛡️',
   'tigang-master': '⭕',
   'p-mining': '⛏️',

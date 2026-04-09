@@ -713,6 +713,17 @@ db.exec(`
 
 const DEFAULT_GAMES_CATALOG = [
   {
+    slug: 'sbti',
+    name: 'SBTI',
+    description: '31题轻量人格测试，完成作答后生成你的类型、维度倾向和结果说明。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 56
+  },
+  {
     slug: 'nexa-escrow',
     name: 'Nexa 担保',
     description: 'Nexa App 内的 USDT 担保交易，支持买卖双方发起、入金与放款。',

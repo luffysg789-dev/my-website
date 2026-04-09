@@ -4,6 +4,21 @@ const { getGameCardMediaMarkup } = typeof window === 'undefined'
 
 const DEFAULT_GAMES = [
   {
+    slug: 'sbti',
+    name: 'SBTI',
+    description: '31题轻量人格测试，完成作答后生成你的类型、维度倾向和结果说明。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    showInGamesHub: 1,
+    sort_order: 56,
+    route: '/sbti/',
+    icon: '🧠',
+    actionText: '开始测试'
+  },
+  {
     slug: 'nexa-escrow',
     name: 'Nexa 担保',
     description: 'Nexa App 内的 USDT 担保交易，支持买卖双方发起、入金与放款。',
@@ -176,6 +191,7 @@ const DEFAULT_GAMES = [
 ];
 
 const GAME_ACTION_TEXT = {
+  sbti: '开始测试',
   'nexa-escrow': '进入担保',
   'tigang-master': '开始打卡',
   'p-mining': '开始挖矿',

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claw800 SBTI</title>
+    <link rel="stylesheet" href="/sbti/style.css?v=20260410-01" />
+  </head>
+  <body>
+    <main class="sbti-shell" data-sbti-app>
+      <section class="sbti-card sbti-hero" id="sbtiIntroScreen">
+        <div class="sbti-hero__badge">SBTI</div>
+        <div class="sbti-hero__header">
+          <h1 class="sbti-hero__title">社交脑洞测试</h1>
+          <p class="sbti-hero__subtitle">
+            用 31 道轻量问题，测出你在节奏、表达、判断与行动上的天然偏好。
+          </p>
+        </div>
+        <div class="sbti-hero__meta">
+          <span>31 题</span>
+          <span>约 4 分钟</span>
+          <span>手机 / PC 通用</span>
+        </div>
+        <div class="sbti-hero__actions">
+          <button class="sbti-primary-button" id="sbtiStartButton" type="button">开始测试</button>
+        </div>
+      </section>
+
+      <section class="sbti-card sbti-test-screen" id="sbtiTestScreen" hidden>
+        <div class="sbti-test-screen__header">
+          <div>
+            <p class="sbti-section-label">SBTI Question Flow</p>
+            <h2 class="sbti-section-title">按第一反应作答</h2>
+          </div>
+          <div class="sbti-progress">
+            <div class="sbti-progress__track">
+              <span class="sbti-progress__bar" id="sbtiProgressBar"></span>
+            </div>
+            <span class="sbti-progress__text" id="sbtiProgressText">0 / 31</span>
+          </div>
+        </div>
+        <div class="sbti-question-list" id="sbtiQuestionList"></div>
+        <div class="sbti-submit-bar">
+          <button class="sbti-secondary-button" id="sbtiBackButton" type="button">返回首页</button>
+          <button class="sbti-primary-button" id="sbtiSubmitButton" type="button" disabled>提交并查看结果</button>
+        </div>
+      </section>
+
+      <section class="sbti-card sbti-result-screen" id="sbtiResultScreen" hidden>
+        <div class="sbti-result-screen__header">
+          <div class="sbti-result-pill">你的类型</div>
+          <h2 class="sbti-result-code" id="sbtiResultCode">SBTI</h2>
+          <p class="sbti-result-name" id="sbtiResultName"></p>
+          <p class="sbti-result-summary" id="sbtiResultSummary"></p>
+        </div>
+
+        <section class="sbti-result-block sbti-result-block--highlight">
+          <h3 class="sbti-result-block__title">你给人的感觉</h3>
+          <p class="sbti-result-block__body" id="sbtiResultAura"></p>
+        </section>
+
+        <section class="sbti-result-block">
+          <h3 class="sbti-result-block__title">维度倾向</h3>
+          <div class="sbti-result-grid" id="sbtiResultGrid"></div>
+        </section>
+
+        <section class="sbti-result-block">
+          <h3 class="sbti-result-block__title">建议</h3>
+          <ul class="sbti-result-list" id="sbtiResultTips"></ul>
+        </section>
+
+        <div class="sbti-result-actions">
+          <button class="sbti-secondary-button" id="sbtiRestartButton" type="button">重新测试</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="/sbti/script.js?v=20260410-01"></script>
+  </body>
+</html>
