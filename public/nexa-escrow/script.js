@@ -81,7 +81,7 @@
       detailCreatedAt: '创建时间',
       progressTitle: '交易进度',
       safeTitle: '安全提醒',
-      safeBody: '请务必收到货物/服务后再点击“确认收货”。如有疑问，请立即点击“申请仲裁”。',
+      safeBody: '请务必收到货物/服务后再点击“确认收货”。如有疑问，请立即点击“去申诉”。申诉处理请联系nexa客服。',
       actionFund: '支付担保金',
       actionDeliver: '发货',
       actionConfirmReceipt: '收到货去放款',
