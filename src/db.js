@@ -587,6 +587,23 @@ db.exec(`
 `);
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS nexa_tip_orders (
+    order_no TEXT PRIMARY KEY,
+    partner_order_no TEXT NOT NULL UNIQUE,
+    game_slug TEXT NOT NULL DEFAULT '',
+    game_name TEXT NOT NULL DEFAULT '',
+    open_id TEXT NOT NULL DEFAULT '',
+    amount TEXT NOT NULL DEFAULT '0.10',
+    currency TEXT NOT NULL DEFAULT 'USDT',
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    notify_payload TEXT NOT NULL DEFAULT '',
+    create_time TEXT NOT NULL DEFAULT '',
+    paid_time TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS nexa_game_deposits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     partner_order_no TEXT NOT NULL UNIQUE,

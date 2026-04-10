@@ -588,10 +588,21 @@ async function createNexaTipOrder({ req, gameSlug, openId, sessionKey, amount = 
     partnerOrderNo,
     gameSlug: normalizedSlug,
     gameName,
+    openId: String(openId || '').trim(),
     amount: normalizedAmount,
     status: 'PENDING',
     createdAt: Date.now()
   });
+  insertNexaTipOrderStmt.run(
+    orderNo,
+    partnerOrderNo,
+    normalizedSlug,
+    gameName,
+    String(openId || '').trim(),
+    normalizedAmount,
+    NEXA_TIP_CURRENCY,
+    'PENDING'
+  );
 
   return {
     orderNo,
@@ -629,6 +640,14 @@ async function queryNexaTipOrder(orderNo) {
     paidTime: String(data.paidTime || '')
   };
   nexaTipOrders.set(normalizedOrderNo, next);
+  updateNexaTipOrderStatusStmt.run(
+    normalizedStatus,
+    next.createTime || '',
+    next.createTime || '',
+    next.paidTime || '',
+    next.paidTime || '',
+    normalizedOrderNo
+  );
   return next;
 }
 
@@ -4357,6 +4376,48 @@ app.get('/api/admin/nexa-escrow-orders', requireAdmin, (_req, res) => {
   }
 });
 
+app.get('/api/admin/p-mining-orders', requireAdmin, (_req, res) => {
+  try {
+    const items = listAdminPMiningOrdersStmt.all().map((row) => ({
+      orderNo: String(row.order_no || '').trim(),
+      partnerOrderNo: String(row.partner_order_no || '').trim(),
+      openId: String(row.openid || '').trim(),
+      tier: String(row.tier || '').trim(),
+      powerAmount: Number(row.power_amount || 0),
+      usdtAmount: String(row.usdt_amount || '0.00').trim(),
+      status: String(row.status || '').trim(),
+      nexaOrderNo: String(row.nexa_order_no || '').trim(),
+      paidAt: String(row.paid_at || '').trim(),
+      settledAt: String(row.settled_at || '').trim(),
+      createdAt: String(row.created_at || '').trim()
+    }));
+    return res.json({ ok: true, items });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: String(error?.message || 'PMINING_ADMIN_ORDERS_FAILED') });
+  }
+});
+
+app.get('/api/admin/nexa-tip-orders', requireAdmin, (_req, res) => {
+  try {
+    const items = listAdminNexaTipOrdersStmt.all().map((row) => ({
+      orderNo: String(row.order_no || '').trim(),
+      partnerOrderNo: String(row.partner_order_no || '').trim(),
+      gameSlug: String(row.game_slug || '').trim(),
+      gameName: String(row.game_name || '').trim(),
+      openId: String(row.open_id || '').trim(),
+      amount: String(row.amount || '0.00').trim(),
+      currency: String(row.currency || 'USDT').trim(),
+      status: String(row.status || '').trim(),
+      createTime: String(row.create_time || '').trim(),
+      paidTime: String(row.paid_time || '').trim(),
+      createdAt: String(row.created_at || '').trim()
+    }));
+    return res.json({ ok: true, items });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: String(error?.message || 'NEXA_TIP_ADMIN_ORDERS_FAILED') });
+  }
+});
+
 app.get('/api/admin/nexa-escrow-users', requireAdmin, (req, res) => {
   try {
     const limit = Math.min(200, Math.max(1, Number(req.query?.limit || 100) || 100));
@@ -4888,14 +4949,22 @@ app.post('/api/nexa/tip/query', async (req, res) => {
 app.post('/api/nexa/tip/notify', (req, res) => {
   const orderNo = String(req.body?.orderNo || req.body?.data?.orderNo || '').trim();
   const status = String(req.body?.status || req.body?.data?.status || '').trim().toUpperCase();
+  const paidTime = String(req.body?.paidTime || req.body?.data?.paidTime || '').trim();
   if (orderNo) {
     const cached = nexaTipOrders.get(orderNo) || {};
     nexaTipOrders.set(orderNo, {
       ...cached,
       orderNo,
       status: status || cached.status || 'PENDING',
-      paidTime: String(req.body?.paidTime || req.body?.data?.paidTime || cached.paidTime || '')
+      paidTime: String(paidTime || cached.paidTime || '')
     });
+    updateNexaTipOrderNotifyStmt.run(
+      status || cached.status || 'PENDING',
+      serializeNotifyPayload(req.body),
+      paidTime,
+      paidTime,
+      orderNo
+    );
   }
   res.type('text/plain; charset=utf-8').send('success');
 });
@@ -5124,6 +5193,79 @@ const updatePMiningPaymentOrderNotifyStmt = db.prepare(`
   UPDATE p_mining_payment_orders
   SET status = ?, notify_payload = ?, paid_at = CASE WHEN ? <> '' THEN ? ELSE paid_at END
   WHERE order_no = ?
+`);
+const insertNexaTipOrderStmt = db.prepare(`
+  INSERT INTO nexa_tip_orders (
+    order_no, partner_order_no, game_slug, game_name, open_id, amount, currency, status, notify_payload, create_time, paid_time
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', '', '')
+`);
+const selectNexaTipOrderStmt = db.prepare(`
+  SELECT
+    order_no,
+    partner_order_no,
+    game_slug,
+    game_name,
+    open_id,
+    amount,
+    currency,
+    status,
+    notify_payload,
+    create_time,
+    paid_time,
+    created_at
+  FROM nexa_tip_orders
+  WHERE order_no = ?
+`);
+const updateNexaTipOrderStatusStmt = db.prepare(`
+  UPDATE nexa_tip_orders
+  SET
+    status = ?,
+    create_time = CASE WHEN ? <> '' THEN ? ELSE create_time END,
+    paid_time = CASE WHEN ? <> '' THEN ? ELSE paid_time END
+  WHERE order_no = ?
+`);
+const updateNexaTipOrderNotifyStmt = db.prepare(`
+  UPDATE nexa_tip_orders
+  SET
+    status = ?,
+    notify_payload = ?,
+    paid_time = CASE WHEN ? <> '' THEN ? ELSE paid_time END
+  WHERE order_no = ?
+`);
+const listAdminPMiningOrdersStmt = db.prepare(`
+  SELECT
+    p.order_no,
+    p.partner_order_no,
+    p.tier,
+    p.power_amount,
+    p.usdt_amount,
+    p.status,
+    p.nexa_order_no,
+    p.paid_at,
+    p.settled_at,
+    p.created_at,
+    u.openid
+  FROM p_mining_payment_orders p
+  JOIN game_users u ON u.id = p.user_id
+  ORDER BY datetime(p.created_at) DESC, p.rowid DESC
+  LIMIT 200
+`);
+const listAdminNexaTipOrdersStmt = db.prepare(`
+  SELECT
+    order_no,
+    partner_order_no,
+    game_slug,
+    game_name,
+    open_id,
+    amount,
+    currency,
+    status,
+    create_time,
+    paid_time,
+    created_at
+  FROM nexa_tip_orders
+  ORDER BY datetime(created_at) DESC, rowid DESC
+  LIMIT 200
 `);
 const insertNexaEscrowOrderStmt = db.prepare(`
   INSERT INTO nexa_escrow_orders (

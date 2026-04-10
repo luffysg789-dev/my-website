@@ -244,6 +244,90 @@ test('admin can list all nexa escrow orders and update escrow user codes', async
   }
 });
 
+test('admin can list p-mining power orders and nexa tip orders', async () => {
+  const harness = createHarness({
+    mockPaymentResponse: (payload) => ({
+      code: '0',
+      message: 'success',
+      data: {
+        orderNo: `nexa_${payload.orderNo || 'order'}`,
+        timestamp: '1710000000',
+        nonce: 'test-nonce',
+        signType: 'MD5',
+        paySign: 'test-pay-sign',
+        apiKey: 'test-nexa-api-key'
+      }
+    })
+  });
+
+  try {
+    const syncResponse = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'admin-orders-open-id',
+      sessionKey: 'admin-orders-session-key',
+      nickname: 'Admin Orders User'
+    });
+    const serialized = JSON.parse(syncResponse.headers['set-cookie'][0]);
+    await harness.request('GET', '/api/nexa-escrow/bootstrap', undefined, {
+      cookies: {
+        [serialized.name]: serialized.value
+      }
+    });
+    const userId = harness.db.prepare('SELECT id FROM game_users WHERE openid = ?').get('admin-orders-open-id').id;
+
+    harness.db.prepare(`
+      INSERT INTO p_mining_payment_orders (
+        order_no, partner_order_no, user_id, tier, power_amount, usdt_amount, status, nexa_order_no, notify_payload, paid_at, settled_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'pm_order_1',
+      'pm_partner_1',
+      userId,
+      'starter',
+      100,
+      '10.00',
+      'SUCCESS',
+      'nexa_pm_1',
+      '{}',
+      '2026-04-10 08:00:00',
+      '2026-04-10 08:01:00'
+    );
+
+    const tipCreateResponse = await harness.request('POST', '/api/nexa/tip/create', {
+      gameSlug: 'gomoku',
+      openId: 'tip-buyer-open-id',
+      sessionKey: 'tip-buyer-session-key',
+      amount: '0.10'
+    });
+    assert.equal(tipCreateResponse.statusCode, 200);
+    assert.equal(tipCreateResponse.body.ok, true);
+
+    const adminCookies = await loginAdmin(harness);
+
+    const pMiningOrdersResponse = await harness.request('GET', '/api/admin/p-mining-orders', undefined, {
+      cookies: adminCookies
+    });
+    assert.equal(pMiningOrdersResponse.statusCode, 200);
+    assert.equal(pMiningOrdersResponse.body.ok, true);
+    assert.equal(Array.isArray(pMiningOrdersResponse.body.items), true);
+    assert.equal(pMiningOrdersResponse.body.items.length, 1);
+    assert.equal(pMiningOrdersResponse.body.items[0].partnerOrderNo, 'pm_partner_1');
+    assert.equal(pMiningOrdersResponse.body.items[0].openId, 'admin-orders-open-id');
+
+    const tipOrdersResponse = await harness.request('GET', '/api/admin/nexa-tip-orders', undefined, {
+      cookies: adminCookies
+    });
+    assert.equal(tipOrdersResponse.statusCode, 200);
+    assert.equal(tipOrdersResponse.body.ok, true);
+    assert.equal(Array.isArray(tipOrdersResponse.body.items), true);
+    assert.equal(tipOrdersResponse.body.items.length, 1);
+    assert.equal(tipOrdersResponse.body.items[0].gameSlug, 'gomoku');
+    assert.equal(tipOrdersResponse.body.items[0].openId, 'tip-buyer-open-id');
+    assert.equal(tipOrdersResponse.body.items[0].status, 'PENDING');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('admin nexa escrow user list shows escrow nickname after user saves it', async () => {
   const harness = createHarness();
 

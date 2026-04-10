@@ -56,6 +56,8 @@ const tutorialList = document.getElementById('tutorialList');
 const adminSkillsFetchSection = document.getElementById('adminSkillsFetchSection');
 const adminSkillsSection = document.getElementById('adminSkillsSection');
 const adminGamesSection = document.getElementById('adminGamesSection');
+const adminPMiningOrdersSection = document.getElementById('adminPMiningOrdersSection');
+const adminNexaTipOrdersSection = document.getElementById('adminNexaTipOrdersSection');
 const adminNexaEscrowSection = document.getElementById('adminNexaEscrowSection');
 const adminNexaEscrowUsersSection = document.getElementById('adminNexaEscrowUsersSection');
 const adminNexaEscrowWithdrawalsSection = document.getElementById('adminNexaEscrowWithdrawalsSection');
@@ -68,6 +70,10 @@ const skillsList = document.getElementById('skillsList');
 const skillsMessage = document.getElementById('skillsMessage');
 const gamesList = document.getElementById('gamesList');
 const gamesMessage = document.getElementById('gamesMessage');
+const pMiningOrdersList = document.getElementById('pMiningOrdersList');
+const pMiningOrdersMessage = document.getElementById('pMiningOrdersMessage');
+const nexaTipOrdersList = document.getElementById('nexaTipOrdersList');
+const nexaTipOrdersMessage = document.getElementById('nexaTipOrdersMessage');
 const nexaEscrowOrdersList = document.getElementById('nexaEscrowOrdersList');
 const nexaEscrowOrdersMessage = document.getElementById('nexaEscrowOrdersMessage');
 const nexaEscrowUsersList = document.getElementById('nexaEscrowUsersList');
@@ -204,6 +210,8 @@ const texts = {
     navSkillsFetch: '技能抓取',
     navSkills: '技能列表',
     navGames: '游戏列表',
+    navPMiningOrders: '挖矿算力订单',
+    navNexaTipOrders: '打赏订单',
     navNexaEscrowOrders: '担保订单',
     navNexaEscrowUsers: '担保用户',
     navNexaEscrowWithdrawals: '担保提现记录',
@@ -315,6 +323,8 @@ const texts = {
     skillsCreateSuccess: '技能已新增',
     skillsCreateRouteMissing: '技能新增接口不存在（404）。请重启后端后再试。',
     gamesListTitle: '游戏列表',
+    pMiningOrdersTitle: '挖矿算力订单',
+    nexaTipOrdersTitle: '打赏订单',
     nexaEscrowOrdersTitle: '担保订单',
     nexaEscrowUsersTitle: '担保用户',
     nexaEscrowWithdrawalsTitle: '担保提现记录',
@@ -331,6 +341,8 @@ const texts = {
     nexaEscrowWithdrawalsEmpty: '当前没有担保提现记录。',
     nexaEscrowWithdrawalsApproved: '担保提现已通过审核。',
     nexaEscrowWithdrawalsRejected: '担保提现已驳回，金额已退回担保钱包。',
+    pMiningOrdersEmpty: '当前没有挖矿算力订单。',
+    nexaTipOrdersEmpty: '当前没有打赏订单。',
     xiangqiDepositsEmpty: '当前没有象棋充值订单。',
     xiangqiWithdrawalsTitle: '象棋提现审核',
     xiangqiWithdrawalsApprove: '通过并打款',
@@ -467,6 +479,8 @@ const texts = {
     navSkillsFetch: 'Skill Fetch',
     navSkills: 'Skills',
     navGames: 'Games',
+    navPMiningOrders: 'P-Mining Orders',
+    navNexaTipOrders: 'Tip Orders',
     navNexaEscrowOrders: 'Escrow Orders',
     navNexaEscrowUsers: 'Escrow Users',
     navNexaEscrowWithdrawals: 'Escrow Withdrawals',
@@ -578,6 +592,8 @@ const texts = {
     skillsCreateSuccess: 'Skill added.',
     skillsCreateRouteMissing: 'Skill create API not found (404). Please restart the backend and try again.',
     gamesListTitle: 'Games',
+    pMiningOrdersTitle: 'P-Mining Power Orders',
+    nexaTipOrdersTitle: 'Game Tip Orders',
     nexaEscrowOrdersTitle: 'Escrow Orders',
     nexaEscrowUsersTitle: 'Escrow Users',
     nexaEscrowWithdrawalsTitle: 'Escrow Withdrawal Records',
@@ -594,6 +610,8 @@ const texts = {
     nexaEscrowWithdrawalsEmpty: 'No escrow withdrawal records yet.',
     nexaEscrowWithdrawalsApproved: 'Escrow withdrawal approved.',
     nexaEscrowWithdrawalsRejected: 'Escrow withdrawal rejected and refunded.',
+    pMiningOrdersEmpty: 'No P-Mining power orders yet.',
+    nexaTipOrdersEmpty: 'No tip orders yet.',
     xiangqiDepositsEmpty: 'No Xiangqi deposit orders yet.',
     xiangqiWithdrawalsTitle: 'Xiangqi Withdrawals',
     xiangqiWithdrawalsApprove: 'Approve',
@@ -1036,6 +1054,8 @@ function applyLanguage() {
   document.getElementById('navSkillsFetch').textContent = dict.navSkillsFetch;
   document.getElementById('navSkills').textContent = dict.navSkills;
   document.getElementById('navGames').textContent = dict.navGames;
+  document.getElementById('navPMiningOrders').textContent = dict.navPMiningOrders;
+  document.getElementById('navNexaTipOrders').textContent = dict.navNexaTipOrders;
   document.getElementById('navNexaEscrowOrders').textContent = dict.navNexaEscrowOrders;
   document.getElementById('navNexaEscrowUsers').textContent = dict.navNexaEscrowUsers;
   document.getElementById('navNexaEscrowWithdrawals').textContent = dict.navNexaEscrowWithdrawals;
@@ -1101,6 +1121,8 @@ function applyLanguage() {
   document.getElementById('skillsFetchTitle').textContent = dict.skillsFetchTitle;
   document.getElementById('skillsListTitle').textContent = dict.skillsListTitle;
   document.getElementById('gamesListTitle').textContent = dict.gamesListTitle;
+  document.getElementById('pMiningOrdersTitle').textContent = dict.pMiningOrdersTitle;
+  document.getElementById('nexaTipOrdersTitle').textContent = dict.nexaTipOrdersTitle;
   document.getElementById('nexaEscrowOrdersTitle').textContent = dict.nexaEscrowOrdersTitle;
   document.getElementById('nexaEscrowUsersTitle').textContent = dict.nexaEscrowUsersTitle;
   document.getElementById('nexaEscrowWithdrawalsTitle').textContent = dict.nexaEscrowWithdrawalsTitle;
@@ -1174,6 +1196,8 @@ function setView(view) {
   adminSkillsFetchSection.classList.toggle('hidden', view !== 'skills-fetch');
   adminSkillsSection.classList.toggle('hidden', view !== 'skills');
   adminGamesSection.classList.toggle('hidden', view !== 'games');
+  adminPMiningOrdersSection.classList.toggle('hidden', view !== 'p-mining-orders');
+  adminNexaTipOrdersSection.classList.toggle('hidden', view !== 'nexa-tip-orders');
   adminNexaEscrowSection.classList.toggle('hidden', view !== 'nexa-escrow-orders');
   adminNexaEscrowUsersSection.classList.toggle('hidden', view !== 'nexa-escrow-users');
   adminNexaEscrowWithdrawalsSection.classList.toggle('hidden', view !== 'nexa-escrow-withdrawals');
@@ -1207,6 +1231,12 @@ function setView(view) {
   }
   if (view === 'games') {
     loadGamesList();
+  }
+  if (view === 'p-mining-orders') {
+    loadPMiningOrdersList();
+  }
+  if (view === 'nexa-tip-orders') {
+    loadNexaTipOrdersList();
   }
   if (view === 'nexa-escrow-orders') {
     loadNexaEscrowOrdersList();
@@ -1265,6 +1295,123 @@ function renderXiangqiWithdrawalsList(items) {
       `;
     })
     .join('');
+}
+
+function renderPMiningOrdersList(items) {
+  if (!pMiningOrdersList) return;
+  if (!Array.isArray(items) || !items.length) {
+    pMiningOrdersList.innerHTML = `<p class="empty">${escapeHtml(t('pMiningOrdersEmpty'))}</p>`;
+    return;
+  }
+
+  pMiningOrdersList.innerHTML = items
+    .map((item) => {
+      const partnerOrderNo = String(item.partnerOrderNo || '').trim();
+      const orderNo = String(item.orderNo || '').trim();
+      const openId = String(item.openId || '').trim();
+      const tier = String(item.tier || '').trim();
+      const powerAmount = Number(item.powerAmount || 0);
+      const usdtAmount = String(item.usdtAmount || '0.00').trim();
+      const status = String(item.status || '').trim();
+      const nexaOrderNo = String(item.nexaOrderNo || '').trim();
+      const createdAt = formatAdminLocalDateTime(item.createdAt);
+      const paidAt = formatAdminLocalDateTime(item.paidAt);
+      const settledAt = formatAdminLocalDateTime(item.settledAt);
+      return `
+        <article class="review-card">
+          <h3>${escapeHtml(partnerOrderNo || orderNo || '-')}</h3>
+          <p class="small">OpenID: ${escapeHtml(openId || '-')}</p>
+          <p class="small">档位: ${escapeHtml(tier || '-')}</p>
+          <p class="small">购买算力: ${escapeHtml(String(powerAmount || 0))}</p>
+          <p class="small">金额: ${escapeHtml(usdtAmount)} USDT</p>
+          <p class="small">状态: ${escapeHtml(status || '-')}</p>
+          ${nexaOrderNo ? `<p class="small">Nexa订单号: ${escapeHtml(nexaOrderNo)}</p>` : ''}
+          <p class="small">创建时间: ${escapeHtml(createdAt)}</p>
+          ${paidAt ? `<p class="small">支付时间: ${escapeHtml(paidAt)}</p>` : ''}
+          ${settledAt ? `<p class="small">到账时间: ${escapeHtml(settledAt)}</p>` : ''}
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function loadPMiningOrdersList() {
+  if (!pMiningOrdersList || !pMiningOrdersMessage) return;
+  pMiningOrdersMessage.textContent = '';
+  pMiningOrdersMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/p-mining-orders'], { method: 'GET' });
+  if (!result.res) {
+    pMiningOrdersMessage.textContent = t('operationFailed');
+    pMiningOrdersMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    pMiningOrdersMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    pMiningOrdersMessage.className = 'message error';
+    return;
+  }
+  renderPMiningOrdersList(result.data?.items || []);
+}
+
+function renderNexaTipOrdersList(items) {
+  if (!nexaTipOrdersList) return;
+  if (!Array.isArray(items) || !items.length) {
+    nexaTipOrdersList.innerHTML = `<p class="empty">${escapeHtml(t('nexaTipOrdersEmpty'))}</p>`;
+    return;
+  }
+
+  nexaTipOrdersList.innerHTML = items
+    .map((item) => {
+      const partnerOrderNo = String(item.partnerOrderNo || '').trim();
+      const orderNo = String(item.orderNo || '').trim();
+      const gameSlug = String(item.gameSlug || '').trim();
+      const gameName = String(item.gameName || '').trim();
+      const openId = String(item.openId || '').trim();
+      const amount = String(item.amount || '0.00').trim();
+      const currency = String(item.currency || 'USDT').trim();
+      const status = String(item.status || '').trim();
+      const createdAt = formatAdminLocalDateTime(item.createdAt);
+      const createTime = formatAdminLocalDateTime(item.createTime);
+      const paidTime = formatAdminLocalDateTime(item.paidTime);
+      return `
+        <article class="review-card">
+          <h3>${escapeHtml(partnerOrderNo || orderNo || '-')}</h3>
+          <p class="small">游戏: ${escapeHtml(gameName || gameSlug || '-')}</p>
+          <p class="small">OpenID: ${escapeHtml(openId || '-')}</p>
+          <p class="small">金额: ${escapeHtml(amount)} ${escapeHtml(currency)}</p>
+          <p class="small">状态: ${escapeHtml(status || '-')}</p>
+          <p class="small">创建时间: ${escapeHtml(createdAt || createTime)}</p>
+          ${paidTime ? `<p class="small">支付时间: ${escapeHtml(paidTime)}</p>` : ''}
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function loadNexaTipOrdersList() {
+  if (!nexaTipOrdersList || !nexaTipOrdersMessage) return;
+  nexaTipOrdersMessage.textContent = '';
+  nexaTipOrdersMessage.className = 'message';
+  const result = await requestTutorialJson(['/api/admin/nexa-tip-orders'], { method: 'GET' });
+  if (!result.res) {
+    nexaTipOrdersMessage.textContent = t('operationFailed');
+    nexaTipOrdersMessage.className = 'message error';
+    return;
+  }
+  if (result.res.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res.ok) {
+    nexaTipOrdersMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    nexaTipOrdersMessage.className = 'message error';
+    return;
+  }
+  renderNexaTipOrdersList(result.data?.items || []);
 }
 
 function renderNexaEscrowOrdersList(items) {
@@ -3687,6 +3834,8 @@ document.getElementById('navTutorialAdd').addEventListener('click', () => {
 document.getElementById('navSkillsFetch').addEventListener('click', () => setView('skills-fetch'));
 document.getElementById('navSkills').addEventListener('click', () => setView('skills'));
 document.getElementById('navGames').addEventListener('click', () => setView('games'));
+document.getElementById('navPMiningOrders').addEventListener('click', () => setView('p-mining-orders'));
+document.getElementById('navNexaTipOrders').addEventListener('click', () => setView('nexa-tip-orders'));
 document.getElementById('navNexaEscrowOrders').addEventListener('click', () => setView('nexa-escrow-orders'));
 document.getElementById('navNexaEscrowUsers').addEventListener('click', () => setView('nexa-escrow-users'));
 document.getElementById('navNexaEscrowWithdrawals').addEventListener('click', () => setView('nexa-escrow-withdrawals'));
