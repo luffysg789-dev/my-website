@@ -195,6 +195,14 @@ body {
   font-weight: 700;
 }
 
+.nexa-escrow-role-toggle__item {
+  min-height: 64px;
+  padding: 14px 10px;
+  font-size: 1.08rem;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+
 .nexa-escrow-tabs__item--orders {
   position: relative;
 }

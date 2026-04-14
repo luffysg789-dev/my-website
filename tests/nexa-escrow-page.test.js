@@ -144,8 +144,8 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /function updateEscrowKeyboardInset\(/);
   assert.match(js, /visualViewport\?\.addEventListener\?\.\('resize'/);
   assert.match(js, /renderOrderDetail\(appState\);\s*renderOrders\(appState\);/);
-  assert.match(js, /roleBuyer: '我要卖u\/付u买物'/);
-  assert.match(js, /roleSeller: '我要买u\/收u发货'/);
+  assert.match(js, /roleBuyer: '我要卖u\\n付u买物'/);
+  assert.match(js, /roleSeller: '我要买u\\n收u发货'/);
   assert.match(js, /viewerBuyer: '我是买家'/);
   assert.match(js, /viewerSeller: '我是卖家'/);
   assert.match(js, /descriptionTooLong: '交易描述最多 30 个字'/);
