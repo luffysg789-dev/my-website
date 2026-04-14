@@ -86,7 +86,7 @@
       safeBody: '请务必收到货物/服务后再点击“确认收货”。如有疑问，请立即点击“去申诉”。申诉处理请联系nexa客服。',
       actionFund: '支付担保金',
       actionDeliver: '确认发货/确认已付法币',
-      actionConfirmReceipt: '收到货去放款',
+      actionConfirmReceipt: '收到货/收到法币去放u',
       actionDispute: '去申诉',
       actionCancel: '取消订单',
       actionDeliveredDone: '已发货',
