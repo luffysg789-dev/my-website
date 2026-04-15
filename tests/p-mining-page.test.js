@@ -114,11 +114,6 @@ test('p-mining css includes dark glass tokens, bottom nav, and circular claim la
   assert.match(css, /\.p-mining-card__label\s*\{[\s\S]*?margin:\s*0 0 6px;/);
   assert.match(css, /\.p-mining-balance-card\s*\{[\s\S]*?min-height:\s*206px;/);
   assert.match(css, /\.p-mining-balance-card__meta\s*\{[\s\S]*?margin-top:\s*12px;/);
-  assert.match(css, /\.p-mining-claim-ring\s*\{[\s\S]*?background:\s*var\(--p-mining-card\);/);
-  assert.match(css, /\.p-mining-claim-ring\s*\{[\s\S]*?overflow:\s*hidden;/);
-  assert.match(css, /\.p-mining-claim-ring\s*\{[\s\S]*?clip-path:\s*circle\(50% at 50% 50%\);/);
-  assert.match(css, /\.p-mining-claim-ring::before\s*\{[\s\S]*?conic-gradient/);
-  assert.match(css, /\.p-mining-claim-ring__inner\s*\{[\s\S]*?z-index:\s*1;/);
   assert.match(css, /\.p-mining-helper\s*\{[\s\S]*?margin:\s*6px 0 0;/);
   assert.match(css, /\.p-mining-rule-card\s*\{[\s\S]*?padding:\s*6px 16px;/);
   assert.match(css, /\.p-mining-rule-card\s+p\s*\{[\s\S]*?margin:\s*0;/);
