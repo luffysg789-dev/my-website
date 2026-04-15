@@ -60,6 +60,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /data-tab="account"/);
   assert.match(html, /id="nexaEscrowRoleBuyer"/);
   assert.match(html, /id="nexaEscrowRoleSeller"/);
+  assert.match(html, /id="nexaEscrowRoleSeller"[\s\S]*id="nexaEscrowRoleBuyer"/);
   assert.match(html, /id="nexaEscrowAmountInput"/);
   assert.match(html, /id="nexaEscrowCounterpartyInput"/);
   assert.match(html, /class="nexa-escrow-field nexa-escrow-field--inline"/);
@@ -146,6 +147,7 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /renderOrderDetail\(appState\);\s*renderOrders\(appState\);/);
   assert.match(js, /roleBuyer: '我要卖u\\n付u买物'/);
   assert.match(js, /roleSeller: '我要买u\\n收u发货'/);
+  assert.match(js, /role: 'seller'/);
   assert.match(js, /viewerBuyer: '我是买家'/);
   assert.match(js, /viewerSeller: '我是卖家'/);
   assert.match(js, /descriptionTooLong: '交易描述最多 30 个字'/);

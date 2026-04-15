@@ -1512,7 +1512,7 @@
       settings: { ...DEFAULT_NEXA_ESCROW_SETTINGS },
       orders: [],
       selectedTradeCode: '',
-      role: 'buyer',
+      role: 'seller',
       activeTab: 'create',
       orderFilter: 'all',
       withdrawalsPage: 1,
