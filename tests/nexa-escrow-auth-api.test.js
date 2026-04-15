@@ -123,6 +123,69 @@ function createHarness({ mockPaymentResponse, mockQueryResponse, mockWithdrawRes
         req.emit('end');
       });
     },
+    async requestSse(routePath, options = {}) {
+      return new Promise((resolve, reject) => {
+        const req = new EventEmitter();
+        req.method = 'GET';
+        req.url = routePath;
+        req.originalUrl = routePath;
+        req.headers = { accept: 'text/event-stream', ...(options.headers || {}) };
+        req.connection = {};
+        req.socket = {};
+        req.body = undefined;
+        req.query = {};
+        req.cookies = { ...(options.cookies || {}) };
+
+        const [pathname, queryString = ''] = routePath.split('?');
+        req.path = pathname;
+        const params = new URLSearchParams(queryString);
+        for (const [key, value] of params.entries()) {
+          req.query[key] = value;
+        }
+
+        let resolved = false;
+        const res = new EventEmitter();
+        res.statusCode = 200;
+        res.headers = {};
+        res.locals = {};
+        res.setHeader = function setHeader(name, value) {
+          this.headers[String(name).toLowerCase()] = value;
+        };
+        res.getHeader = function getHeader(name) {
+          return this.headers[String(name).toLowerCase()];
+        };
+        res.status = function status(code) {
+          this.statusCode = code;
+          return this;
+        };
+        res.json = function json(payload) {
+          if (!resolved) {
+            resolved = true;
+            resolve({ statusCode: this.statusCode, body: payload, headers: this.headers });
+          }
+          return this;
+        };
+        res.flushHeaders = function flushHeaders() {};
+        res.write = function write(chunk) {
+          if (!resolved) {
+            resolved = true;
+            resolve({ statusCode: this.statusCode, chunk: String(chunk || ''), headers: this.headers });
+            req.emit('close');
+            res.emit('close');
+          }
+          return true;
+        };
+        res.end = function end(chunk) {
+          if (!resolved) {
+            resolved = true;
+            resolve({ statusCode: this.statusCode, body: chunk ? String(chunk) : null, headers: this.headers });
+          }
+        };
+
+        app.handle(req, res, reject);
+        req.emit('end');
+      });
+    },
     cleanup() {
       db.close();
       delete require.cache[require.resolve(serverModulePath)];
@@ -390,6 +453,31 @@ test('nexa-escrow bootstrap returns synced account state and empty orders for a 
     });
     assert.equal(Array.isArray(response.body.orders), true);
     assert.equal(response.body.orders.length, 0);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('nexa-escrow events endpoint opens an authenticated SSE stream for realtime order updates', async () => {
+  const harness = createHarness();
+
+  try {
+    const syncResponse = await harness.request('POST', '/api/nexa-escrow/session', {
+      openId: 'escrow-events-open-id',
+      sessionKey: 'escrow-events-session-key',
+      nickname: 'Events User'
+    });
+    const cookie = JSON.parse(syncResponse.headers['set-cookie'][0]);
+
+    const response = await harness.requestSse('/api/nexa-escrow/events', {
+      cookies: { [cookie.name]: cookie.value }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers['content-type'], 'text/event-stream; charset=utf-8');
+    assert.equal(response.headers['cache-control'], 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    assert.equal(response.headers['x-accel-buffering'], 'no');
+    assert.match(response.chunk, /event: escrow\.ready/);
   } finally {
     harness.cleanup();
   }

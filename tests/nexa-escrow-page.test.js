@@ -66,6 +66,7 @@ test('nexa-escrow html includes create and orders tabs plus escrow actions', () 
   assert.match(html, /class="nexa-escrow-field nexa-escrow-field--inline"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"/);
   assert.match(html, /id="nexaEscrowDescriptionInput"[\s\S]*maxlength="30"/);
+  assert.match(html, /例如担保:法币买U\/技术开发\/设计稿定金等/);
   assert.match(html, /id="nexaEscrowFeeHint"/);
   assert.match(html, /注:最低 1U，最高 100000U，手续费0/);
   assert.match(html, /id="nexaEscrowCreateButton"[\s\S]*data-i18n="createAndPayAction"[\s\S]*确认发起并付款/);
@@ -134,6 +135,14 @@ test('nexa-escrow script includes Nexa auth, escrow bootstrap, order, and paymen
   assert.match(js, /appState\.orders = mergeOrder\(appState\.orders, response\.order\);[\s\S]*renderOrderDetail\(appState\);[\s\S]*renderOrders\(appState\);/);
   assert.match(js, /function filterOrders\(/);
   assert.match(js, /function refreshEscrowOrders\(/);
+  assert.match(js, /function refreshEscrowOrdersSilently\(/);
+  assert.match(js, /function connectEscrowOrderEvents\(/);
+  assert.match(js, /new globalScope\.EventSource\('\/api\/nexa-escrow\/events'\)/);
+  assert.match(js, /addEventListener\('escrow\.order-updated'/);
+  assert.match(js, /connectEscrowOrderEvents\(appState\)/);
+  assert.doesNotMatch(js, /NEXA_ESCROW_ORDER_BACKGROUND_POLL_INTERVAL_MS/);
+  assert.match(fs.readFileSync(serverPath, 'utf8'), /app\.get\('\/api\/nexa-escrow\/events'/);
+  assert.match(fs.readFileSync(serverPath, 'utf8'), /emitNexaEscrowOrderEvent\(result\.order\)/);
   assert.match(js, /function refreshEscrowAccount\(/);
   assert.match(js, /function refreshCurrentEscrowTab\(/);
   assert.match(js, /NEXA_ESCROW_PULL_REFRESH_TRIGGER_PX/);

@@ -31,7 +31,7 @@
       counterpartySellerPlaceholder: '输入卖方担保号，例如 n123456',
       counterpartyBuyerPlaceholder: '输入买方担保号，例如 n123456',
       descriptionLabel: '交易描述',
-      descriptionPlaceholder: '例如：购买虚拟主机服务、设计稿定金等',
+      descriptionPlaceholder: '例如担保:法币买U/技术开发/设计稿定金等',
       createAction: '确认发起',
       createAndPayAction: '确认发起并付款',
       accountHeadline: '你的 Nexa 担保身份',
@@ -1386,6 +1386,26 @@
     }
   }
 
+  async function refreshEscrowOrdersSilently(appState) {
+    if (appState.ordersPushRefreshing || appState.bootstrapRefreshing || appState.ordersRefreshing) return;
+    appState.ordersPushRefreshing = true;
+    try {
+      await loadBootstrap(appState);
+    } finally {
+      appState.ordersPushRefreshing = false;
+    }
+  }
+
+  function connectEscrowOrderEvents(appState) {
+    if (!globalScope.EventSource || !appState.session?.openId || appState.orderEventSource) return;
+    const source = new globalScope.EventSource('/api/nexa-escrow/events');
+    source.addEventListener('escrow.order-updated', () => {
+      refreshEscrowOrdersSilently(appState).catch(() => {});
+    });
+    source.onerror = () => {};
+    appState.orderEventSource = source;
+  }
+
   function resetOrdersPullRefresh(appState) {
     appState.ordersPullStartY = 0;
     appState.ordersPullDistance = 0;
@@ -1521,6 +1541,8 @@
       ordersPullStartY: 0,
       ordersPullDistance: 0,
       ordersRefreshing: false,
+      ordersPushRefreshing: false,
+      orderEventSource: null,
       accountPullStartY: 0,
       accountPullDistance: 0,
       accountRefreshing: false,
@@ -1860,6 +1882,7 @@
     await loadBootstrap(appState).catch((error) => {
       setStatus(appState.elements.createStatus, error instanceof Error ? error.message : '加载失败', 'error');
     });
+    connectEscrowOrderEvents(appState);
     await settlePendingEscrowPayment(appState).catch(() => {});
     if (!String(appState.account?.escrowNickname || '').trim()) {
       openEscrowCodeModal(appState);

@@ -87,6 +87,7 @@ const PMINING_POWER_PAYMENT_OPTIONS = {
 };
 const pMiningPaymentOrders = new Map();
 const nexaEscrowPaymentOrders = new Map();
+const nexaEscrowEventStreams = new Map();
 const xiangqiRoomEventStreams = new Map();
 let preferredNexaPaymentVariantName = 'github-doc-strict';
 
@@ -1183,6 +1184,42 @@ function buildNexaEscrowBootstrapPayload(session) {
       feePermille: escrowSettings.feePermille
     }
   };
+}
+
+function getNexaEscrowEventStreamSet(openId) {
+  const key = String(openId || '').trim();
+  if (!key) return null;
+  const existing = nexaEscrowEventStreams.get(key);
+  if (existing) return existing;
+  const next = new Set();
+  nexaEscrowEventStreams.set(key, next);
+  return next;
+}
+
+function emitNexaEscrowEvent(openId, event, payload = {}) {
+  const key = String(openId || '').trim();
+  const listeners = getNexaEscrowEventStreamSet(key);
+  if (!listeners || !listeners.size) return;
+
+  const data = `event: ${String(event || 'message')}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const res of listeners) {
+    try {
+      res.write(data);
+      if (typeof res.flush === 'function') res.flush();
+    } catch {}
+  }
+}
+
+function emitNexaEscrowOrderEvent(order, event = 'escrow.order-updated') {
+  const buyerOpenId = String(order?.buyerOpenId || '').trim();
+  const sellerOpenId = String(order?.sellerOpenId || '').trim();
+  const targets = new Set([buyerOpenId, sellerOpenId].filter(Boolean));
+  for (const openId of targets) {
+    emitNexaEscrowEvent(openId, event, {
+      tradeCode: String(order?.tradeCode || '').trim(),
+      status: String(order?.status || '').trim()
+    });
+  }
 }
 
 function createNexaEscrowOrder({ session, creatorRole, counterpartyEscrowCode, amount, description }) {
@@ -4061,6 +4098,48 @@ app.get('/api/nexa-escrow/bootstrap', (req, res) => {
   }
 });
 
+app.get('/api/nexa-escrow/events', (req, res) => {
+  let session;
+  try {
+    session = requireNexaEscrowSession(req);
+  } catch (error) {
+    const statusCode = Number(error?.statusCode || 401) || 401;
+    return res.status(statusCode).json({ ok: false, error: String(error?.message || 'UNAUTHORIZED') });
+  }
+
+  const openId = String(session.openId || '').trim();
+  if (!openId) {
+    return res.status(401).json({ ok: false, error: 'UNAUTHORIZED' });
+  }
+
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  const listeners = getNexaEscrowEventStreamSet(openId);
+  listeners.add(res);
+  const heartbeat = setInterval(() => {
+    try {
+      res.write('event: ping\ndata: {}\n\n');
+    } catch {}
+  }, 15000);
+
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    listeners.delete(res);
+    if (!listeners.size) {
+      nexaEscrowEventStreams.delete(openId);
+    }
+  };
+  req.on('close', cleanup);
+  res.on('close', cleanup);
+
+  res.write('event: escrow.ready\ndata: {}\n\n');
+});
+
 app.post('/api/nexa-escrow/profile/nickname', (req, res) => {
   try {
     const session = requireNexaEscrowSession(req);
@@ -4105,6 +4184,7 @@ app.post('/api/nexa-escrow/orders', (req, res) => {
       counterpartyEscrowCode: req.body?.counterpartyEscrowCode,
       description: req.body?.description
     });
+    emitNexaEscrowOrderEvent(result.order);
     return res.json({
       ok: true,
       account: result.account,
