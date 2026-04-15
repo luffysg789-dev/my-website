@@ -343,16 +343,31 @@ body {
 
 .p-mining-claim-ring {
   --progress: 100%;
+  position: relative;
+  isolation: isolate;
   width: min(66vw, 312px);
   aspect-ratio: 1;
   border: none;
   border-radius: 50%;
+  overflow: hidden;
   padding: 8px;
+  background: var(--p-mining-card);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04), 0 30px 60px rgba(0, 0, 0, 0.36);
+  cursor: pointer;
+  clip-path: circle(50% at 50% 50%);
+  -webkit-mask-image: radial-gradient(#000 100%, #000);
+  mask-image: radial-gradient(#000 100%, #000);
+}
+
+.p-mining-claim-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
   background:
     conic-gradient(var(--p-mining-accent) var(--progress), rgba(255, 255, 255, 0.12) 0),
     linear-gradient(180deg, rgba(30, 30, 30, 0.96), rgba(15, 15, 15, 0.98));
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04), 0 30px 60px rgba(0, 0, 0, 0.36);
-  cursor: pointer;
 }
 
 .p-mining-claim-ring:disabled {
@@ -361,6 +376,8 @@ body {
 }
 
 .p-mining-claim-ring__inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: center;
   flex-direction: column;
