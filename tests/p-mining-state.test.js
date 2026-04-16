@@ -108,7 +108,7 @@ test('calculateClaimReward uses the specified mining formula', () => {
     dailyCap: DAILY_CAP
   });
 
-  assert.equal(reward, 2996575.3);
+  assert.equal(reward, 8989726);
 });
 
 test('calculateEstimatedTodayOutput derives personal daily total from mining formula', () => {
@@ -118,7 +118,7 @@ test('calculateEstimatedTodayOutput derives personal daily total from mining for
     dailyCap: DAILY_CAP
   });
 
-  assert.equal(estimated, 71917808.0);
+  assert.equal(estimated, 215753424.0);
 });
 
 test('createDefaultNetworkStats uses supply and daily cap defaults', () => {

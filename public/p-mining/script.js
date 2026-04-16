@@ -1,6 +1,7 @@
 (function createPMiningModule(globalScope) {
   const TOTAL_SUPPLY = 210000000000;
   const DAILY_CAP = 71917808;
+  const CLAIM_REWARD_MULTIPLIER = 3;
   const CLAIM_COOLDOWN_MS = 60 * 60 * 1000;
   const DEMO_INVITE_CODES = ['246810', '135790', '888888'];
   const STORAGE_KEY_PREFIX = 'claw800:p-mining:state:';
@@ -560,14 +561,14 @@
     const safeUserPower = Math.max(0, Number(userPower || 0));
     const safeNetworkPower = Math.max(1, Number(networkPower || 1));
     const safeDailyCap = Math.max(0, Number(dailyCap || DAILY_CAP));
-    return roundToSingle((safeUserPower / safeNetworkPower) * (safeDailyCap / 24));
+    return roundToSingle(((safeUserPower / safeNetworkPower) * (safeDailyCap / 24)) * CLAIM_REWARD_MULTIPLIER);
   }
 
   function calculateEstimatedTodayOutput({ userPower, networkPower, dailyCap }) {
     const safeUserPower = Math.max(0, Number(userPower || 0));
     const safeNetworkPower = Math.max(1, Number(networkPower || 1));
     const safeDailyCap = Math.max(0, Number(dailyCap || DAILY_CAP));
-    return roundToSingle((safeUserPower / safeNetworkPower) * safeDailyCap);
+    return roundToSingle(((safeUserPower / safeNetworkPower) * safeDailyCap) * CLAIM_REWARD_MULTIPLIER);
   }
 
   function calculateRunningDays(firstClaimAt, now = Date.now()) {
@@ -1976,6 +1977,7 @@
   const exported = {
     TOTAL_SUPPLY,
     DAILY_CAP,
+    CLAIM_REWARD_MULTIPLIER,
     CLAIM_COOLDOWN_MS,
     getMockNexaUser,
     normalizeHostUser,

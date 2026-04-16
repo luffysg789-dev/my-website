@@ -549,6 +549,14 @@ test('p-mining claim writes balance and claim records on the backend', async () 
     assert.equal(claimResponse.body.ok, true);
     assert.equal(claimResponse.body.account.balance > 0, true);
     assert.equal(claimResponse.body.records.claims.length, 1);
+    const expectedReward = Math.round(((Number(beforeBootstrap.body.account.power || 0) / Math.max(1, Number(beforeBootstrap.body.network.todayPower || 1))) * (Number(beforeBootstrap.body.network.dailyCap || 0) / 24) * 3) * 10) / 10;
+    assert.equal(Number(claimResponse.body.reward || 0), expectedReward);
+    assert.equal(Number(claimResponse.body.records.claims[0].reward || 0), expectedReward);
+    assert.equal(Number(claimResponse.body.account.balance || 0), expectedReward);
+    assert.equal(
+      Number((Number(claimResponse.body.network.todayMined || 0) - Number(beforeBootstrap.body.network.todayMined || 0)).toFixed(1)),
+      expectedReward
+    );
     assert.ok(Number(claimResponse.body.network.totalMined || 0) > Number(beforeBootstrap.body.network.totalMined || 0));
     assert.ok(Number(claimResponse.body.network.todayMined || 0) > Number(beforeBootstrap.body.network.todayMined || 0));
     assert.ok(Number(claimResponse.body.network.remainingSupply || 0) < Number(beforeBootstrap.body.network.remainingSupply || 0));
