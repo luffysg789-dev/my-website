@@ -46,12 +46,11 @@
       .replaceAll("'", '&#039;');
   }
 
-  function formatMonth(dateValue) {
-    return new Date(dateValue).toLocaleString('en-US', { month: 'short' });
-  }
-
-  function formatDay(dateValue) {
-    return String(new Date(dateValue).getDate()).padStart(2, '0');
+  function formatDateBadge(dateValue) {
+    const date = new Date(dateValue);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}月${day}`;
   }
 
   function formatDateTime(dateValue) {
@@ -95,8 +94,7 @@
         return `
           <article class="carnival-event-card">
             <div class="carnival-date-badge">
-              <span class="carnival-date-badge__day">${escapeHtml(formatDay(item.startTime))}</span>
-              <span class="carnival-date-badge__month">${escapeHtml(formatMonth(item.startTime))}</span>
+              <span class="carnival-date-badge__text">${escapeHtml(formatDateBadge(item.startTime))}</span>
             </div>
             <a class="carnival-event-card__main" href="${escapeHtml(item.url || '#')}" target="_blank" rel="nofollow noopener">
               <div class="carnival-event-card__image">

@@ -131,6 +131,15 @@ a {
   justify-content: center;
 }
 
+.carnival-hero__hint {
+  margin: -2px 0 0;
+  max-width: 520px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  text-align: center;
+}
+
 .carnival-hero__download,
 .carnival-hero__contact {
   display: inline-flex;
@@ -258,28 +267,17 @@ a {
 
 .carnival-date-badge {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  gap: 8px;
   min-height: auto;
   padding: 8px 0 0;
   border-radius: 18px;
   background: transparent;
 }
 
-.carnival-date-badge__month {
-  order: 2;
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--carnival-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.carnival-date-badge__day {
-  order: 1;
-  font-size: 3rem;
-  line-height: 0.95;
+.carnival-date-badge__text {
+  font-size: 2.25rem;
+  line-height: 1;
   font-weight: 800;
   color: var(--carnival-text);
 }
@@ -533,24 +531,24 @@ a {
     font-size: 0.95rem;
   }
 
+  .carnival-hero__hint {
+    max-width: 100%;
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+
   .carnival-event-card {
     grid-template-columns: 1fr;
     gap: 14px;
   }
 
   .carnival-date-badge {
-    justify-content: center;
-    gap: 6px;
     padding-top: 0;
     margin-bottom: 4px;
   }
 
-  .carnival-date-badge__day {
-    font-size: 2.2rem;
-  }
-
-  .carnival-date-badge__month {
-    font-size: 0.86rem;
+  .carnival-date-badge__text {
+    font-size: 1.9rem;
   }
 
   .carnival-event-card__main {
