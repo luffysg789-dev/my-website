@@ -37,13 +37,16 @@ test('hong kong web3 carnival static page includes filter and list hooks', () =>
   assert.match(html, /id="carnivalLoadMore"/);
   assert.match(html, /href="https:\/\/www\.nexaexworth\.com\/"/);
   assert.match(html, /id="carnivalContactButton"/);
+  assert.match(html, /id="carnivalShareButton"/);
   assert.match(html, /id="carnivalQrModal"/);
+  assert.match(html, /id="carnivalShareModal"/);
   assert.match(html, /contact-qr\.jpg/);
+  assert.match(html, /share-poster\.jpg/);
   assert.match(html, /\/hk-web3-carnival\/data\.js\?v=20260418-01/);
-  assert.match(html, /\/hk-web3-carnival\/script\.js\?v=20260418-04/);
-  assert.match(html, /\/hk-web3-carnival\/style\.css\?v=20260418-04/);
+  assert.match(html, /\/hk-web3-carnival\/script\.js\?v=20260418-06/);
+  assert.match(html, /\/hk-web3-carnival\/style\.css\?v=20260418-06/);
   assert.match(shortHtml, /<title>Claw800 2026 · 香港 Web3 嘉年华<\/title>/);
-  assert.match(shortHtml, /\/hk-web3-carnival\/script\.js\?v=20260418-04/);
+  assert.match(shortHtml, /\/hk-web3-carnival\/script\.js\?v=20260418-06/);
 });
 
 test('hong kong web3 carnival data snapshot includes summary and event items', () => {
@@ -80,5 +83,7 @@ test('hong kong web3 carnival css and script define the mirrored activity layout
   assert.match(js, /function loadMore\(/);
   assert.match(js, /function openQrModal\(/);
   assert.match(js, /function closeQrModal\(/);
+  assert.match(js, /function openShareModal\(/);
+  assert.match(js, /function closeShareModal\(/);
   assert.match(js, /BOOK/);
 });

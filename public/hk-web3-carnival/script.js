@@ -17,8 +17,11 @@
   const loadMoreButton = document.getElementById('carnivalLoadMore');
   const emptyState = document.getElementById('carnivalEmptyState');
   const contactButton = document.getElementById('carnivalContactButton');
+  const shareButton = document.getElementById('carnivalShareButton');
   const qrModal = document.getElementById('carnivalQrModal');
   const qrBackdrop = document.getElementById('carnivalQrBackdrop');
+  const shareModal = document.getElementById('carnivalShareModal');
+  const shareBackdrop = document.getElementById('carnivalShareBackdrop');
 
   const PAGE_SIZE = 18;
   let visibleCount = PAGE_SIZE;
@@ -160,6 +163,14 @@
     qrModal.hidden = true;
   }
 
+  function openShareModal() {
+    shareModal.hidden = false;
+  }
+
+  function closeShareModal() {
+    shareModal.hidden = true;
+  }
+
   buildTimeOptions();
   renderHero();
   renderEvents();
@@ -171,4 +182,6 @@
   loadMoreButton.addEventListener('click', loadMore);
   contactButton.addEventListener('click', openQrModal);
   qrBackdrop.addEventListener('click', closeQrModal);
+  shareButton.addEventListener('click', openShareModal);
+  shareBackdrop.addEventListener('click', closeShareModal);
 })();

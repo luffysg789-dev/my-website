@@ -431,6 +431,10 @@ a {
   justify-items: center;
 }
 
+.carnival-modal__dialog--qr {
+  width: min(220px, calc(100vw - 170px));
+}
+
 .carnival-modal__image {
   width: 100%;
   display: block;
@@ -552,6 +556,10 @@ a {
 
   .carnival-modal__dialog {
     width: min(212px, calc(100vw - 132px));
+  }
+
+  .carnival-modal__dialog--qr {
+    width: min(168px, calc(100vw - 190px));
   }
 
   .carnival-modal__image {

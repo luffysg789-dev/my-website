@@ -8,7 +8,7 @@
       name="description"
       content="2026 · 香港 Web3 嘉年华活动汇总页，收录香港 Web3 嘉年华期间的周边活动、论坛、社交酒会与报名入口。"
     />
-    <link rel="stylesheet" href="/hk-web3-carnival/style.css?v=20260418-04" />
+    <link rel="stylesheet" href="/hk-web3-carnival/style.css?v=20260418-06" />
   </head>
   <body>
     <main class="carnival-shell" data-carnival-app>
@@ -34,6 +34,7 @@
               下载 App
             </a>
             <button class="carnival-hero__contact" id="carnivalContactButton" type="button">联系收录</button>
+            <button class="carnival-hero__contact" id="carnivalShareButton" type="button">分享</button>
           </div>
           <p class="carnival-hero__hint">请下载app申请苹果pay卡,在香港使用最方便的u卡.</p>
         </div>
@@ -88,12 +89,21 @@
 
     <div class="carnival-modal" id="carnivalQrModal" hidden>
       <button class="carnival-modal__backdrop" id="carnivalQrBackdrop" type="button" aria-label="关闭联系收录二维码"></button>
-      <div class="carnival-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="carnivalQrTitle">
+      <div class="carnival-modal__dialog carnival-modal__dialog--qr" role="dialog" aria-modal="true" aria-labelledby="carnivalQrTitle">
         <img class="carnival-modal__image" src="/hk-web3-carnival/contact-qr.jpg" alt="联系收录二维码" />
+        <p class="carnival-modal__title" id="carnivalQrTitle">联系收录</p>
+      </div>
+    </div>
+
+    <div class="carnival-modal" id="carnivalShareModal" hidden>
+      <button class="carnival-modal__backdrop" id="carnivalShareBackdrop" type="button" aria-label="关闭分享海报"></button>
+      <div class="carnival-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="carnivalShareTitle">
+        <img class="carnival-modal__image" src="/hk-web3-carnival/share-poster.jpg" alt="嘉年华分享海报" />
+        <p class="carnival-modal__title" id="carnivalShareTitle">分享海报</p>
       </div>
     </div>
 
     <script src="/hk-web3-carnival/data.js?v=20260418-01"></script>
-    <script src="/hk-web3-carnival/script.js?v=20260418-04"></script>
+    <script src="/hk-web3-carnival/script.js?v=20260418-06"></script>
   </body>
 </html>
