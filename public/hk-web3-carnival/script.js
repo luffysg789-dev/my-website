@@ -50,7 +50,7 @@
     const date = new Date(dateValue);
     const month = date.getMonth() + 1;
     const day = date.getDate();
-    return `${month}月${day}`;
+    return `${month}月${day}日`;
   }
 
   function formatDateTime(dateValue) {
