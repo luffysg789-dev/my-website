@@ -95,9 +95,8 @@
         return `
           <article class="carnival-event-card">
             <div class="carnival-date-badge">
-              <span class="carnival-date-badge__month">${escapeHtml(formatMonth(item.startTime))}</span>
-              <span class="carnival-date-badge__line"></span>
               <span class="carnival-date-badge__day">${escapeHtml(formatDay(item.startTime))}</span>
+              <span class="carnival-date-badge__month">${escapeHtml(formatMonth(item.startTime))}</span>
             </div>
             <a class="carnival-event-card__main" href="${escapeHtml(item.url || '#')}" target="_blank" rel="nofollow noopener">
               <div class="carnival-event-card__image">
