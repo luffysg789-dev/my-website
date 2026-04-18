@@ -71,6 +71,7 @@ test('nchat css defines mobile app shell, bottom nav, unread badge, and conversa
   assert.match(css, /\.nchat-conversation-list\s*\{/);
   assert.match(css, /\.nchat-conversation-row\s*\{/);
   assert.match(css, /\.nchat-unread-badge\s*\{/);
+  assert.match(css, /\.nchat-message\.is-pending\s*\{/);
   assert.match(css, /\.nchat-modal\[hidden\]\s*\{[\s\S]*display:\s*none;/);
   assert.match(css, /@media \(max-width:\s*720px\)/);
 });
@@ -89,6 +90,11 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /function loadLocalPreviewProfile\(/);
   assert.match(js, /function applyLocalPreviewBootstrap\(/);
   assert.match(js, /function appendLocalDemoMessage\(/);
+  assert.match(js, /clearCachedSession\(state\.storage\);/);
+  assert.match(js, /const localPreview = isLocalPreview\(\);/);
+  assert.match(js, /const authCode = extractAuthCodeFromUrl\(\);/);
+  assert.match(js, /if \(!localPreview && !authCode\) \{[\s\S]*clearCachedSession\(state\.storage\);[\s\S]*await clearServerSession\(\);[\s\S]*await beginNexaLoginFlow\(\)\.catch\(\(\) => \{\}\);[\s\S]*return;/);
+  assert.match(js, /async function clearServerSession\(\)/);
   assert.match(js, /本地测试/);
   assert.match(js, /function setProfileFeedback\(/);
   assert.match(js, /\/api\/nchat\/session/);
@@ -100,6 +106,11 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /\/api\/nchat\/conversations\/.*\/read/);
   assert.match(js, /\/api\/nchat\/events/);
   assert.match(js, /renderConversationList/);
+  assert.match(js, /function upsertConversation\(/);
+  assert.match(js, /function createOptimisticMessage\(/);
+  assert.match(js, /button\.textContent = '连接中\.\.\.'/);
+  assert.match(js, /state\.messages = \[\.\.\.\(state\.messages \|\| \[\]\), pendingMessage\]/);
+  assert.match(js, /refreshBootstrap\(state\)\.catch\(\(\) => null\)/);
   assert.match(js, /applyUnreadBadge/);
   assert.match(js, /nchat-message-block__time/);
   assert.match(js, /我的客服/);

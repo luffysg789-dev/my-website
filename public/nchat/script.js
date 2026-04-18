@@ -111,6 +111,14 @@
     } catch {}
   }
 
+  async function clearServerSession() {
+    try {
+      await requestJson('/api/nchat/session/logout', {
+        method: 'POST'
+      });
+    } catch {}
+  }
+
   function getDefaultAvatarDataUrl() {
     return 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2272%22 height=%2272%22 viewBox=%220 0 72 72%22%3E%3Crect width=%2272%22 height=%2272%22 rx=%2236%22 fill=%22%235f87ff%22/%3E%3Ctext x=%2236%22 y=%2243%22 text-anchor=%22middle%22 font-size=%2232%22 fill=%22white%22 font-family=%22Arial%22%3EN%3C/text%3E%3C/svg%3E';
   }
@@ -391,7 +399,7 @@
     state.elements.messageList.innerHTML = rows.map((item) => `
       <div class="nchat-message-block">
         <div class="nchat-message-block__time">${escapeHtml(formatTimeLabel(item.createdAt || ''))}</div>
-        <article class="nchat-message ${item.isSelf ? 'nchat-message--sent' : 'nchat-message--received'}">
+        <article class="nchat-message ${item.isSelf ? 'nchat-message--sent' : 'nchat-message--received'} ${item.isPending ? 'is-pending' : ''}">
           <div>${escapeHtml(item.content || '')}</div>
         </article>
       </div>
@@ -419,6 +427,51 @@
         </button>
       </article>
     `).join('');
+  }
+
+  function upsertConversation(state, conversation) {
+    const normalizedId = String(conversation?.id || '').trim();
+    if (!normalizedId) return;
+    const nextConversation = {
+      id: normalizedId,
+      chatId: String(conversation?.chatId || '').trim(),
+      nickname: String(conversation?.nickname || '').trim() || 'Nchat 用户',
+      avatarUrl: String(conversation?.avatarUrl || '').trim(),
+      unreadCount: Number(conversation?.unreadCount || 0) || 0,
+      lastMessagePreview: String(conversation?.lastMessagePreview || '').trim(),
+      lastMessageAt: String(conversation?.lastMessageAt || '').trim(),
+      updatedAt: String(conversation?.updatedAt || '').trim()
+    };
+    const current = Array.isArray(state.conversations) ? state.conversations : [];
+    const index = current.findIndex((item) => String(item?.id || '') === normalizedId);
+    if (index === -1) {
+      state.conversations = [nextConversation, ...current];
+      return;
+    }
+    state.conversations = current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...nextConversation } : item));
+  }
+
+  function updateConversationPreview(state, conversationId, patch = {}) {
+    const normalizedId = String(conversationId || '').trim();
+    if (!normalizedId) return;
+    const current = Array.isArray(state.conversations) ? state.conversations : [];
+    state.conversations = current.map((item) => {
+      if (String(item?.id || '') !== normalizedId) return item;
+      return {
+        ...item,
+        ...patch
+      };
+    });
+  }
+
+  function createOptimisticMessage(content) {
+    return {
+      id: `pending-${Date.now()}`,
+      content: String(content || ''),
+      createdAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      isSelf: true,
+      isPending: true
+    };
   }
 
   function updateMyProfile(state) {
@@ -695,13 +748,22 @@
     state.elements.searchResults.addEventListener('click', async (event) => {
       const button = event.target.closest('[data-add-chat-id]');
       if (!button) return;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = '连接中...';
       const response = await addFriend(button.dataset.addChatId).catch(() => null);
-      if (!response?.ok) return;
-      await refreshBootstrap(state).catch(() => null);
+      if (!response?.ok) {
+        button.disabled = false;
+        button.textContent = originalText;
+        return;
+      }
+      upsertConversation(state, response.conversation || {});
+      renderConversationList(state);
       state.elements.searchInput.value = '';
       state.elements.searchResults.hidden = true;
       state.elements.searchResults.innerHTML = '';
       await openConversation(state, response.conversation?.id).catch(() => null);
+      refreshBootstrap(state).catch(() => null);
     });
 
     state.elements.conversationList.addEventListener('click', (event) => {
@@ -718,12 +780,34 @@
         appendLocalDemoMessage(state, content);
         return;
       }
-      const response = await sendMessage(state.activeConversationId, content).catch(() => null);
-      if (!response?.ok) return;
       state.elements.composerInput.value = '';
-      state.messages = [...(state.messages || []), response.message];
+      const pendingMessage = createOptimisticMessage(content);
+      state.messages = [...(state.messages || []), pendingMessage];
+      updateConversationPreview(state, state.activeConversationId, {
+        lastMessagePreview: content,
+        lastMessageAt: pendingMessage.createdAt,
+        updatedAt: pendingMessage.createdAt
+      });
+      renderConversationList(state);
       renderMessages(state);
-      await refreshBootstrap(state).catch(() => null);
+      state.elements.composerSend.disabled = true;
+      const response = await sendMessage(state.activeConversationId, content).catch(() => null);
+      state.elements.composerSend.disabled = false;
+      if (!response?.ok) {
+        state.messages = (state.messages || []).filter((item) => item.id !== pendingMessage.id);
+        state.elements.composerInput.value = content;
+        renderMessages(state);
+        return;
+      }
+      state.messages = (state.messages || []).map((item) => (item.id === pendingMessage.id ? response.message : item));
+      updateConversationPreview(state, state.activeConversationId, {
+        lastMessagePreview: response.message?.content || content,
+        lastMessageAt: response.message?.createdAt || pendingMessage.createdAt,
+        updatedAt: response.message?.createdAt || pendingMessage.createdAt
+      });
+      renderConversationList(state);
+      renderMessages(state);
+      refreshBootstrap(state).catch(() => null);
     });
 
     state.elements.composerInput.addEventListener('keydown', (event) => {
@@ -779,6 +863,15 @@
     }
 
     state.elements.guard.hidden = true;
+    const localPreview = isLocalPreview();
+    const authCode = extractAuthCodeFromUrl();
+
+    if (!localPreview && !authCode) {
+      clearCachedSession(state.storage);
+      await clearServerSession();
+      await beginNexaLoginFlow().catch(() => {});
+      return;
+    }
 
     const syncedByAuthCode = await syncSessionFromAuthCode(state).catch(() => false);
     if (!syncedByAuthCode) {
@@ -786,7 +879,7 @@
       if (serverSession?.openId && serverSession?.sessionKey) {
         state.session = serverSession;
         saveCachedSession(state.storage, serverSession);
-      } else {
+      } else if (localPreview) {
         const cachedSession = loadCachedSession(state.storage);
         if (cachedSession?.openId && cachedSession?.sessionKey) {
           const response = await syncSession(cachedSession).catch(() => null);
@@ -800,7 +893,7 @@
 
     if (!state.session?.openId || !state.session?.sessionKey) {
       clearCachedSession(state.storage);
-      if (isLocalPreview()) {
+      if (localPreview) {
         await ensureLocalPreviewSession(state).catch(() => null);
       } else {
         await beginNexaLoginFlow().catch(() => {});
@@ -816,7 +909,7 @@
       await refreshBootstrap(state);
       connectRealtime(state);
     } catch (error) {
-      if (isLocalPreview()) {
+      if (localPreview) {
         applyLocalPreviewBootstrap(state);
         return;
       }

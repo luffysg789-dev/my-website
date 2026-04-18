@@ -187,6 +187,12 @@ input {
   font-weight: 700;
 }
 
+.nchat-search-result__action:disabled,
+.nchat-composer button:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
 .nchat-conversation-list {
   display: flex;
   flex-direction: column;
@@ -303,7 +309,7 @@ input {
   border-radius: 0;
   display: flex;
   flex-direction: column;
-  padding: 18px 18px calc(88px + env(safe-area-inset-bottom, 0px));
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, #0c0c10 0%, #08090d 100%);
   border: 0;
   box-shadow: none;
@@ -354,6 +360,10 @@ input {
 
 .nchat-message {
   max-width: 78%;
+  width: fit-content;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
   padding: 12px 14px;
   border-radius: 18px;
   line-height: 1.45;
@@ -363,13 +373,19 @@ input {
 
 .nchat-message--sent {
   align-self: flex-end;
+  margin-left: auto;
   background: linear-gradient(135deg, rgba(95, 135, 255, 0.92), rgba(61, 108, 255, 0.92));
   color: #fff;
 }
 
 .nchat-message--received {
   align-self: flex-start;
+  margin-right: auto;
   background: rgba(255, 255, 255, 0.06);
+}
+
+.nchat-message.is-pending {
+  opacity: 0.78;
 }
 
 .nchat-composer {
@@ -377,6 +393,8 @@ input {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+  margin-top: auto;
+  padding-top: 8px;
 }
 
 .nchat-nav {
