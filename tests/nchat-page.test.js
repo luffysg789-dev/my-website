@@ -10,6 +10,7 @@ const serverPath = path.join(rootDir, 'src', 'server.js');
 const htmlPath = path.join(rootDir, 'public', 'nchat', 'index.html');
 const cssPath = path.join(rootDir, 'public', 'nchat', 'style.css');
 const jsPath = path.join(rootDir, 'public', 'nchat', 'script.js');
+const carnivalScriptPath = path.join(rootDir, 'public', 'hk-web3-carnival', 'script.js');
 
 test('nchat is wired as a standalone Nexa-only app route', () => {
   const config = fs.readFileSync(configPath, 'utf8');
@@ -116,4 +117,19 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /我的客服/);
   assert.match(js, /demo-support/);
   assert.match(js, /请在 Nexa App 内打开 Nchat/);
+});
+
+test('hk carnival script recalculates event state from start and end time and refreshes hourly', () => {
+  assert.equal(fs.existsSync(carnivalScriptPath), true);
+  const js = fs.readFileSync(carnivalScriptPath, 'utf8');
+
+  assert.match(js, /function parseEventDateTime\(/);
+  assert.match(js, /function getComputedEventState\(/);
+  assert.match(js, /if \(endTime\.getTime\(\) < startTime\.getTime\(\)\) \{/);
+  assert.match(js, /endTime\.setDate\(endTime\.getDate\(\) \+ 1\);/);
+  assert.match(js, /const matchesState = !stateValue \|\| String\(getComputedEventState\(item\)\) === stateValue;/);
+  assert.match(js, /const status = statusMap\[getComputedEventState\(item\)\] \|\| statusMap\[1\];/);
+  assert.match(js, /globalThis\.setInterval\(\(\) => \{/);
+  assert.match(js, /applyFilters\(\);/);
+  assert.match(js, /60 \* 60 \* 1000/);
 });

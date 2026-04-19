@@ -57,12 +57,32 @@
   }
 
   function formatDateTime(dateValue) {
-    const date = new Date(dateValue.replace(' ', 'T'));
+    const date = parseEventDateTime(dateValue);
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
     return `${month}月${day}日 ${hour}:${minute}`;
+  }
+
+  function parseEventDateTime(dateValue) {
+    const normalized = String(dateValue || '').trim().replace(' ', 'T');
+    return new Date(normalized);
+  }
+
+  function getComputedEventState(item) {
+    const now = new Date();
+    const startTime = parseEventDateTime(item.startTime);
+    const endTime = parseEventDateTime(item.endTime);
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+      return Number(item.state || 1) || 1;
+    }
+    if (endTime.getTime() < startTime.getTime()) {
+      endTime.setDate(endTime.getDate() + 1);
+    }
+    if (now.getTime() < startTime.getTime()) return 1;
+    if (now.getTime() > endTime.getTime()) return 3;
+    return 2;
   }
 
   function buildTimeOptions() {
@@ -95,7 +115,7 @@
 
     eventList.innerHTML = visibleItems
       .map((item) => {
-        const status = statusMap[item.state] || statusMap[1];
+        const status = statusMap[getComputedEventState(item)] || statusMap[1];
         return `
           <article class="carnival-event-card">
             <div class="carnival-date-badge">
@@ -141,7 +161,7 @@
     filteredItems = data.items.filter((item) => {
       const matchesKeyword = !keyword || item.name.toLowerCase().includes(keyword) || (item.location || '').toLowerCase().includes(keyword);
       const matchesDate = !dateValue || item.startTime.startsWith(dateValue);
-      const matchesState = !stateValue || String(item.state) === stateValue;
+      const matchesState = !stateValue || String(getComputedEventState(item)) === stateValue;
       const matchesType = !typeValue || String(item.type) === typeValue;
       return matchesKeyword && matchesDate && matchesState && matchesType;
     });
@@ -184,4 +204,7 @@
   qrBackdrop.addEventListener('click', closeQrModal);
   shareButton.addEventListener('click', openShareModal);
   shareBackdrop.addEventListener('click', closeShareModal);
+  globalThis.setInterval(() => {
+    applyFilters();
+  }, 60 * 60 * 1000);
 })();
