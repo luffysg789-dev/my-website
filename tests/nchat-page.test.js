@@ -135,6 +135,8 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /function getConversationCacheKey\(state, conversationId\)/);
   assert.match(js, /function loadCachedConversationMessages\(state, conversationId\)/);
   assert.match(js, /function saveCachedConversationMessages\(state, conversationId, messages\)/);
+  assert.match(js, /function upsertCachedConversationMessage\(state, conversationId, message\)/);
+  assert.match(js, /function buildConversationSeedMessages\(row, cachedMessages = \[\]\)/);
   assert.match(js, /const cachedBootstrap = loadCachedBootstrap\(state\);[\s\S]*applyBootstrapPayload\(state, cachedBootstrap, \{ skipCache: true \}\);/);
   assert.match(js, /state\.session = authSession;[\s\S]*saveCachedSession\(state\.storage, authSession\);[\s\S]*applyCachedBootstrapIfAvailable\(state\);[\s\S]*const serverResponse = await requestJson\('\/api\/nchat\/session'/);
   assert.match(js, /applyCachedBootstrapIfAvailable\(state\);[\s\S]*connectRealtime\(state\);[\s\S]*await refreshBootstrap\(state\);/);
@@ -160,9 +162,9 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /function bindRealtimeVisibility\(state\)/);
   assert.match(js, /saveCachedConversationMessages\(state, state\.activeConversationId, rows\);/);
   assert.match(js, /clearConversationUnread\(state, normalizedId\);[\s\S]*if \(normalizedId === NCHAT_DEMO_CONVERSATION_ID\)/);
-  assert.match(js, /const cachedMessages = loadCachedConversationMessages\(state, normalizedId\);[\s\S]*if \(cachedMessages\.length\) \{[\s\S]*state\.messages = cachedMessages;[\s\S]*renderMessages\(state\);[\s\S]*\} else \{[\s\S]*state\.messages = \[\];[\s\S]*renderMessages\(state\);[\s\S]*\}[\s\S]*const history = await loadMessages\(normalizedId\);/);
+  assert.match(js, /const cachedMessages = loadCachedConversationMessages\(state, normalizedId\);[\s\S]*const seedMessages = buildConversationSeedMessages\(row, cachedMessages\);[\s\S]*if \(seedMessages\.length\) \{[\s\S]*state\.messages = seedMessages;[\s\S]*renderMessages\(state\);[\s\S]*\} else \{[\s\S]*state\.messages = \[\];[\s\S]*renderMessages\(state\);[\s\S]*\}[\s\S]*const history = await loadMessages\(normalizedId\);/);
   assert.match(js, /appendRealtimeMessage\(state, payload\.message\);[\s\S]*renderMessages\(state\);[\s\S]*markConversationRead\(state\.activeConversationId\)\.catch\(\(\) => null\);/);
-  assert.match(js, /incrementConversationUnread\(state, payload\.conversationId\);[\s\S]*renderConversationList\(state\);[\s\S]*refreshBootstrap\(state\)\.catch\(\(\) => null\);/);
+  assert.match(js, /upsertCachedConversationMessage\(state, payload\.conversationId, \{[\s\S]*isSelf:\s*false[\s\S]*\}\);[\s\S]*incrementConversationUnread\(state, payload\.conversationId\);[\s\S]*renderConversationList\(state\);[\s\S]*refreshBootstrap\(state\)\.catch\(\(\) => null\);/);
   assert.match(js, /function syncActiveConversationMessages\(state\)/);
   assert.match(js, /source\.addEventListener\('nchat\.conversation-updated', async \(event\) => \{[\s\S]*await refreshBootstrap\(state\)\.catch\(\(\) => null\);[\s\S]*await syncActiveConversationMessages\(state\);/);
   assert.match(js, /connectRealtime\(state\);[\s\S]*startRealtimePolling\(state\);[\s\S]*bindRealtimeVisibility\(state\);[\s\S]*await refreshBootstrap\(state\);/);

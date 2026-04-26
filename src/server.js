@@ -4342,6 +4342,10 @@ app.post('/api/nchat/session/logout', (_req, res) => {
 app.get('/api/nchat/bootstrap', (req, res) => {
   try {
     const session = requireNchatSession(req);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     return res.json({
       ok: true,
       ...buildNchatBootstrapPayload(session)
@@ -4439,6 +4443,10 @@ app.get('/api/nchat/conversations/:conversationId/messages', (req, res) => {
     const session = requireNchatSession(req);
     const user = ensureNchatUserAccount(session);
     const conversation = requireNchatConversationForUser(req.params.conversationId, user.id);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     const items = listNchatMessagesByConversationStmt
       .all(Number(conversation.id))
       .map((message) => formatNchatMessage(message, user.id));

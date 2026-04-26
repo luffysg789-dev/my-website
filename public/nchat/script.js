@@ -213,6 +213,47 @@
     } catch {}
   }
 
+  function upsertCachedConversationMessage(state, conversationId, message) {
+    const normalizedId = String(conversationId || '').trim();
+    if (!normalizedId || !message?.content) return;
+    const current = loadCachedConversationMessages(state, normalizedId);
+    const messageId = String(message.id || '').trim();
+    const nextMessage = {
+      id: messageId || `cached-${normalizedId}-${String(message.createdAt || Date.now()).trim()}`,
+      conversationId: normalizedId,
+      content: String(message.content || '').trim(),
+      createdAt: String(message.createdAt || '').trim() || new Date().toISOString(),
+      isSelf: Boolean(message.isSelf)
+    };
+    const deduped = current.filter((item) => {
+      if (messageId && String(item.id || '').trim() === messageId) return false;
+      return !(item.content === nextMessage.content && item.createdAt === nextMessage.createdAt);
+    });
+    saveCachedConversationMessages(state, normalizedId, [...deduped, nextMessage]);
+  }
+
+  function buildConversationSeedMessages(row, cachedMessages = []) {
+    const normalizedCached = Array.isArray(cachedMessages) ? cachedMessages.slice() : [];
+    const preview = String(row?.lastMessagePreview || '').trim();
+    const createdAt = String(row?.lastMessageAt || row?.updatedAt || '').trim();
+    if (!preview || !createdAt) return normalizedCached;
+    const latest = normalizedCached[normalizedCached.length - 1] || null;
+    if (latest && String(latest.content || '').trim() === preview && String(latest.createdAt || '').trim() === createdAt) {
+      return normalizedCached;
+    }
+    return [
+      ...normalizedCached,
+      {
+        id: `seed-${String(row?.id || 'conversation').trim()}-${createdAt}`,
+        conversationId: String(row?.id || '').trim(),
+        content: preview,
+        createdAt,
+        isSelf: Number(row?.unreadCount || 0) <= 0,
+        isPending: false
+      }
+    ].slice(-10);
+  }
+
   async function clearServerSession() {
     try {
       await requestJson('/api/nchat/session/logout', {
@@ -897,8 +938,9 @@
     state.elements.composerInput.placeholder = '输入消息';
     state.elements.composerSend.disabled = false;
     const cachedMessages = loadCachedConversationMessages(state, normalizedId);
-    if (cachedMessages.length) {
-      state.messages = cachedMessages;
+    const seedMessages = buildConversationSeedMessages(row, cachedMessages);
+    if (seedMessages.length) {
+      state.messages = seedMessages;
       renderMessages(state);
     } else {
       state.messages = [];
@@ -1189,6 +1231,10 @@
         lastMessagePreview: payload.message?.content || '',
         lastMessageAt: payload.message?.createdAt || new Date().toISOString(),
         updatedAt: payload.message?.createdAt || new Date().toISOString()
+      });
+      upsertCachedConversationMessage(state, payload.conversationId, {
+        ...payload.message,
+        isSelf: false
       });
       incrementConversationUnread(state, payload.conversationId);
       renderConversationList(state);

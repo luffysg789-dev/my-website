@@ -281,6 +281,10 @@ test('nchat bootstrap returns current profile and requires setup when nickname o
 
     assert.equal(bootstrap.statusCode, 200);
     assert.equal(bootstrap.body.ok, true);
+    assert.equal(bootstrap.headers['cache-control'], 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    assert.equal(bootstrap.headers.pragma, 'no-cache');
+    assert.equal(bootstrap.headers.expires, '0');
+    assert.equal(bootstrap.headers['surrogate-control'], 'no-store');
     assert.equal(bootstrap.body.profileSetupRequired, true);
     assert.match(String(bootstrap.body.user.chatId || ''), /^\d{8}$/);
   } finally {
@@ -415,6 +419,10 @@ test('nchat friends can send text messages and fetch conversation history', asyn
     assert.equal(sendResponse.statusCode, 200);
     assert.equal(sendResponse.body.message.content, 'hello');
     assert.equal(historyResponse.statusCode, 200);
+    assert.equal(historyResponse.headers['cache-control'], 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    assert.equal(historyResponse.headers.pragma, 'no-cache');
+    assert.equal(historyResponse.headers.expires, '0');
+    assert.equal(historyResponse.headers['surrogate-control'], 'no-store');
     assert.equal(Array.isArray(historyResponse.body.items), true);
     assert.equal(historyResponse.body.items[0].content, 'hello');
   } finally {
