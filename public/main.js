@@ -208,6 +208,7 @@ let favoriteSitesOnly = false;
 let sitesRequestSeq = 0;
 let categoryRenderTaskId = 0;
 let searchInputTimer = 0;
+let homeEmptyRecoveryAttempts = 0;
 const HOME_INITIAL_SITE_LIMIT = 12;
 const HOME_FAVORITES_KEY = 'claw800_home_favorite_sites_v2';
 const HOME_FAVORITES_LEGACY_KEY = 'claw800_home_favorite_sites_v1';
@@ -282,6 +283,10 @@ function getVisibleSiteItems(items = allSitesCache) {
   const sourceItems = favoriteSitesOnly && homeAllSitesCache.length ? homeAllSitesCache : items;
   const siteItems = Array.isArray(sourceItems) ? sourceItems : [];
   return favoriteSitesOnly ? siteItems.filter((site) => isFavoriteSite(site)) : siteItems;
+}
+
+function isDefaultHomeView() {
+  return !favoriteSitesOnly && !currentCategory && !searchInput.value.trim();
 }
 
 function favoriteButtonLabel() {
@@ -966,10 +971,21 @@ function renderSitesChunked(items) {
   siteRenderTaskId += 1;
   const taskId = siteRenderTaskId;
 
+  if (!siteItems.length && isDefaultHomeView() && homeEmptyRecoveryAttempts < 1) {
+    homeEmptyRecoveryAttempts += 1;
+    renderSiteSkeletons();
+    loadSites({ background: true }).catch(() => {
+      renderSitesChunked([]);
+    });
+    return;
+  }
+
   if (!siteItems.length) {
     siteListEl.innerHTML = `<p class="empty">${escapeHtml(favoriteSitesOnly ? t('favoritesEmpty') : t('empty'))}</p>`;
     return;
   }
+
+  if (isDefaultHomeView()) homeEmptyRecoveryAttempts = 0;
 
   const chunkSize = 12;
   let index = 0;

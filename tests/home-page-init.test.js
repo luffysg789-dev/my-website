@@ -17,6 +17,11 @@ test('home page boot performs a final list render after async bootstrap settles'
 test('home page retries a full site load when the first mobile bootstrap list is empty', () => {
   const js = fs.readFileSync(jsPath, 'utf8');
 
+  assert.match(js, /function isDefaultHomeView\(\)/);
+  assert.match(js, /let homeEmptyRecoveryAttempts = 0;/);
+  assert.match(js, /if \(!siteItems\.length && isDefaultHomeView\(\) && homeEmptyRecoveryAttempts < 1\) \{/);
+  assert.match(js, /homeEmptyRecoveryAttempts \+= 1;/);
+  assert.match(js, /loadSites\(\{ background: true \}\)\.catch\(\(\) => \{/);
   assert.match(js, /const hasInitialHomeSites = getVisibleSiteItems\(homeAllSitesCache\.length \? homeAllSitesCache : allSitesCache\)\.length > 0;/);
   assert.match(js, /if \(initialSitesFailed \|\| \(!favoriteSitesOnly && !currentCategory && !searchInput\.value\.trim\(\) && !hasInitialHomeSites\)\) \{/);
   assert.match(js, /await loadSites\(\);/);
