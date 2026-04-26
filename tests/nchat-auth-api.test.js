@@ -141,6 +141,93 @@ function createHarness() {
         req.emit('end');
       });
     },
+    openSseCollector(routePath, options = {}) {
+      const req = new EventEmitter();
+      req.method = 'GET';
+      req.url = routePath;
+      req.originalUrl = routePath;
+      req.headers = { accept: 'text/event-stream', ...(options.headers || {}) };
+      req.connection = {};
+      req.socket = {};
+      req.body = undefined;
+      req.query = {};
+      req.cookies = { ...(options.cookies || {}) };
+
+      const [pathname, queryString = ''] = routePath.split('?');
+      req.path = pathname;
+      const params = new URLSearchParams(queryString);
+      for (const [key, value] of params.entries()) {
+        req.query[key] = value;
+      }
+
+      const chunks = [];
+      const waiters = [];
+      const res = new EventEmitter();
+      res.statusCode = 200;
+      res.headers = {};
+      res.locals = {};
+      res.setHeader = function setHeader(name, value) {
+        this.headers[String(name).toLowerCase()] = value;
+      };
+      res.getHeader = function getHeader(name) {
+        return this.headers[String(name).toLowerCase()];
+      };
+      res.status = function status(code) {
+        this.statusCode = code;
+        return this;
+      };
+      res.flushHeaders = function flushHeaders() {};
+      res.json = function json(payload) {
+        chunks.push(JSON.stringify(payload));
+        return this;
+      };
+      res.write = function write(chunk) {
+        const text = String(chunk || '');
+        chunks.push(text);
+        waiters.splice(0).forEach((waiter) => waiter());
+        return true;
+      };
+      res.end = function end(chunk) {
+        if (chunk) chunks.push(String(chunk));
+      };
+
+      app.handle(req, res, (error) => {
+        chunks.push(String(error?.message || error || 'SSE_ERROR'));
+      });
+      req.emit('end');
+
+      return {
+        get statusCode() {
+          return res.statusCode;
+        },
+        get text() {
+          return chunks.join('');
+        },
+        waitFor(pattern, timeoutMs = 200) {
+          const regex = pattern instanceof RegExp ? pattern : new RegExp(String(pattern));
+          if (regex.test(chunks.join(''))) return Promise.resolve(chunks.join(''));
+          return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error(`SSE_TIMEOUT:${regex}`));
+            }, timeoutMs);
+            const check = () => {
+              const text = chunks.join('');
+              if (regex.test(text)) {
+                clearTimeout(timeout);
+                resolve(text);
+              } else {
+                waiters.push(check);
+              }
+            };
+            waiters.push(check);
+          });
+        },
+        close() {
+          req.emit('close');
+          res.emit('close');
+        }
+      };
+    },
     cleanup() {
       db.close();
       delete require.cache[require.resolve(serverModulePath)];
@@ -396,6 +483,54 @@ test('nchat receiver event stream gets notified when sender sends a message', as
     assert.equal(stream.statusCode, 200);
     assert.match(String(stream.chunk || ''), /event:\s*nchat\.(message|conversation-updated)/);
     stream.close?.();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('nchat bidirectional event streams both receive realtime messages', async () => {
+  const harness = createHarness();
+  try {
+    const alpha = await createNchatUser(harness, {
+      openId: 'nchat-open-id-sse-bidirectional-a',
+      sessionKey: 'nchat-session-key-sse-bidirectional-a',
+      nickname: 'Bidirectional A'
+    });
+    const bravo = await createNchatUser(harness, {
+      openId: 'nchat-open-id-sse-bidirectional-b',
+      sessionKey: 'nchat-session-key-sse-bidirectional-b',
+      nickname: 'Bidirectional B'
+    });
+    await harness.request('POST', '/api/nchat/profile', {
+      nickname: 'Bidirectional A',
+      avatarUrl: '/uploads/nchat/bidirectional-a.png'
+    }, { cookies: alpha.cookies });
+    const bravoProfile = await harness.request('POST', '/api/nchat/profile', {
+      nickname: 'Bidirectional B',
+      avatarUrl: '/uploads/nchat/bidirectional-b.png'
+    }, { cookies: bravo.cookies });
+    const friendResponse = await harness.request('POST', '/api/nchat/friends', {
+      targetChatId: bravoProfile.body.user.chatId
+    }, { cookies: alpha.cookies });
+    const conversationId = friendResponse.body.conversation.id;
+
+    const alphaStream = harness.openSseCollector('/api/nchat/events', { cookies: alpha.cookies });
+    const bravoStream = harness.openSseCollector('/api/nchat/events', { cookies: bravo.cookies });
+    await alphaStream.waitFor(/event:\s*nchat\.conversation-updated[\s\S]*bootstrap/);
+    await bravoStream.waitFor(/event:\s*nchat\.conversation-updated[\s\S]*bootstrap/);
+
+    await harness.request('POST', `/api/nchat/conversations/${conversationId}/messages`, {
+      content: 'from alpha'
+    }, { cookies: alpha.cookies });
+    await bravoStream.waitFor(/event:\s*nchat\.message[\s\S]*from alpha/);
+
+    await harness.request('POST', `/api/nchat/conversations/${conversationId}/messages`, {
+      content: 'from bravo'
+    }, { cookies: bravo.cookies });
+    await alphaStream.waitFor(/event:\s*nchat\.message[\s\S]*from bravo/);
+
+    alphaStream.close();
+    bravoStream.close();
   } finally {
     harness.cleanup();
   }

@@ -12,7 +12,7 @@ const DEFAULT_GAMES = [
     sound_file: '',
     background_music_file: '',
     is_enabled: 1,
-    showInGamesHub: 1,
+    showInGamesHub: 0,
     sort_order: 57,
     route: '/nchat/',
     icon: '💬',

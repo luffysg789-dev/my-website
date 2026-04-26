@@ -133,9 +133,9 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /function applyCachedBootstrapIfAvailable\(state\)/);
   assert.match(js, /const cachedBootstrap = loadCachedBootstrap\(state\);[\s\S]*applyBootstrapPayload\(state, cachedBootstrap, \{ skipCache: true \}\);/);
   assert.match(js, /state\.session = authSession;[\s\S]*saveCachedSession\(state\.storage, authSession\);[\s\S]*applyCachedBootstrapIfAvailable\(state\);[\s\S]*const serverResponse = await requestJson\('\/api\/nchat\/session'/);
-  assert.match(js, /applyCachedBootstrapIfAvailable\(state\);[\s\S]*await refreshBootstrap\(state\);/);
+  assert.match(js, /applyCachedBootstrapIfAvailable\(state\);[\s\S]*connectRealtime\(state\);[\s\S]*await refreshBootstrap\(state\);/);
   assert.match(js, /const immediateBootstrap = consumePendingBootstrap\(state\);/);
-  assert.match(js, /if \(immediateBootstrap\) \{[\s\S]*applyBootstrapPayload\(state, immediateBootstrap\);[\s\S]*\} else \{[\s\S]*await refreshBootstrap\(state\);[\s\S]*\}/);
+  assert.match(js, /if \(immediateBootstrap\) \{[\s\S]*applyBootstrapPayload\(state, immediateBootstrap\);[\s\S]*\} else \{[\s\S]*applyCachedBootstrapIfAvailable\(state\);[\s\S]*\}/);
   assert.match(js, /function upsertConversation\(/);
   assert.match(js, /function createOptimisticMessage\(/);
   assert.match(js, /const NCHAT_AVATAR_MAX_SIZE = 320;/);
@@ -150,6 +150,8 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /clearConversationUnread\(state, normalizedId\);[\s\S]*if \(normalizedId === NCHAT_DEMO_CONVERSATION_ID\)/);
   assert.match(js, /appendRealtimeMessage\(state, payload\.message\);[\s\S]*renderMessages\(state\);[\s\S]*markConversationRead\(state\.activeConversationId\)\.catch\(\(\) => null\);/);
   assert.match(js, /incrementConversationUnread\(state, payload\.conversationId\);[\s\S]*renderConversationList\(state\);[\s\S]*refreshBootstrap\(state\)\.catch\(\(\) => null\);/);
+  assert.match(js, /function syncActiveConversationMessages\(state\)/);
+  assert.match(js, /source\.addEventListener\('nchat\.conversation-updated', async \(event\) => \{[\s\S]*await refreshBootstrap\(state\)\.catch\(\(\) => null\);[\s\S]*await syncActiveConversationMessages\(state\);/);
   assert.match(js, /refreshBootstrap\(state\)\.catch\(\(\) => null\)/);
   assert.match(js, /applyUnreadBadge/);
   assert.match(js, /nchat-message-block__time/);

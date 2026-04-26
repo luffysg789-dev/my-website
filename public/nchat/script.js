@@ -801,6 +801,16 @@
     }
   }
 
+  async function syncActiveConversationMessages(state) {
+    const normalizedId = String(state.activeConversationId || '').trim();
+    if (!normalizedId || normalizedId === NCHAT_DEMO_CONVERSATION_ID) return;
+    const history = await loadMessages(normalizedId).catch(() => null);
+    if (!history?.ok && !Array.isArray(history?.items)) return;
+    state.messages = history.items || [];
+    renderMessages(state);
+    markConversationRead(normalizedId).catch(() => null);
+  }
+
   function closeConversation(state) {
     state.activeConversationId = '';
     state.messages = [];
@@ -1069,8 +1079,13 @@
       renderConversationList(state);
       refreshBootstrap(state).catch(() => null);
     });
-    source.addEventListener('nchat.conversation-updated', async () => {
+    source.addEventListener('nchat.conversation-updated', async (event) => {
+      const payload = JSON.parse(String(event.data || '{}'));
       await refreshBootstrap(state).catch(() => null);
+      if (!state.activeConversationId) return;
+      if (payload.bootstrap) return;
+      if (String(payload.conversationId || '') !== String(state.activeConversationId || '')) return;
+      await syncActiveConversationMessages(state);
     });
     source.onerror = () => {
       updateStatus(state, '连接中断，正在重连');
@@ -1136,9 +1151,9 @@
         applyBootstrapPayload(state, immediateBootstrap);
       } else {
         applyCachedBootstrapIfAvailable(state);
-        await refreshBootstrap(state);
       }
       connectRealtime(state);
+      await refreshBootstrap(state);
       refreshBootstrap(state).catch(() => null);
     } catch (error) {
       if (localPreview) {
