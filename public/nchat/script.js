@@ -156,6 +156,13 @@
     }
   }
 
+  function applyCachedBootstrapIfAvailable(state) {
+    const cachedBootstrap = loadCachedBootstrap(state);
+    if (!cachedBootstrap) return false;
+    applyBootstrapPayload(state, cachedBootstrap, { skipCache: true });
+    return true;
+  }
+
   async function clearServerSession() {
     try {
       await requestJson('/api/nchat/session/logout', {
@@ -303,14 +310,18 @@
       method: 'POST',
       body: JSON.stringify({ authCode, gameSlug: 'nchat' })
     });
+    const authSession = {
+      openId: String(authResponse.session?.openId || '').trim(),
+      sessionKey: String(authResponse.session?.sessionKey || '').trim(),
+      nickname: '',
+      avatar: ''
+    };
+    state.session = authSession;
+    saveCachedSession(state.storage, authSession);
+    applyCachedBootstrapIfAvailable(state);
     const serverResponse = await requestJson('/api/nchat/session', {
       method: 'POST',
-      body: JSON.stringify({
-        openId: String(authResponse.session?.openId || '').trim(),
-        sessionKey: String(authResponse.session?.sessionKey || '').trim(),
-        nickname: '',
-        avatar: ''
-      })
+      body: JSON.stringify(authSession)
     });
     state.session = serverResponse.session || null;
     if (state.session) saveCachedSession(state.storage, state.session);
@@ -1063,9 +1074,7 @@
       if (immediateBootstrap) {
         applyBootstrapPayload(state, immediateBootstrap);
       } else {
-        if (loadCachedBootstrap(state)) {
-          applyBootstrapPayload(state, loadCachedBootstrap(state), { skipCache: true });
-        }
+        applyCachedBootstrapIfAvailable(state);
         await refreshBootstrap(state);
       }
       connectRealtime(state);

@@ -113,7 +113,10 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /state\.pendingBootstrap = extractBootstrapFromResponse\(serverResponse\);/);
   assert.match(js, /function saveCachedBootstrap\(state, bootstrap\)/);
   assert.match(js, /function loadCachedBootstrap\(state\)/);
-  assert.match(js, /if \(loadCachedBootstrap\(state\)\) \{[\s\S]*applyBootstrapPayload\(state, loadCachedBootstrap\(state\), \{ skipCache: true \}\);[\s\S]*\}/);
+  assert.match(js, /function applyCachedBootstrapIfAvailable\(state\)/);
+  assert.match(js, /const cachedBootstrap = loadCachedBootstrap\(state\);[\s\S]*applyBootstrapPayload\(state, cachedBootstrap, \{ skipCache: true \}\);/);
+  assert.match(js, /state\.session = authSession;[\s\S]*saveCachedSession\(state\.storage, authSession\);[\s\S]*applyCachedBootstrapIfAvailable\(state\);[\s\S]*const serverResponse = await requestJson\('\/api\/nchat\/session'/);
+  assert.match(js, /applyCachedBootstrapIfAvailable\(state\);[\s\S]*await refreshBootstrap\(state\);/);
   assert.match(js, /const immediateBootstrap = consumePendingBootstrap\(state\);/);
   assert.match(js, /if \(immediateBootstrap\) \{[\s\S]*applyBootstrapPayload\(state, immediateBootstrap\);[\s\S]*\} else \{[\s\S]*await refreshBootstrap\(state\);[\s\S]*\}/);
   assert.match(js, /function upsertConversation\(/);
