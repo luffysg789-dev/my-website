@@ -152,7 +152,7 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /function createOptimisticMessage\(/);
   assert.match(js, /const NCHAT_AVATAR_MAX_SIZE = 320;/);
   assert.match(js, /const NCHAT_AVATAR_JPEG_QUALITY = 0\.78;/);
-  assert.match(js, /const NCHAT_REALTIME_POLL_INTERVAL_MS = 1000;/);
+  assert.match(js, /const NCHAT_REALTIME_POLL_INTERVAL_MS = 600;/);
   assert.match(js, /function compressAvatarFile\(file\)/);
   assert.match(js, /canvas\.toDataURL\('image\/jpeg', NCHAT_AVATAR_JPEG_QUALITY\)/);
   assert.match(js, /button\.textContent = '连接中\.\.\.'/);
@@ -161,6 +161,7 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /function incrementConversationUnread\(state, conversationId\)/);
   assert.match(js, /function clearConversationUnread\(state, conversationId\)/);
   assert.match(js, /async function runRealtimePoll\(state\)/);
+  assert.doesNotMatch(js, /if \(globalScope\.document\?\.hidden\) return;/);
   assert.match(js, /function startRealtimePolling\(state\)/);
   assert.match(js, /function stopRealtimePolling\(state\)/);
   assert.match(js, /function bindRealtimeVisibility\(state\)/);
@@ -170,7 +171,7 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /appendRealtimeMessage\(state, payload\.message\);[\s\S]*renderMessages\(state\);[\s\S]*markConversationRead\(state\.activeConversationId\)\.catch\(\(\) => null\);/);
   assert.match(js, /upsertCachedConversationMessage\(state, payload\.conversationId, \{[\s\S]*isSelf:\s*false[\s\S]*\}\);[\s\S]*incrementConversationUnread\(state, payload\.conversationId\);[\s\S]*renderConversationList\(state\);[\s\S]*refreshBootstrap\(state\)\.catch\(\(\) => null\);/);
   assert.match(js, /function syncActiveConversationMessages\(state\)/);
-  assert.match(js, /source\.addEventListener\('nchat\.conversation-updated', async \(event\) => \{[\s\S]*await refreshBootstrap\(state\)\.catch\(\(\) => null\);[\s\S]*await syncActiveConversationMessages\(state\);/);
+  assert.match(js, /source\.addEventListener\('nchat\.conversation-updated', async \(event\) => \{[\s\S]*if \(!state\.activeConversationId\) \{[\s\S]*await refreshBootstrap\(state\)\.catch\(\(\) => null\);[\s\S]*return;[\s\S]*\}[\s\S]*if \(payload\.bootstrap\) \{[\s\S]*await refreshBootstrap\(state\)\.catch\(\(\) => null\);[\s\S]*return;[\s\S]*\}[\s\S]*if \(String\(payload\.conversationId \|\| ''\) !== String\(state\.activeConversationId \|\| ''\)\) \{[\s\S]*await refreshBootstrap\(state\)\.catch\(\(\) => null\);[\s\S]*return;[\s\S]*\}[\s\S]*await syncActiveConversationMessages\(state\);[\s\S]*refreshBootstrap\(state\)\.catch\(\(\) => null\);/);
   assert.match(js, /connectRealtime\(state\);[\s\S]*startRealtimePolling\(state\);[\s\S]*bindRealtimeVisibility\(state\);[\s\S]*await refreshBootstrap\(state\);/);
   assert.match(js, /refreshBootstrap\(state\)\.catch\(\(\) => null\)/);
   assert.match(js, /applyUnreadBadge/);

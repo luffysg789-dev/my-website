@@ -8,7 +8,7 @@
   const NCHAT_CONVERSATION_CACHE_STORAGE_KEY = 'claw800:nchat:conversation-cache';
   const NCHAT_AVATAR_MAX_SIZE = 320;
   const NCHAT_AVATAR_JPEG_QUALITY = 0.78;
-  const NCHAT_REALTIME_POLL_INTERVAL_MS = 1000;
+  const NCHAT_REALTIME_POLL_INTERVAL_MS = 600;
   const NEXA_PUBLIC_CONFIG_ENDPOINT = '/api/nexa/public-config';
   const NCHAT_GUARD_TEXT = '请在 Nexa App 内打开 Nchat';
   const NCHAT_DEMO_CONVERSATION_ID = 'demo-support';
@@ -811,7 +811,6 @@
 
   async function runRealtimePoll(state) {
     if (state.realtimePollInFlight || !state.session?.openId) return;
-    if (globalScope.document?.hidden) return;
     state.realtimePollInFlight = true;
     try {
       await refreshBootstrap(state).catch(() => null);
@@ -1259,11 +1258,20 @@
     source.addEventListener('nchat.conversation-updated', async (event) => {
       state.lastRealtimeEventAt = Date.now();
       const payload = JSON.parse(String(event.data || '{}'));
-      await refreshBootstrap(state).catch(() => null);
-      if (!state.activeConversationId) return;
-      if (payload.bootstrap) return;
-      if (String(payload.conversationId || '') !== String(state.activeConversationId || '')) return;
+      if (!state.activeConversationId) {
+        await refreshBootstrap(state).catch(() => null);
+        return;
+      }
+      if (payload.bootstrap) {
+        await refreshBootstrap(state).catch(() => null);
+        return;
+      }
+      if (String(payload.conversationId || '') !== String(state.activeConversationId || '')) {
+        await refreshBootstrap(state).catch(() => null);
+        return;
+      }
       await syncActiveConversationMessages(state);
+      refreshBootstrap(state).catch(() => null);
     });
     source.onerror = () => {
       updateStatus(state, '连接中断，正在重连');
