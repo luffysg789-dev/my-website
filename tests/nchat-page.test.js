@@ -109,6 +109,10 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /const authCode = extractAuthCodeFromUrl\(\);/);
   assert.match(js, /if \(!localPreview && !authCode\) \{[\s\S]*clearCachedSession\(state\.storage\);[\s\S]*await clearServerSession\(\);[\s\S]*await beginNexaLoginFlow\(\)\.catch\(\(\) => \{\}\);[\s\S]*return;/);
   assert.match(js, /async function clearServerSession\(\)/);
+  assert.match(js, /function addCacheBustParam\(url\)/);
+  assert.match(js, /const requestMethod = String\(options\.method \|\| 'GET'\)\.toUpperCase\(\);/);
+  assert.match(js, /const requestUrl = requestMethod === 'GET' \? addCacheBustParam\(url\) : url;/);
+  assert.match(js, /cache:\s*requestMethod === 'GET' \? 'no-store' : 'default'/);
   assert.match(js, /本地测试/);
   assert.match(js, /function setProfileFeedback\(/);
   assert.match(js, /\/api\/nchat\/session/);

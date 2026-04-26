@@ -349,6 +349,13 @@
     return response;
   }
 
+  function addCacheBustParam(url) {
+    const base = String(url || '').trim();
+    if (!base) return base;
+    const stamp = `_ts=${Date.now()}`;
+    return base.includes('?') ? `${base}&${stamp}` : `${base}?${stamp}`;
+  }
+
   function buildRedirectUri() {
     return globalScope.location?.href?.split('#')[0] || '';
   }
@@ -377,10 +384,19 @@
   }
 
   async function requestJson(url, options = {}) {
-    const response = await globalScope.fetch(url, {
+    const requestMethod = String(options.method || 'GET').toUpperCase();
+    const requestUrl = requestMethod === 'GET' ? addCacheBustParam(url) : url;
+    const response = await globalScope.fetch(requestUrl, {
+      cache: requestMethod === 'GET' ? 'no-store' : 'default',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        ...(requestMethod === 'GET'
+          ? {
+              'Cache-Control': 'no-store',
+              Pragma: 'no-cache'
+            }
+          : {}),
         ...(options.headers || {})
       },
       ...options
