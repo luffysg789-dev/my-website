@@ -22,6 +22,7 @@ test('nchat is wired as a standalone Nexa-only app route', () => {
   assert.match(config, /showInGamesHub:\s*0/);
   assert.match(db, /slug:\s*'nchat'/);
   assert.match(server, /'nchat':\s*'\/nchat\/'/);
+  assert.match(server, /app\.post\('\/api\/nchat\/session'[\s\S]*\.\.\.buildNchatBootstrapPayload\(session\)/);
 });
 
 test('nchat html includes app shell, tabs, and profile setup hooks', () => {
@@ -106,6 +107,9 @@ test('nchat script includes nexaauth, session/bootstrap/search/message, and real
   assert.match(js, /\/api\/nchat\/conversations\/.*\/read/);
   assert.match(js, /\/api\/nchat\/events/);
   assert.match(js, /renderConversationList/);
+  assert.match(js, /state\.pendingBootstrap = extractBootstrapFromResponse\(serverResponse\);/);
+  assert.match(js, /const immediateBootstrap = consumePendingBootstrap\(state\);/);
+  assert.match(js, /if \(immediateBootstrap\) \{[\s\S]*applyBootstrapPayload\(state, immediateBootstrap\);[\s\S]*\} else \{[\s\S]*await refreshBootstrap\(state\);[\s\S]*\}/);
   assert.match(js, /function upsertConversation\(/);
   assert.match(js, /function createOptimisticMessage\(/);
   assert.match(js, /button\.textContent = '连接中\.\.\.'/);

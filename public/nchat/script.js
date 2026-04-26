@@ -269,8 +269,25 @@
     });
     state.session = serverResponse.session || null;
     if (state.session) saveCachedSession(state.storage, state.session);
+    state.pendingBootstrap = extractBootstrapFromResponse(serverResponse);
     clearAuthCodeFromUrl();
     return true;
+  }
+
+  function extractBootstrapFromResponse(response = {}) {
+    if (!response?.user || !Array.isArray(response.conversations)) return null;
+    return {
+      ok: true,
+      user: response.user,
+      conversations: response.conversations,
+      profileSetupRequired: Boolean(response.profileSetupRequired)
+    };
+  }
+
+  function consumePendingBootstrap(state) {
+    const bootstrap = state.pendingBootstrap || null;
+    state.pendingBootstrap = null;
+    return bootstrap;
   }
 
   async function readServerSession() {
@@ -584,6 +601,11 @@
         profileSetupRequired: state.profileSetupRequired
       };
     }
+    applyBootstrapPayload(state, bootstrap);
+    return bootstrap;
+  }
+
+  function applyBootstrapPayload(state, bootstrap) {
     state.user = bootstrap.user || null;
     if (isLocalPreview()) {
       const localProfile = loadLocalPreviewProfile(state.storage);
@@ -602,7 +624,6 @@
     renderConversationList(state);
     state.elements.profileModal.hidden = !state.profileSetupRequired;
     updateStatus(state, '已连接');
-    return bootstrap;
   }
 
   async function openConversation(state, conversationId) {
@@ -906,8 +927,14 @@
     }
 
     try {
-      await refreshBootstrap(state);
+      const immediateBootstrap = consumePendingBootstrap(state);
+      if (immediateBootstrap) {
+        applyBootstrapPayload(state, immediateBootstrap);
+      } else {
+        await refreshBootstrap(state);
+      }
       connectRealtime(state);
+      refreshBootstrap(state).catch(() => null);
     } catch (error) {
       if (localPreview) {
         applyLocalPreviewBootstrap(state);
@@ -927,6 +954,7 @@
       conversations: [],
       messages: [],
       profileSetupRequired: false,
+      pendingBootstrap: null,
       activeConversationId: '',
       activeTab: 'chat',
       eventSource: null,

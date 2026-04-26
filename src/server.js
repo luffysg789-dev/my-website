@@ -4293,7 +4293,6 @@ app.post('/api/nchat/session', (req, res) => {
       return res.status(400).json({ ok: false, error: 'openId 和 sessionKey 必填' });
     }
 
-    const user = ensureNchatUserAccount(session);
     res.cookie(NCHAT_SESSION_COOKIE_NAME, encodeNchatSessionCookie(session), {
       httpOnly: true,
       sameSite: 'lax',
@@ -4308,7 +4307,7 @@ app.post('/api/nchat/session', (req, res) => {
         ...session,
         expiresAt: session.savedAt + NCHAT_SESSION_MAX_AGE_MS
       },
-      user
+      ...buildNchatBootstrapPayload(session)
     });
   } catch (error) {
     const statusCode = Number(error?.statusCode || 400) || 400;
