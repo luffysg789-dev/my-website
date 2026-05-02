@@ -314,7 +314,8 @@ test('xiangqi script bootstraps page state and board coordinates', () => {
   assert.match(js, /state\.session = null;/);
   assert.match(js, /await beginLoginFlow\(\)\.catch\(\(\) => \{\}\);/);
   assert.match(js, /return;/);
-  assert.match(js, /state\.session = isNexaAppEnvironment\(\) \? null : loadCachedNexaSession\(\);/);
+  assert.match(js, /const activeSession = state\.session\?\.openId && state\.session\?\.sessionKey \? state\.session : null;/);
+  assert.match(js, /state\.session = activeSession \|\| \(isNexaAppEnvironment\(\) \? null : loadCachedNexaSession\(\)\);/);
   assert.match(js, /const cachedUser = loadCachedUser\(\);/);
   assert.match(js, /if \(!isNexaAppEnvironment\(\) && isLocalDevelopmentHost\(\) && cachedUser\?\.userId\) \{/);
   assert.match(js, /await refreshWallet\(\);/);

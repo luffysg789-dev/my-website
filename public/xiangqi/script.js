@@ -1252,7 +1252,8 @@ function renderMatch() {
 }
 
 async function syncSessionAndWallet() {
-  state.session = isNexaAppEnvironment() ? null : loadCachedNexaSession();
+  const activeSession = state.session?.openId && state.session?.sessionKey ? state.session : null;
+  state.session = activeSession || (isNexaAppEnvironment() ? null : loadCachedNexaSession());
   updateLoginButtonState();
   if (!state.session?.openId || !state.session?.sessionKey) {
     const cachedUser = loadCachedUser();
