@@ -253,3 +253,66 @@ test('admin can delete U card platforms and cards', async () => {
     harness.cleanup();
   }
 });
+
+test('admin can sync U card data from the upstream Figma source', async () => {
+  const harness = createHarness();
+  const previousFetch = global.fetch;
+  try {
+    const cardTypes = Array.from({ length: 30 }, (_, index) => `unused-${index}`);
+    cardTypes[23] = '493724';
+    cardTypes[24] = '493710';
+    cardTypes[25] = '4413';
+    cardTypes[26] = '4565';
+    cardTypes[27] = '5378';
+    cardTypes[28] = '5157';
+    cardTypes[29] = '5395';
+    const rows = Array.from({ length: 58 }, (_, index) => {
+      const cells = [`PLATFORM${index + 1}`, `平台${index + 1}`];
+      for (let cellIndex = 2; cellIndex <= 27; cellIndex += 1) {
+        cells.push('✓');
+      }
+      return cells.join('\t');
+    }).join('\n');
+    const componentSource = `const ru = \`${rows}\`, At = ${JSON.stringify(cardTypes)};`;
+
+    global.fetch = async (url) => {
+      const text = String(url).includes('/_components/')
+        ? componentSource
+        : '<html><head><link rel="preload" href="/_components/v2/test.js" as="script"></head></html>';
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return text;
+        }
+      };
+    };
+
+    const cookies = await loginAdmin(harness);
+    const sync = await harness.request('POST', '/api/admin/u-card/sync-upstream', null, cookies);
+    assert.equal(sync.statusCode, 200);
+    assert.equal(sync.body.platformCount, 58);
+    assert.equal(sync.body.cardCount, 7);
+
+    const platforms = await harness.request('GET', '/api/u-card/platforms');
+    assert.equal(platforms.body.items.length, 58);
+    assert.equal(platforms.body.items[0].name, 'PLATFORM1 (平台1)');
+
+    const lookup = await harness.request('GET', `/api/u-card/platforms/${platforms.body.items[0].id}/cards`);
+    assert.equal(lookup.statusCode, 200);
+    assert.deepEqual(
+      lookup.body.items.map((item) => ({ name: item.name, bin: item.bin, issuer_region: item.issuer_region })),
+      [
+        { name: 'US 4413', bin: '4413', issuer_region: '美国' },
+        { name: 'SG 493724', bin: '493724', issuer_region: '新加坡' },
+        { name: 'SG 493710', bin: '493710', issuer_region: '新加坡' },
+        { name: 'US 5378', bin: '5378', issuer_region: '美国' },
+        { name: 'SG 4565', bin: '4565', issuer_region: '新加坡' },
+        { name: 'SG 5395', bin: '5395', issuer_region: '新加坡' }
+      ]
+    );
+  } finally {
+    global.fetch = previousFetch;
+    harness.cleanup();
+  }
+});

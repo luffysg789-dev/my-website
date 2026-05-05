@@ -87,6 +87,7 @@ const uCardNavPlatformAdd = document.getElementById('uCardNavPlatformAdd');
 const uCardNavPlatformList = document.getElementById('uCardNavPlatformList');
 const uCardNavCardAdd = document.getElementById('uCardNavCardAdd');
 const uCardNavCardList = document.getElementById('uCardNavCardList');
+const uCardSyncUpstreamBtn = document.getElementById('uCardSyncUpstreamBtn');
 const uCardForm = document.getElementById('uCardForm');
 const uCardPlatformCheckboxes = document.getElementById('uCardPlatformCheckboxes');
 const uCardMessage = document.getElementById('uCardMessage');
@@ -362,6 +363,9 @@ const texts = {
     uCardPlatformsLabel: '支持场景平台',
     uCardAddBtn: '新增卡',
     uCardListTitle: '卡列表',
+    uCardSyncUpstreamBtn: '一键同步上游场景资料',
+    uCardSyncUpstreamLoading: '正在同步上游场景资料...',
+    uCardSyncUpstreamDone: (platformCount, cardCount) => `上游同步完成：${platformCount} 个平台，${cardCount} 张卡`,
     uCardCreated: 'U卡已添加',
     uCardPlatformSaved: '平台已保存',
     uCardSaved: 'U卡已保存',
@@ -667,6 +671,9 @@ const texts = {
     uCardPlatformsLabel: 'Supported Platforms',
     uCardAddBtn: 'Add Card',
     uCardListTitle: 'Card List',
+    uCardSyncUpstreamBtn: 'Sync Upstream Scene Data',
+    uCardSyncUpstreamLoading: 'Syncing upstream scene data...',
+    uCardSyncUpstreamDone: (platformCount, cardCount) => `Upstream sync complete: ${platformCount} platforms, ${cardCount} cards`,
     uCardCreated: 'U card added.',
     uCardPlatformSaved: 'Platform saved.',
     uCardSaved: 'U card saved.',
@@ -1257,6 +1264,7 @@ function applyLanguage() {
   uCardNavPlatformList.textContent = dict.uCardPlatformListTitle;
   uCardNavCardAdd.textContent = dict.uCardAddBtn;
   uCardNavCardList.textContent = dict.uCardListTitle;
+  uCardSyncUpstreamBtn.textContent = dict.uCardSyncUpstreamBtn;
   document.getElementById('uCardPlatformTitle').textContent = dict.uCardPlatformTitle;
   document.getElementById('uCardPlatformListTitle').textContent = dict.uCardPlatformListTitle;
   document.getElementById('uCardPlatformNameLabel').childNodes[0].textContent = dict.uCardPlatformNameLabel;
@@ -2704,6 +2712,31 @@ if (uCardForm) {
     uCardMessage.className = 'message success';
     uCardForm.reset();
     await loadUCardAdmin();
+  });
+}
+
+if (uCardSyncUpstreamBtn) {
+  uCardSyncUpstreamBtn.addEventListener('click', async () => {
+    uCardMessage.textContent = t('uCardSyncUpstreamLoading');
+    uCardMessage.className = 'message';
+    uCardSyncUpstreamBtn.disabled = true;
+    const result = await requestTutorialJson(['/api/admin/u-card/sync-upstream'], { method: 'POST' });
+    uCardSyncUpstreamBtn.disabled = false;
+    if (result.res?.status === 401) {
+      showLogin();
+      return;
+    }
+    if (!result.res || !result.res.ok) {
+      uCardMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+      uCardMessage.className = 'message error';
+      return;
+    }
+    uCardMessage.textContent = t('uCardSyncUpstreamDone', Number(result.data?.platformCount || 0), Number(result.data?.cardCount || 0));
+    uCardMessage.className = 'message success';
+    uCardSubView = 'card-list';
+    await loadUCardAdmin();
+    uCardMessage.textContent = t('uCardSyncUpstreamDone', Number(result.data?.platformCount || 0), Number(result.data?.cardCount || 0));
+    uCardMessage.className = 'message success';
   });
 }
 

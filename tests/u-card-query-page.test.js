@@ -48,9 +48,12 @@ test('U card admin supports optional issuer region on add and edit forms', () =>
   const adminJs = fs.readFileSync(adminJsPath, 'utf8');
 
   assert.match(adminHtml, /id="uCardIssuerRegionLabel"[\s\S]*name="issuerRegion"[\s\S]*value="美国"[\s\S]*value="香港"[\s\S]*value="新加坡"/);
-  assert.match(adminHtml, /\/admin\.js\?v=20260319-03/);
+  assert.match(adminHtml, /id="uCardSyncUpstreamBtn"[\s\S]*一键同步上游场景资料/);
+  assert.match(adminHtml, /\/admin\.js\?v=20260319-04/);
   assert.match(adminJs, /uCardIssuerRegionLabel:\s*'发行地'/);
   assert.match(adminJs, /uCardIssuerRegionNone:\s*'不选择'/);
+  assert.match(adminJs, /uCardSyncUpstreamBtn:\s*'一键同步上游场景资料'/);
+  assert.match(adminJs, /\/api\/admin\/u-card\/sync-upstream/);
   assert.match(adminJs, /function renderUCardIssuerRegionOptions\(selectedValue = ''\)/);
   assert.match(adminJs, /id="uCardIssuerRegion-\$\{card\.id\}"/);
   assert.match(adminJs, /issuerRegion:\s*String\(document\.getElementById\(`uCardIssuerRegion-\$\{id\}`\)\?\.value \|\| ''\)\.trim\(\)/);

@@ -4339,6 +4339,191 @@ function normalizeUCardIssuerRegion(value) {
   return ['美国', '香港', '新加坡'].includes(region) ? region : '';
 }
 
+const U_CARD_UPSTREAM_URL = 'https://less-orchid-09408356.figma.site/';
+const U_CARD_UPSTREAM_EXCLUDED_PLATFORMS = new Set([
+  'Alipay',
+  'Taobao',
+  'Meituan',
+  'Ctrip',
+  'PDD',
+  'WeChat',
+  'Zhongguoshihua',
+  'Starlink',
+  'ONLYFANS',
+  'Addcard',
+  'Applejack wine&spirit',
+  'Cash',
+  'CCbill',
+  'Cozysexgames',
+  'Crownbill',
+  'Cvsprt',
+  'Digisecbilling',
+  'Eharmony',
+  'Epoch',
+  'EverAi Santa venera St Mt',
+  'Famepay',
+  'Hwhsupport',
+  'Imgcustomersupport',
+  'IWC international',
+  'Javpay',
+  'Lineworks',
+  'Match',
+  'Mdsupporthelp',
+  'Mfdbill',
+  'Patreon',
+  'Patreon membership',
+  'Paymentico',
+  'Probiller',
+  'Sankaku sofia',
+  'Scaleup G',
+  'Simply Digital',
+  'Skw productions',
+  'SPRed',
+  'Tropsunprod',
+  'Upg paymentico',
+  'Vendo service',
+  'Vtsup',
+  'Agbill',
+  'Bakong',
+  'Billerd',
+  'Namecheap',
+  'NAMESILO',
+  'TRACFONE',
+  'Wise'
+]);
+const U_CARD_UPSTREAM_CARDS = [
+  { index: 25, name: 'US 4413', bin: '4413', issuerRegion: '美国' },
+  { index: 23, name: 'SG 493724', bin: '493724', issuerRegion: '新加坡' },
+  { index: 24, name: 'SG 493710', bin: '493710', issuerRegion: '新加坡' },
+  { index: 28, name: 'HK 5157', bin: '5157', issuerRegion: '香港' },
+  { index: 27, name: 'US 5378', bin: '5378', issuerRegion: '美国' },
+  { index: 26, name: 'SG 4565', bin: '4565', issuerRegion: '新加坡' },
+  { index: 29, name: 'SG 5395', bin: '5395', issuerRegion: '新加坡' }
+];
+
+function checkedCell(value) {
+  return String(value || '').includes('✓');
+}
+
+function extractUCardUpstreamComponentUrl(html, sourceUrl = U_CARD_UPSTREAM_URL) {
+  const match = String(html || '').match(/<link[^>]+href="([^"]*\/_components\/v2\/[^"]+\.js)"/);
+  if (!match) throw new Error('未找到上游组件脚本');
+  return new URL(match[1], sourceUrl).toString();
+}
+
+function parseUCardUpstreamBundle(source) {
+  const tableMatch = String(source || '').match(/const ru = `([\s\S]*?)`, At = /);
+  const cardsMatch = String(source || '').match(/At = (\[[^\]]+\])/);
+  if (!tableMatch || !cardsMatch) throw new Error('未找到上游场景资料');
+
+  const cardTypes = JSON.parse(cardsMatch[1]);
+  U_CARD_UPSTREAM_CARDS.forEach((card) => {
+    if (String(cardTypes[card.index] || '') !== card.bin) {
+      throw new Error(`上游卡头不匹配：${card.name}`);
+    }
+  });
+
+  const platforms = tableMatch[1]
+    .trim()
+    .split('\n')
+    .map((line, index) => {
+      const cells = line.split('\t');
+      const platform = String(cells[0] || '').trim();
+      const chinese = String(cells[1] || '').trim();
+      const compatibility = [];
+
+      for (let cellIndex = 2; cellIndex <= 8; cellIndex += 1) compatibility.push(checkedCell(cells[cellIndex]));
+      for (let cellIndex = 10; cellIndex <= 25; cellIndex += 1) compatibility.push(checkedCell(cells[cellIndex]));
+      for (let cellIndex = 26; cellIndex <= 27; cellIndex += 1) compatibility.push(checkedCell(cells[cellIndex]));
+
+      if (platform === 'ITUNES') {
+        compatibility.push(false, false, false, false, false);
+      } else {
+        compatibility.push(!['ALIPAY HK', 'Telegram'].includes(platform));
+        compatibility.push(!['APPLE PAY', 'WECHAT PAY', 'ALIPAY'].includes(platform));
+        compatibility.push(!['GOOGLE PAY', 'APPLE PAY', 'WECHAT PAY', 'ALIPAY', 'GITHUB COPILOT'].includes(platform));
+        compatibility.push(['GOOGLE PAY', 'APPLE PAY', 'WECHAT PAY', 'ALIPAY', 'MIDJOURNEY', 'GITHUB COPILOT'].includes(platform) ? false : index >= 10);
+        compatibility.push(!['WECHAT PAY', 'ALIPAY', 'ALIPAY HK'].includes(platform));
+      }
+
+      return {
+        name: chinese ? `${platform} (${chinese})` : platform,
+        platform,
+        compatibility
+      };
+    })
+    .filter((item) => item.platform && !U_CARD_UPSTREAM_EXCLUDED_PLATFORMS.has(item.platform));
+
+  if (platforms.length !== 58) throw new Error(`上游平台数量异常：${platforms.length}`);
+  return { platforms, cards: U_CARD_UPSTREAM_CARDS };
+}
+
+async function fetchTextWithTimeout(url, timeoutMs = 30000) {
+  if (typeof fetch !== 'function') throw new Error('当前 Node 版本不支持 fetch');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`请求失败：${response.status}`);
+    return await response.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function replaceUCardUpstreamData({ platforms, cards }) {
+  const sync = db.transaction(() => {
+    db.prepare('DELETE FROM u_card_platform_support').run();
+    db.prepare('DELETE FROM u_cards').run();
+    db.prepare('DELETE FROM u_card_platforms').run();
+
+    const insertPlatform = db.prepare(`
+      INSERT INTO u_card_platforms (name, sort_order, is_enabled, updated_at)
+      VALUES (?, ?, 1, datetime('now'))
+    `);
+    const insertCard = db.prepare(`
+      INSERT INTO u_cards (name, bin, issuer_region, is_enabled, sort_order, updated_at)
+      VALUES (?, ?, ?, 1, ?, datetime('now'))
+    `);
+    const insertSupport = db.prepare(`
+      INSERT OR IGNORE INTO u_card_platform_support (card_id, platform_id)
+      VALUES (?, ?)
+    `);
+
+    const cardIdsByIndex = new Map();
+    cards.forEach((card, cardIndex) => {
+      const result = insertCard.run(card.name, card.bin, card.issuerRegion, cards.length - cardIndex);
+      cardIdsByIndex.set(card.index, Number(result.lastInsertRowid));
+    });
+
+    let supportCount = 0;
+    platforms.forEach((platform, platformIndex) => {
+      const result = insertPlatform.run(platform.name, platformIndex + 1);
+      const platformId = Number(result.lastInsertRowid);
+      cards.forEach((card) => {
+        if (!platform.compatibility[card.index]) return;
+        insertSupport.run(cardIdsByIndex.get(card.index), platformId);
+        supportCount += 1;
+      });
+    });
+
+    return {
+      platformCount: platforms.length,
+      cardCount: cards.length,
+      supportCount
+    };
+  });
+
+  return sync();
+}
+
+async function syncUCardUpstreamData() {
+  const html = await fetchTextWithTimeout(U_CARD_UPSTREAM_URL);
+  const componentUrl = extractUCardUpstreamComponentUrl(html);
+  const componentSource = await fetchTextWithTimeout(componentUrl);
+  return replaceUCardUpstreamData(parseUCardUpstreamBundle(componentSource));
+}
+
 app.get('/api/u-card/platforms', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.json({ ok: true, items: listUCardPlatformsStmt.all().map(formatUCardPlatform) });
@@ -9587,6 +9772,15 @@ app.delete('/api/admin/u-card/platforms/:id', requireAdmin, (req, res) => {
 
 app.get('/api/admin/u-card/cards', requireAdmin, (_req, res) => {
   res.json({ ok: true, items: listAdminUCardsStmt.all().map(formatAdminUCard) });
+});
+
+app.post('/api/admin/u-card/sync-upstream', requireAdmin, async (_req, res) => {
+  try {
+    const result = await syncUCardUpstreamData();
+    res.json({ ok: true, ...result, source: U_CARD_UPSTREAM_URL });
+  } catch (error) {
+    res.status(502).json({ error: `同步上游场景资料失败：${String(error?.message || '未知错误')}` });
+  }
 });
 
 app.post('/api/admin/u-card/cards', requireAdmin, (req, res) => {
