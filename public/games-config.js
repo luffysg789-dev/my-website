@@ -4,6 +4,21 @@ const { getGameCardMediaMarkup } = typeof window === 'undefined'
 
 const DEFAULT_GAMES = [
   {
+    slug: 'u-card-query',
+    name: 'u卡场景查询',
+    description: '点击平台，查询支持该支付场景的 U 卡和卡头。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    showInGamesHub: 1,
+    sort_order: 58,
+    route: '/u-card-query/',
+    icon: '💳',
+    actionText: '开始查询'
+  },
+  {
     slug: 'nchat',
     name: 'Nchat',
     description: 'Nexa App 内的轻量聊天 H5，支持授权登录、搜索加好友与实时单聊。',
@@ -206,6 +221,7 @@ const DEFAULT_GAMES = [
 ];
 
 const GAME_ACTION_TEXT = {
+  'u-card-query': '开始查询',
   nchat: '进入聊天',
   sbti: '开始测试',
   'nexa-escrow': '进入担保',

@@ -224,6 +224,10 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get(['/u-card-query', '/u-card-query/'], (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'u-card-query', 'index.html'));
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/games/:slug', (req, res) => {
@@ -2887,6 +2891,7 @@ const DEFAULT_SKILLS_PAGE_BOT_PROMPT_EN = 'claw800.com is a curated OpenClaw ski
 const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_ZH = '你是 OpenClaw 用户的技能安装助手。现在请帮我安装技能「{{name}}」。\n技能简介：{{description}}\n技能分类：{{category}}\n详情链接：{{url}}\n请按这个流程执行：\n1. 先打开详情链接，阅读 README、SKILL.md 或安装说明。\n2. 用中文告诉我这个技能做什么、是否安全、安装后会影响什么。\n3. 如果需要环境变量、依赖或权限，先明确列出来，再征求我确认。\n4. 只有在我确认后，才开始安装。\n5. 安装完成后，告诉我验证方法、使用方法，以及如何卸载或回滚。\n不要跳过确认步骤，也不要一次性安装无关技能。';
 const DEFAULT_SKILLS_PAGE_INSTALL_PROMPT_EN = 'You are an OpenClaw skill installation assistant. Help me install the skill "{{name}}".\nSkill summary: {{description}}\nSkill category: {{category}}\nDetail URL: {{url}}\nFollow this process:\n1. Open the detail page and read the README, SKILL.md, or install docs.\n2. Explain what the skill does, whether it looks safe, and what it may change.\n3. List any dependencies, env vars, permissions, or prerequisites before installing.\n4. Wait for my confirmation before you run or install anything.\n5. After installation, tell me how to verify it, use it, and uninstall or roll it back.\nDo not skip confirmation and do not install unrelated skills.';
 const GAME_ROUTE_MAP = {
+  'u-card-query': '/u-card-query/',
   'nchat': '/nchat/',
   'sbti': '/sbti/',
   'nexa-escrow': '/nexa-escrow/',
@@ -2902,6 +2907,7 @@ const GAME_ROUTE_MAP = {
   muyu: '/muyu.html'
 };
 const GAME_ICON_MAP = {
+  'u-card-query': '💳',
   'sbti': '🧠',
   'nexa-escrow': '🛡️',
   'tigang-master': '⭕',
@@ -2934,6 +2940,53 @@ const selectGameBySlugStmt = db.prepare(`
   FROM games_catalog
   WHERE slug = ?
   LIMIT 1
+`);
+const listUCardPlatformsStmt = db.prepare(`
+  SELECT id, name, sort_order, is_enabled, created_at, updated_at
+  FROM u_card_platforms
+  WHERE is_enabled = 1
+  ORDER BY sort_order ASC, id ASC
+`);
+const listAdminUCardPlatformsStmt = db.prepare(`
+  SELECT id, name, sort_order, is_enabled, created_at, updated_at
+  FROM u_card_platforms
+  ORDER BY sort_order ASC, id ASC
+`);
+const insertUCardPlatformStmt = db.prepare(`
+  INSERT INTO u_card_platforms (name, sort_order, is_enabled, updated_at)
+  VALUES (?, ?, ?, datetime('now'))
+`);
+const selectUCardPlatformByIdStmt = db.prepare(`
+  SELECT id, name, sort_order, is_enabled
+  FROM u_card_platforms
+  WHERE id = ?
+`);
+const listAdminUCardsStmt = db.prepare(`
+  SELECT c.id, c.name, c.bin, c.is_enabled, c.sort_order, c.created_at, c.updated_at,
+         COALESCE(
+           json_group_array(
+             CASE
+               WHEN p.id IS NULL THEN NULL
+               ELSE json_object('id', p.id, 'name', p.name)
+             END
+           ),
+           '[]'
+         ) AS platforms_json
+  FROM u_cards c
+  LEFT JOIN u_card_platform_support s ON s.card_id = c.id
+  LEFT JOIN u_card_platforms p ON p.id = s.platform_id
+  GROUP BY c.id
+  ORDER BY c.sort_order DESC, c.updated_at DESC, c.id DESC
+`);
+const listUCardsByPlatformStmt = db.prepare(`
+  SELECT c.id, c.name, c.bin
+  FROM u_cards c
+  INNER JOIN u_card_platform_support s ON s.card_id = c.id
+  INNER JOIN u_card_platforms p ON p.id = s.platform_id
+  WHERE s.platform_id = ?
+    AND c.is_enabled = 1
+    AND p.is_enabled = 1
+  ORDER BY c.sort_order DESC, c.updated_at DESC, c.id DESC
 `);
 const listSkillsCatalogStmt = db.prepare(`
   SELECT id, name, name_en, url, description, description_en, category, category_en, icon, sort_order, is_pinned, is_hot, created_at, updated_at
@@ -4227,6 +4280,76 @@ function formatGameBootstrapRow(row = {}) {
     icon: GAME_ICON_MAP[slug] || '🎮'
   };
 }
+
+function formatUCardPlatform(row = {}) {
+  return {
+    id: Number(row.id || 0) || 0,
+    name: String(row.name || '').trim(),
+    sort_order: Number(row.sort_order || 0) || 0,
+    is_enabled: Number(row.is_enabled || 0) ? 1 : 0
+  };
+}
+
+function formatPublicUCard(row = {}) {
+  return {
+    id: Number(row.id || 0) || 0,
+    name: String(row.name || '').trim(),
+    bin: String(row.bin || '').trim()
+  };
+}
+
+function parseUCardPlatformsJson(raw) {
+  try {
+    return JSON.parse(String(raw || '[]'))
+      .filter((item) => item && item.id)
+      .map(formatUCardPlatform);
+  } catch {
+    return [];
+  }
+}
+
+function formatAdminUCard(row = {}) {
+  return {
+    id: Number(row.id || 0) || 0,
+    name: String(row.name || '').trim(),
+    bin: String(row.bin || '').trim(),
+    is_enabled: Number(row.is_enabled || 0) ? 1 : 0,
+    sort_order: Number(row.sort_order || 0) || 0,
+    platforms: parseUCardPlatformsJson(row.platforms_json),
+    created_at: String(row.created_at || ''),
+    updated_at: String(row.updated_at || '')
+  };
+}
+
+function normalizeUCardPlatformIds(value) {
+  const ids = Array.isArray(value) ? value : [];
+  return Array.from(
+    new Set(
+      ids
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    )
+  );
+}
+
+app.get('/api/u-card/platforms', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.json({ ok: true, items: listUCardPlatformsStmt.all().map(formatUCardPlatform) });
+});
+
+app.get('/api/u-card/platforms/:id/cards', (req, res) => {
+  const platformId = Number(req.params.id);
+  const platform = selectUCardPlatformByIdStmt.get(platformId);
+  if (!platform || !Number(platform.is_enabled || 0)) {
+    return res.status(404).json({ error: '场景平台不存在' });
+  }
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.json({
+    ok: true,
+    platform: formatUCardPlatform(platform),
+    items: listUCardsByPlatformStmt.all(platformId).map(formatPublicUCard)
+  });
+});
 
 app.get('/api/games', (_req, res) => {
   const items = listPublicGamesCatalogStmt.all().map(materializeInlineGameAssets).map(formatGameRow);
@@ -9395,6 +9518,180 @@ app.get('/api/admin/games', requireAdmin, (_req, res) => {
   res.json({ ok: true, items });
 });
 
+app.get('/api/admin/u-card/platforms', requireAdmin, (_req, res) => {
+  res.json({ ok: true, items: listAdminUCardPlatformsStmt.all().map(formatUCardPlatform) });
+});
+
+app.post('/api/admin/u-card/platforms', requireAdmin, (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  const sortOrder = Number.isFinite(Number(req.body?.sortOrder ?? req.body?.sort_order))
+    ? Number(req.body?.sortOrder ?? req.body?.sort_order)
+    : 0;
+  const isEnabled = Number(req.body?.isEnabled ?? req.body?.is_enabled ?? 1) ? 1 : 0;
+
+  if (!name) return res.status(400).json({ error: '平台名称必填' });
+
+  try {
+    const result = insertUCardPlatformStmt.run(name, sortOrder, isEnabled);
+    const item = selectUCardPlatformByIdStmt.get(result.lastInsertRowid);
+    res.json({ ok: true, item: formatUCardPlatform(item) });
+  } catch (error) {
+    if (String(error?.message || '').includes('UNIQUE')) {
+      return res.status(409).json({ error: '这个平台已经存在' });
+    }
+    res.status(500).json({ error: '新增平台失败' });
+  }
+});
+
+app.put('/api/admin/u-card/platforms/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const name = String(req.body?.name || '').trim();
+  const sortOrder = Number.isFinite(Number(req.body?.sortOrder ?? req.body?.sort_order))
+    ? Number(req.body?.sortOrder ?? req.body?.sort_order)
+    : 0;
+  const isEnabled = Number(req.body?.isEnabled ?? req.body?.is_enabled ?? 1) ? 1 : 0;
+
+  if (!name) return res.status(400).json({ error: '平台名称必填' });
+
+  try {
+    const result = db
+      .prepare(`
+        UPDATE u_card_platforms
+        SET name = ?, sort_order = ?, is_enabled = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `)
+      .run(name, sortOrder, isEnabled, id);
+    if (!result.changes) return res.status(404).json({ error: '平台不存在' });
+    res.json({ ok: true, item: formatUCardPlatform(selectUCardPlatformByIdStmt.get(id)) });
+  } catch (error) {
+    if (String(error?.message || '').includes('UNIQUE')) {
+      return res.status(409).json({ error: '这个平台已经存在' });
+    }
+    res.status(500).json({ error: '保存平台失败' });
+  }
+});
+
+app.delete('/api/admin/u-card/platforms/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare('DELETE FROM u_card_platforms WHERE id = ?').run(id);
+  if (!result.changes) return res.status(404).json({ error: '平台不存在' });
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/u-card/cards', requireAdmin, (_req, res) => {
+  res.json({ ok: true, items: listAdminUCardsStmt.all().map(formatAdminUCard) });
+});
+
+app.post('/api/admin/u-card/cards', requireAdmin, (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  const bin = String(req.body?.bin || '').replace(/\s+/g, '').trim();
+  const platformIds = normalizeUCardPlatformIds(req.body?.platformIds ?? req.body?.platform_ids);
+  const sortOrder = Number.isFinite(Number(req.body?.sortOrder ?? req.body?.sort_order))
+    ? Number(req.body?.sortOrder ?? req.body?.sort_order)
+    : 0;
+  const isEnabled = Number(req.body?.isEnabled ?? req.body?.is_enabled ?? 1) ? 1 : 0;
+
+  if (!name) return res.status(400).json({ error: '卡名必填' });
+  if (!bin) return res.status(400).json({ error: '卡头数字必填' });
+  if (!/^\d{4,12}$/.test(bin)) return res.status(400).json({ error: '卡头数字必须是 4-12 位数字' });
+  if (!platformIds.length) return res.status(400).json({ error: '请至少选择一个支持平台' });
+
+  const existingPlatforms = platformIds.map((id) => selectUCardPlatformByIdStmt.get(id)).filter(Boolean);
+  if (existingPlatforms.length !== platformIds.length) {
+    return res.status(400).json({ error: '支持平台不存在' });
+  }
+
+  const createCard = db.transaction(() => {
+    const cardResult = db
+      .prepare(`
+        INSERT INTO u_cards (name, bin, is_enabled, sort_order, updated_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+      `)
+      .run(name, bin, isEnabled, sortOrder);
+    const cardId = Number(cardResult.lastInsertRowid);
+    const insertSupport = db.prepare(`
+      INSERT OR IGNORE INTO u_card_platform_support (card_id, platform_id)
+      VALUES (?, ?)
+    `);
+    platformIds.forEach((platformId) => insertSupport.run(cardId, platformId));
+    return cardId;
+  });
+
+  const cardId = createCard();
+  res.json({
+    ok: true,
+    item: {
+      id: cardId,
+      name,
+      bin,
+      is_enabled: isEnabled,
+      sort_order: sortOrder,
+      platforms: existingPlatforms.map(formatUCardPlatform)
+    }
+  });
+});
+
+app.put('/api/admin/u-card/cards/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const name = String(req.body?.name || '').trim();
+  const bin = String(req.body?.bin || '').replace(/\s+/g, '').trim();
+  const platformIds = normalizeUCardPlatformIds(req.body?.platformIds ?? req.body?.platform_ids);
+  const sortOrder = Number.isFinite(Number(req.body?.sortOrder ?? req.body?.sort_order))
+    ? Number(req.body?.sortOrder ?? req.body?.sort_order)
+    : 0;
+  const isEnabled = Number(req.body?.isEnabled ?? req.body?.is_enabled ?? 1) ? 1 : 0;
+
+  if (!name) return res.status(400).json({ error: '卡名必填' });
+  if (!bin) return res.status(400).json({ error: '卡头数字必填' });
+  if (!/^\d{4,12}$/.test(bin)) return res.status(400).json({ error: '卡头数字必须是 4-12 位数字' });
+  if (!platformIds.length) return res.status(400).json({ error: '请至少选择一个支持平台' });
+
+  const existingPlatforms = platformIds.map((platformId) => selectUCardPlatformByIdStmt.get(platformId)).filter(Boolean);
+  if (existingPlatforms.length !== platformIds.length) {
+    return res.status(400).json({ error: '支持平台不存在' });
+  }
+
+  const updateCard = db.transaction(() => {
+    const result = db
+      .prepare(`
+        UPDATE u_cards
+        SET name = ?, bin = ?, is_enabled = ?, sort_order = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `)
+      .run(name, bin, isEnabled, sortOrder, id);
+    if (!result.changes) return false;
+
+    db.prepare('DELETE FROM u_card_platform_support WHERE card_id = ?').run(id);
+    const insertSupport = db.prepare(`
+      INSERT OR IGNORE INTO u_card_platform_support (card_id, platform_id)
+      VALUES (?, ?)
+    `);
+    platformIds.forEach((platformId) => insertSupport.run(id, platformId));
+    return true;
+  });
+
+  if (!updateCard()) return res.status(404).json({ error: '卡不存在' });
+
+  res.json({
+    ok: true,
+    item: {
+      id,
+      name,
+      bin,
+      is_enabled: isEnabled,
+      sort_order: sortOrder,
+      platforms: existingPlatforms.map(formatUCardPlatform)
+    }
+  });
+});
+
+app.delete('/api/admin/u-card/cards/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare('DELETE FROM u_cards WHERE id = ?').run(id);
+  if (!result.changes) return res.status(404).json({ error: '卡不存在' });
+  res.json({ ok: true });
+});
+
 app.put(
   '/api/admin/game-assets',
   requireAdmin,
@@ -9808,6 +10105,54 @@ app.post('/api/admin/sites/:id/approve', requireAdmin, async (req, res) => {
   }
 
   res.json({ ok: true });
+});
+
+app.post('/api/admin/sites/bulk-approve', requireAdmin, async (_req, res) => {
+  const rows = db
+    .prepare('SELECT id, name, description, sort_order FROM sites WHERE status = ? ORDER BY created_at DESC')
+    .all('pending');
+
+  if (!rows.length) {
+    return res.json({ ok: true, updated: 0 });
+  }
+
+  const updateApproved = db.prepare(`
+    UPDATE sites
+    SET status = 'approved',
+        sort_order = ?,
+        reviewer_note = '',
+        name_en = ?,
+        description_en = ?,
+        reviewed_by = 'admin',
+        reviewed_at = datetime('now')
+    WHERE id = ? AND status = 'pending'
+  `);
+
+  let updated = 0;
+  for (const row of rows) {
+    const nameEn = await autoTranslateToEn(String(row.name || ''));
+    const descEn = await autoTranslateToEn(String(row.description || ''));
+    const result = updateApproved.run(Number(row.sort_order || 0) || 0, nameEn || '', descEn || '', Number(row.id));
+    updated += Number(result.changes || 0);
+  }
+
+  res.json({ ok: true, updated });
+});
+
+app.post('/api/admin/sites/bulk-reject', requireAdmin, (req, res) => {
+  const note = String(req.body?.note || '').trim();
+  const result = db
+    .prepare(`
+      UPDATE sites
+      SET status = 'rejected',
+          reviewer_note = ?,
+          reviewed_by = 'admin',
+          reviewed_at = datetime('now')
+      WHERE status = 'pending'
+    `)
+    .run(note);
+
+  res.json({ ok: true, updated: Number(result.changes || 0) });
 });
 
 app.post('/api/admin/sites/:id/reject', requireAdmin, (req, res) => {

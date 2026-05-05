@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>claw800 后台</title>
     <link id="siteFavicon" rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="/styles.css?v=20260319-01" />
+    <link rel="stylesheet" href="/styles.css?v=20260319-02" />
   </head>
   <body>
     <main class="container admin">
@@ -34,7 +34,8 @@
             <button id="navTutorialAdd">新增教程</button>
             <button id="navSkillsFetch">技能抓取</button>
             <button id="navSkills">技能列表</button>
-            <button id="navGames">游戏列表</button>
+            <button id="navGames">游戏与工具列表</button>
+            <button id="navUCard">U卡场景</button>
             <button id="navOrders">订单</button>
             <button id="navNchatUsers">聊天用户</button>
             <button id="navNexaEscrowUsers">担保用户</button>
@@ -283,9 +284,50 @@
             </div>
 
             <div id="adminGamesSection" class="hidden">
-              <h2 id="gamesListTitle">游戏列表</h2>
+              <h2 id="gamesListTitle">游戏与工具列表</h2>
               <p id="gamesMessage" class="message"></p>
               <div id="gamesList" class="admin-list"></div>
+            </div>
+
+            <div id="adminUCardSection" class="hidden">
+              <h2 id="uCardTitle">U卡场景查询</h2>
+              <div class="toolbar">
+                <button id="uCardNavPlatformAdd" type="button">新增平台</button>
+                <button id="uCardNavPlatformList" type="button">平台列表</button>
+                <button id="uCardNavCardAdd" type="button">新增卡</button>
+                <button id="uCardNavCardList" type="button">卡列表</button>
+              </div>
+              <p id="uCardPlatformMessage" class="message"></p>
+              <p id="uCardMessage" class="message"></p>
+              <div id="uCardPlatformAddSection" class="review-card">
+                <h3 id="uCardPlatformTitle">场景平台</h3>
+                <form id="uCardPlatformForm" class="admin-add-form">
+                  <label id="uCardPlatformNameLabel">平台名称<input name="name" required /></label>
+                  <label id="uCardPlatformSortLabel">排序<input name="sortOrder" type="number" value="0" /></label>
+                  <button id="uCardPlatformAddBtn" type="submit">新增平台</button>
+                </form>
+              </div>
+              <div id="uCardPlatformListSection" class="review-card hidden">
+                <h3 id="uCardPlatformListTitle">平台列表</h3>
+                <div id="uCardPlatformList" class="admin-list"></div>
+              </div>
+              <div id="uCardAddSection" class="review-card hidden">
+                <h3 id="uCardAddTitle">添加U卡</h3>
+                <form id="uCardForm" class="admin-add-form">
+                  <label id="uCardNameLabel">卡名<input name="name" required /></label>
+                  <label id="uCardBinLabel">卡头数字<input name="bin" inputmode="numeric" pattern="[0-9]{4,12}" required /></label>
+                  <label id="uCardSortLabel">排序<input name="sortOrder" type="number" value="0" /></label>
+                  <div>
+                    <p id="uCardPlatformsLabel" class="small">支持场景平台</p>
+                    <div id="uCardPlatformCheckboxes" class="admin-checkbox-grid"></div>
+                  </div>
+                  <button id="uCardAddBtn" type="submit">添加卡</button>
+                </form>
+              </div>
+              <div id="uCardListSection" class="review-card hidden">
+                <h3 id="uCardListTitle">卡列表</h3>
+                <div id="uCardList" class="admin-list"></div>
+              </div>
             </div>
 
             <div id="adminOrdersSection" class="hidden">
@@ -358,7 +400,13 @@
             </div>
 
             <div id="adminListSection" class="hidden">
-              <h2 id="listTitle">待审核列表</h2>
+              <div class="admin-section-title-row">
+                <h2 id="listTitle">待审核列表</h2>
+                <div id="pendingBulkActions" class="toolbar hidden">
+                  <button id="bulkApprovePendingBtn" type="button">一键全部通过</button>
+                  <button id="bulkRejectPendingBtn" type="button" class="danger">一键全部驳回</button>
+                </div>
+              </div>
               <div id="adminList" class="admin-list"></div>
             </div>
           </div>
@@ -366,6 +414,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260319-01"></script>
+    <script src="/admin.js?v=20260319-02"></script>
   </body>
 </html>

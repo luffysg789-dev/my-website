@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>u卡场景查询</title>
+    <meta name="description" content="点击平台，查询支持该支付场景的 U 卡和卡头。" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/u-card-query/style.css?v=20260505-09" />
+  </head>
+  <body>
+    <main class="u-card-app">
+      <header class="topbar">
+        <div class="title-row">
+          <a class="back-link" href="/games.html" aria-label="返回游戏与工具" title="返回游戏与工具">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </a>
+          <h1>u卡场景查询</h1>
+        </div>
+      </header>
+
+      <section class="query-shell">
+        <div class="platform-panel">
+          <div class="section-head">
+            <h2>选择平台</h2>
+            <span id="platformCount">0</span>
+          </div>
+          <div id="platformGrid" class="platform-grid"></div>
+        </div>
+
+        <div class="result-panel">
+          <div class="section-head">
+            <h2 id="resultTitle">支持的卡</h2>
+            <span id="resultCount">请选择平台</span>
+          </div>
+          <div id="cardResults" class="card-results">
+            <p class="empty-state">点击平台后，这里会显示可用于支付的卡。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/u-card-query/script.js?v=20260505-03"></script>
+  </body>
+</html>

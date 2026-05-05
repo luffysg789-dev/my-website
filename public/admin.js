@@ -5,6 +5,9 @@ const loginPasswordInput = document.getElementById('loginPasswordInput');
 const loginMessage = document.getElementById('loginMessage');
 const adminList = document.getElementById('adminList');
 const listTitle = document.getElementById('listTitle');
+const pendingBulkActions = document.getElementById('pendingBulkActions');
+const bulkApprovePendingBtn = document.getElementById('bulkApprovePendingBtn');
+const bulkRejectPendingBtn = document.getElementById('bulkRejectPendingBtn');
 const adminAddForm = document.getElementById('adminAddForm');
 const adminMessage = document.getElementById('adminMessage');
 const adminImportForm = document.getElementById('adminImportForm');
@@ -56,6 +59,7 @@ const tutorialList = document.getElementById('tutorialList');
 const adminSkillsFetchSection = document.getElementById('adminSkillsFetchSection');
 const adminSkillsSection = document.getElementById('adminSkillsSection');
 const adminGamesSection = document.getElementById('adminGamesSection');
+const adminUCardSection = document.getElementById('adminUCardSection');
 const adminOrdersSection = document.getElementById('adminOrdersSection');
 const adminPMiningOrdersSection = document.getElementById('adminPMiningOrdersSection');
 const adminNexaTipOrdersSection = document.getElementById('adminNexaTipOrdersSection');
@@ -72,6 +76,21 @@ const skillsList = document.getElementById('skillsList');
 const skillsMessage = document.getElementById('skillsMessage');
 const gamesList = document.getElementById('gamesList');
 const gamesMessage = document.getElementById('gamesMessage');
+const uCardPlatformForm = document.getElementById('uCardPlatformForm');
+const uCardPlatformMessage = document.getElementById('uCardPlatformMessage');
+const uCardPlatformList = document.getElementById('uCardPlatformList');
+const uCardPlatformAddSection = document.getElementById('uCardPlatformAddSection');
+const uCardPlatformListSection = document.getElementById('uCardPlatformListSection');
+const uCardAddSection = document.getElementById('uCardAddSection');
+const uCardListSection = document.getElementById('uCardListSection');
+const uCardNavPlatformAdd = document.getElementById('uCardNavPlatformAdd');
+const uCardNavPlatformList = document.getElementById('uCardNavPlatformList');
+const uCardNavCardAdd = document.getElementById('uCardNavCardAdd');
+const uCardNavCardList = document.getElementById('uCardNavCardList');
+const uCardForm = document.getElementById('uCardForm');
+const uCardPlatformCheckboxes = document.getElementById('uCardPlatformCheckboxes');
+const uCardMessage = document.getElementById('uCardMessage');
+const uCardList = document.getElementById('uCardList');
 const pMiningOrdersList = document.getElementById('pMiningOrdersList');
 const pMiningOrdersMessage = document.getElementById('pMiningOrdersMessage');
 const nexaTipOrdersList = document.getElementById('nexaTipOrdersList');
@@ -188,6 +207,7 @@ const DEFAULT_SITE_CONFIG = {
   nexaEscrowFeePermille: '0'
 };
 const GAME_ROUTE_MAP = {
+  'u-card-query': '/u-card-query/',
   minesweeper: '/minesweeper.html',
   fortune: '/fortune.html',
   muyu: '/muyu.html'
@@ -213,7 +233,8 @@ const texts = {
     navTutorialAdd: '新增教程',
     navSkillsFetch: '技能抓取',
     navSkills: '技能列表',
-    navGames: '游戏列表',
+    navGames: '游戏与工具列表',
+    navUCard: 'U卡场景',
     navOrders: '订单',
     navNchatUsers: '聊天用户',
     navNexaEscrowUsers: '担保用户',
@@ -324,7 +345,30 @@ const texts = {
     skillsCreateBtn: '新增技能',
     skillsCreateSuccess: '技能已新增',
     skillsCreateRouteMissing: '技能新增接口不存在（404）。请重启后端后再试。',
-    gamesListTitle: '游戏列表',
+    gamesListTitle: '游戏与工具列表',
+    uCardTitle: 'U卡场景查询',
+    uCardPlatformTitle: '场景平台',
+    uCardPlatformListTitle: '平台列表',
+    uCardPlatformNameLabel: '平台名称',
+    uCardPlatformSortLabel: '排序',
+    uCardPlatformAddBtn: '新增平台',
+    uCardPlatformCreated: '平台已新增',
+    uCardAddTitle: '新增卡',
+    uCardNameLabel: '卡名',
+    uCardBinLabel: '卡头数字',
+    uCardSortLabel: '排序',
+    uCardPlatformsLabel: '支持场景平台',
+    uCardAddBtn: '新增卡',
+    uCardListTitle: '卡列表',
+    uCardCreated: 'U卡已添加',
+    uCardPlatformSaved: '平台已保存',
+    uCardSaved: 'U卡已保存',
+    uCardPlatformDeleteConfirm: '确定删除这个平台吗？已绑定的卡会取消对该平台的支持。',
+    uCardDeleteConfirm: '确定删除这张U卡吗？',
+    uCardPlatformDeleted: '平台已删除',
+    uCardDeleted: 'U卡已删除',
+    uCardNoPlatforms: '请先添加或加载平台',
+    uCardNoCards: '暂无U卡',
     ordersTitle: '订单',
     ordersPMiningBtn: '挖矿算力订单',
     ordersNexaTipBtn: '打赏订单',
@@ -434,6 +478,12 @@ const texts = {
     unknown: '未分类',
     approve: '通过',
     reject: '驳回',
+    bulkApprovePending: '一键全部通过',
+    bulkRejectPending: '一键全部驳回',
+    bulkApprovePendingConfirm: '确定通过全部待审核项目吗？',
+    bulkRejectPendingConfirm: '确定驳回全部待审核项目吗？',
+    bulkApprovePendingDone: (n) => `已通过 ${n} 个待审核项目`,
+    bulkRejectPendingDone: (n) => `已驳回 ${n} 个待审核项目`,
     edit: '编辑',
     save: '保存',
     cancel: '取消',
@@ -487,7 +537,7 @@ const texts = {
     navTutorialAdd: 'New Tutorial',
     navSkillsFetch: 'Skill Fetch',
     navSkills: 'Skills',
-    navGames: 'Games',
+    navGames: 'Games & Tools',
     navOrders: 'Orders',
     navNchatUsers: 'Chat Users',
     navNexaEscrowUsers: 'Escrow Users',
@@ -598,7 +648,30 @@ const texts = {
     skillsCreateBtn: 'Add Skill',
     skillsCreateSuccess: 'Skill added.',
     skillsCreateRouteMissing: 'Skill create API not found (404). Please restart the backend and try again.',
-    gamesListTitle: 'Games',
+    gamesListTitle: 'Games & Tools',
+    uCardTitle: 'U Card Scene Query',
+    uCardPlatformTitle: 'Scene Platforms',
+    uCardPlatformListTitle: 'Platform List',
+    uCardPlatformNameLabel: 'Platform Name',
+    uCardPlatformSortLabel: 'Sort',
+    uCardPlatformAddBtn: 'Add Platform',
+    uCardPlatformCreated: 'Platform added.',
+    uCardAddTitle: 'Add Card',
+    uCardNameLabel: 'Card Name',
+    uCardBinLabel: 'Card BIN',
+    uCardSortLabel: 'Sort',
+    uCardPlatformsLabel: 'Supported Platforms',
+    uCardAddBtn: 'Add Card',
+    uCardListTitle: 'Card List',
+    uCardCreated: 'U card added.',
+    uCardPlatformSaved: 'Platform saved.',
+    uCardSaved: 'U card saved.',
+    uCardPlatformDeleteConfirm: 'Delete this platform? Cards bound to it will no longer support this platform.',
+    uCardDeleteConfirm: 'Delete this U card?',
+    uCardPlatformDeleted: 'Platform deleted.',
+    uCardDeleted: 'U card deleted.',
+    uCardNoPlatforms: 'Load or add a platform first.',
+    uCardNoCards: 'No U cards yet.',
     ordersTitle: 'Orders',
     ordersPMiningBtn: 'P-Mining Orders',
     ordersNexaTipBtn: 'Tip Orders',
@@ -708,6 +781,12 @@ const texts = {
     unknown: 'Uncategorized',
     approve: 'Approve',
     reject: 'Reject',
+    bulkApprovePending: 'Approve All',
+    bulkRejectPending: 'Reject All',
+    bulkApprovePendingConfirm: 'Approve all pending items?',
+    bulkRejectPendingConfirm: 'Reject all pending items?',
+    bulkApprovePendingDone: (n) => `Approved ${n} pending items`,
+    bulkRejectPendingDone: (n) => `Rejected ${n} pending items`,
     edit: 'Edit',
     save: 'Save',
     cancel: 'Cancel',
@@ -757,6 +836,11 @@ let skillsItems = [];
 let skillsQuery = '';
 let editingSkillId = null;
 let gamesItems = [];
+let uCardPlatformItems = [];
+let uCardItems = [];
+let uCardSubView = 'platform-add';
+let editingUCardPlatformId = null;
+let editingUCardId = null;
 let editingGameId = null;
 let skillsSyncConfigCache = null;
 let siteConfigCache = null;
@@ -1068,6 +1152,7 @@ function applyLanguage() {
   document.getElementById('navSkillsFetch').textContent = dict.navSkillsFetch;
   document.getElementById('navSkills').textContent = dict.navSkills;
   document.getElementById('navGames').textContent = dict.navGames;
+  document.getElementById('navUCard').textContent = dict.navUCard;
   document.getElementById('navOrders').textContent = dict.navOrders;
   document.getElementById('navNchatUsers').textContent = dict.navNchatUsers;
   document.getElementById('navNexaEscrowUsers').textContent = dict.navNexaEscrowUsers;
@@ -1094,6 +1179,8 @@ function applyLanguage() {
   document.getElementById('importTitle').textContent = dict.importTitle;
   document.getElementById('importLabel').childNodes[0].textContent = dict.importLabel;
   document.getElementById('importBtn').textContent = dict.importBtn;
+  bulkApprovePendingBtn.textContent = dict.bulkApprovePending;
+  bulkRejectPendingBtn.textContent = dict.bulkRejectPending;
   document.getElementById('siteConfigTitle').textContent = dict.siteConfigTitle;
   document.getElementById('siteTitleLabel').childNodes[0].textContent = dict.siteTitleLabel;
   document.getElementById('siteSubtitleZhLabel').childNodes[0].textContent = dict.siteSubtitleZhLabel;
@@ -1161,6 +1248,23 @@ function applyLanguage() {
   document.getElementById('skillsCreateCategoryLabel').childNodes[0].textContent = dict.skillsCreateCategoryLabel;
   document.getElementById('skillsCreateUrlLabel').childNodes[0].textContent = dict.skillsCreateUrlLabel;
   document.getElementById('skillsCreateBtn').textContent = dict.skillsCreateBtn;
+  document.getElementById('uCardTitle').textContent = dict.uCardTitle;
+  uCardNavPlatformAdd.textContent = dict.uCardPlatformAddBtn;
+  uCardNavPlatformList.textContent = dict.uCardPlatformListTitle;
+  uCardNavCardAdd.textContent = dict.uCardAddBtn;
+  uCardNavCardList.textContent = dict.uCardListTitle;
+  document.getElementById('uCardPlatformTitle').textContent = dict.uCardPlatformTitle;
+  document.getElementById('uCardPlatformListTitle').textContent = dict.uCardPlatformListTitle;
+  document.getElementById('uCardPlatformNameLabel').childNodes[0].textContent = dict.uCardPlatformNameLabel;
+  document.getElementById('uCardPlatformSortLabel').childNodes[0].textContent = dict.uCardPlatformSortLabel;
+  document.getElementById('uCardPlatformAddBtn').textContent = dict.uCardPlatformAddBtn;
+  document.getElementById('uCardAddTitle').textContent = dict.uCardAddTitle;
+  document.getElementById('uCardNameLabel').childNodes[0].textContent = dict.uCardNameLabel;
+  document.getElementById('uCardBinLabel').childNodes[0].textContent = dict.uCardBinLabel;
+  document.getElementById('uCardSortLabel').childNodes[0].textContent = dict.uCardSortLabel;
+  document.getElementById('uCardPlatformsLabel').textContent = dict.uCardPlatformsLabel;
+  document.getElementById('uCardAddBtn').textContent = dict.uCardAddBtn;
+  document.getElementById('uCardListTitle').textContent = dict.uCardListTitle;
   document.getElementById('passwordTitle').textContent = dict.passwordTitle;
   document.getElementById('visitStatsTitle').textContent = dict.visitStatsTitle;
   document.getElementById('visitStatsRefreshBtn').textContent = dict.visitStatsRefreshBtn;
@@ -1196,6 +1300,9 @@ function applyLanguage() {
   renderCategoryList();
   renderTutorialList([]);
   renderGamesAdminList(gamesItems);
+  renderUCardPlatforms();
+  renderUCards();
+  renderUCardSubView();
   if (visitStatsCache) renderVisitStats(visitStatsCache);
   setView(currentView);
 }
@@ -1215,6 +1322,7 @@ function setView(view) {
   adminSkillsFetchSection.classList.toggle('hidden', view !== 'skills-fetch');
   adminSkillsSection.classList.toggle('hidden', view !== 'skills');
   adminGamesSection.classList.toggle('hidden', view !== 'games');
+  adminUCardSection.classList.toggle('hidden', view !== 'u-card');
   adminOrdersSection.classList.toggle('hidden', !orderViews.includes(view));
   adminPMiningOrdersSection.classList.toggle('hidden', view !== 'p-mining-orders');
   adminNexaTipOrdersSection.classList.toggle('hidden', view !== 'nexa-tip-orders');
@@ -1227,6 +1335,7 @@ function setView(view) {
   adminPasswordSection.classList.toggle('hidden', view !== 'password');
   adminListSection.classList.toggle('hidden', view !== 'pending' && view !== 'approved');
   adminSearchToolbar.classList.toggle('hidden', view !== 'approved');
+  pendingBulkActions.classList.toggle('hidden', view !== 'pending');
 
   if (view === 'add' || view === 'category-add' || view === 'category-list') {
     loadAdminCategories();
@@ -1252,6 +1361,9 @@ function setView(view) {
   }
   if (view === 'games') {
     loadGamesList();
+  }
+  if (view === 'u-card') {
+    loadUCardAdmin();
   }
   if (view === 'p-mining-orders') {
     loadPMiningOrdersList();
@@ -2071,7 +2183,7 @@ async function loadGamesList() {
   gamesMessage.className = 'message';
   const result = await requestTutorialJson(['/api/admin/games'], { method: 'GET' });
   if (!result.res) {
-    gamesMessage.textContent = '当前运行中的后端还没有响应游戏接口，请重启后端后再打开游戏列表。';
+    gamesMessage.textContent = '当前运行中的后端还没有响应游戏与工具接口，请重启后端后再打开游戏与工具列表。';
     gamesMessage.className = 'message error';
     return;
   }
@@ -2202,6 +2314,377 @@ window.saveGameEdit = async function saveGameEdit(id) {
   editingGameId = null;
   await loadGamesList();
 };
+
+function renderUCardPlatforms() {
+  if (!uCardPlatformList || !uCardPlatformCheckboxes) return;
+  if (!uCardPlatformItems.length) {
+    uCardPlatformList.innerHTML = `<p class="empty">${escapeHtml(t('uCardNoPlatforms'))}</p>`;
+    uCardPlatformCheckboxes.innerHTML = `<p class="small">${escapeHtml(t('uCardNoPlatforms'))}</p>`;
+    return;
+  }
+
+  uCardPlatformList.innerHTML = uCardPlatformItems
+    .map((platform) => {
+      const isEditing = editingUCardPlatformId === platform.id;
+      return `
+        <article class="review-card">
+          ${
+            isEditing
+              ? `<div class="inline-edit-grid">
+                  <label class="small">${escapeHtml(t('uCardPlatformNameLabel'))}
+                    <input id="uCardPlatformName-${platform.id}" type="text" value="${escapeHtml(platform.name)}" />
+                  </label>
+                  <label class="small">${escapeHtml(t('sort'))}
+                    <input id="uCardPlatformSort-${platform.id}" type="number" value="${Number(platform.sort_order || 0)}" />
+                  </label>
+                  <label class="small">${escapeHtml(t('gameEnabledLabel'))}
+                    <select id="uCardPlatformEnabled-${platform.id}">
+                      <option value="1" ${platform.is_enabled ? 'selected' : ''}>${escapeHtml(t('enabledYes'))}</option>
+                      <option value="0" ${platform.is_enabled ? '' : 'selected'}>${escapeHtml(t('enabledNo'))}</option>
+                    </select>
+                  </label>
+                </div>`
+              : `<div class="u-card-admin-row-head">
+                  <h3>${escapeHtml(platform.name)}</h3>
+                  <div class="review-actions u-card-admin-row-actions">
+                    <button type="button" onclick="editUCardPlatform(${platform.id})">${escapeHtml(t('edit'))}</button>
+                    <button type="button" class="danger" onclick="deleteUCardPlatform(${platform.id})">${escapeHtml(t('delete'))}</button>
+                  </div>
+                </div>
+                 <p class="small">${escapeHtml(t('sort'))}：${Number(platform.sort_order || 0)}</p>
+                 <p class="small">${escapeHtml(t('gameEnabledLabel'))}：${escapeHtml(platform.is_enabled ? t('enabledYes') : t('enabledNo'))}</p>`
+          }
+          ${
+            isEditing
+              ? `<div class="inline-edit-actions">
+                  <button type="button" onclick="saveUCardPlatformEdit(${platform.id})">${escapeHtml(t('save'))}</button>
+                  <button type="button" onclick="cancelUCardPlatformEdit()">${escapeHtml(t('cancel'))}</button>
+                </div>`
+              : ''
+          }
+        </article>
+      `;
+    })
+    .join('');
+
+  uCardPlatformCheckboxes.innerHTML = uCardPlatformItems
+    .filter((platform) => Number(platform.is_enabled || 0))
+    .map((platform) => renderUCardPlatformCheckbox(platform, false))
+    .join('');
+}
+
+function renderUCardPlatformCheckbox(platform, isChecked) {
+  return `
+    <label class="admin-checkbox">
+      <input type="checkbox" name="platformIds" value="${Number(platform.id)}" ${isChecked ? 'checked' : ''} />
+      <span>${escapeHtml(platform.name)}</span>
+    </label>
+  `;
+}
+
+function renderUCards() {
+  if (!uCardList) return;
+  if (!uCardItems.length) {
+    uCardList.innerHTML = `<p class="empty">${escapeHtml(t('uCardNoCards'))}</p>`;
+    return;
+  }
+
+  uCardList.innerHTML = uCardItems
+    .map((card) => {
+      const platforms = Array.isArray(card.platforms) ? card.platforms : [];
+      const platformNames = platforms.map((item) => item.name).filter(Boolean);
+      const selectedPlatformIds = new Set(platforms.map((item) => Number(item.id)).filter(Boolean));
+      const isEditing = editingUCardId === card.id;
+      return `
+        <article class="review-card">
+          ${
+            isEditing
+              ? `<div class="inline-edit-grid">
+                  <label class="small">${escapeHtml(t('uCardNameLabel'))}
+                    <input id="uCardName-${card.id}" type="text" value="${escapeHtml(card.name || '')}" />
+                  </label>
+                  <label class="small">${escapeHtml(t('uCardBinLabel'))}
+                    <input id="uCardBin-${card.id}" type="text" inputmode="numeric" value="${escapeHtml(card.bin || '')}" />
+                  </label>
+                  <label class="small">${escapeHtml(t('sort'))}
+                    <input id="uCardSort-${card.id}" type="number" value="${Number(card.sort_order || 0)}" />
+                  </label>
+                  <label class="small">${escapeHtml(t('gameEnabledLabel'))}
+                    <select id="uCardEnabled-${card.id}">
+                      <option value="1" ${card.is_enabled ? 'selected' : ''}>${escapeHtml(t('enabledYes'))}</option>
+                      <option value="0" ${card.is_enabled ? '' : 'selected'}>${escapeHtml(t('enabledNo'))}</option>
+                    </select>
+                  </label>
+                  <div>
+                    <p class="small">${escapeHtml(t('uCardPlatformsLabel'))}</p>
+                    <div id="uCardEditPlatforms-${card.id}" class="admin-checkbox-grid">
+                      ${uCardPlatformItems
+                        .filter((platform) => Number(platform.is_enabled || 0) || selectedPlatformIds.has(Number(platform.id)))
+                        .map((platform) => renderUCardPlatformCheckbox(platform, selectedPlatformIds.has(Number(platform.id))))
+                        .join('')}
+                    </div>
+                  </div>
+                </div>`
+              : `<div class="u-card-admin-row-head">
+                  <h3>${escapeHtml(card.name)}</h3>
+                  <div class="review-actions u-card-admin-row-actions">
+                    <button type="button" onclick="editUCard(${card.id})">${escapeHtml(t('edit'))}</button>
+                    <button type="button" class="danger" onclick="deleteUCard(${card.id})">${escapeHtml(t('delete'))}</button>
+                  </div>
+                </div>
+                 <p class="small">${escapeHtml(t('uCardBinLabel'))}：${escapeHtml(card.bin || '')}</p>
+                 <p class="small">${escapeHtml(t('uCardPlatformsLabel'))}：${escapeHtml(platformNames.join('、') || '-')}</p>
+                 <p class="small">${escapeHtml(t('gameEnabledLabel'))}：${escapeHtml(card.is_enabled ? t('enabledYes') : t('enabledNo'))}</p>`
+          }
+          ${
+            isEditing
+              ? `<div class="inline-edit-actions">
+                  <button type="button" onclick="saveUCardEdit(${card.id})">${escapeHtml(t('save'))}</button>
+                  <button type="button" onclick="cancelUCardEdit()">${escapeHtml(t('cancel'))}</button>
+                </div>`
+              : ''
+          }
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function renderUCardSubView() {
+  if (!uCardPlatformAddSection || !uCardPlatformListSection || !uCardAddSection || !uCardListSection) return;
+  uCardPlatformAddSection.classList.toggle('hidden', uCardSubView !== 'platform-add');
+  uCardPlatformListSection.classList.toggle('hidden', uCardSubView !== 'platform-list');
+  uCardAddSection.classList.toggle('hidden', uCardSubView !== 'card-add');
+  uCardListSection.classList.toggle('hidden', uCardSubView !== 'card-list');
+}
+
+function setUCardSubView(view) {
+  uCardSubView = view;
+  renderUCardSubView();
+}
+
+async function loadUCardAdmin() {
+  if (!uCardMessage || !uCardPlatformMessage) return;
+  uCardMessage.textContent = '';
+  uCardPlatformMessage.textContent = '';
+
+  const [platformResult, cardResult] = await Promise.all([
+    requestTutorialJson(['/api/admin/u-card/platforms'], { method: 'GET' }),
+    requestTutorialJson(['/api/admin/u-card/cards'], { method: 'GET' })
+  ]);
+
+  if (platformResult.res?.status === 401 || cardResult.res?.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!platformResult.res || !platformResult.res.ok) {
+    uCardPlatformMessage.textContent = localizeApiError(platformResult.data?.error || t('operationFailed'));
+    uCardPlatformMessage.className = 'message error';
+    return;
+  }
+  if (!cardResult.res || !cardResult.res.ok) {
+    uCardMessage.textContent = localizeApiError(cardResult.data?.error || t('operationFailed'));
+    uCardMessage.className = 'message error';
+    return;
+  }
+
+  uCardPlatformItems = Array.isArray(platformResult.data?.items) ? platformResult.data.items : [];
+  uCardItems = Array.isArray(cardResult.data?.items) ? cardResult.data.items : [];
+  renderUCardPlatforms();
+  renderUCards();
+  renderUCardSubView();
+}
+
+window.editUCardPlatform = function editUCardPlatform(id) {
+  editingUCardPlatformId = id;
+  renderUCardPlatforms();
+};
+
+window.cancelUCardPlatformEdit = function cancelUCardPlatformEdit() {
+  editingUCardPlatformId = null;
+  renderUCardPlatforms();
+};
+
+window.saveUCardPlatformEdit = async function saveUCardPlatformEdit(id) {
+  const payload = {
+    name: String(document.getElementById(`uCardPlatformName-${id}`)?.value || '').trim(),
+    sortOrder: Number(document.getElementById(`uCardPlatformSort-${id}`)?.value || 0),
+    isEnabled: String(document.getElementById(`uCardPlatformEnabled-${id}`)?.value || '1') === '1' ? 1 : 0
+  };
+  uCardPlatformMessage.textContent = '';
+  uCardPlatformMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/u-card/platforms/${id}`], {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (result.res?.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res || !result.res.ok) {
+    uCardPlatformMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    uCardPlatformMessage.className = 'message error';
+    return;
+  }
+  uCardPlatformMessage.textContent = t('uCardPlatformSaved');
+  uCardPlatformMessage.className = 'message success';
+  editingUCardPlatformId = null;
+  await loadUCardAdmin();
+};
+
+window.deleteUCardPlatform = async function deleteUCardPlatform(id) {
+  if (!window.confirm(t('uCardPlatformDeleteConfirm'))) return;
+  uCardPlatformMessage.textContent = '';
+  uCardPlatformMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/u-card/platforms/${id}`], { method: 'DELETE' });
+  if (result.res?.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res || !result.res.ok) {
+    uCardPlatformMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    uCardPlatformMessage.className = 'message error';
+    return;
+  }
+  uCardPlatformMessage.textContent = t('uCardPlatformDeleted');
+  uCardPlatformMessage.className = 'message success';
+  editingUCardPlatformId = null;
+  await loadUCardAdmin();
+};
+
+window.editUCard = function editUCard(id) {
+  editingUCardId = id;
+  renderUCards();
+};
+
+window.cancelUCardEdit = function cancelUCardEdit() {
+  editingUCardId = null;
+  renderUCards();
+};
+
+window.saveUCardEdit = async function saveUCardEdit(id) {
+  const platformIds = Array.from(document.querySelectorAll(`#uCardEditPlatforms-${id} input[name="platformIds"]:checked`))
+    .map((input) => Number(input.value))
+    .filter(Boolean);
+  const payload = {
+    name: String(document.getElementById(`uCardName-${id}`)?.value || '').trim(),
+    bin: String(document.getElementById(`uCardBin-${id}`)?.value || '').trim(),
+    sortOrder: Number(document.getElementById(`uCardSort-${id}`)?.value || 0),
+    isEnabled: String(document.getElementById(`uCardEnabled-${id}`)?.value || '1') === '1' ? 1 : 0,
+    platformIds
+  };
+  uCardMessage.textContent = '';
+  uCardMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/u-card/cards/${id}`], {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (result.res?.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res || !result.res.ok) {
+    uCardMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    uCardMessage.className = 'message error';
+    return;
+  }
+  uCardMessage.textContent = t('uCardSaved');
+  uCardMessage.className = 'message success';
+  editingUCardId = null;
+  await loadUCardAdmin();
+};
+
+window.deleteUCard = async function deleteUCard(id) {
+  if (!window.confirm(t('uCardDeleteConfirm'))) return;
+  uCardMessage.textContent = '';
+  uCardMessage.className = 'message';
+  const result = await requestTutorialJson([`/api/admin/u-card/cards/${id}`], { method: 'DELETE' });
+  if (result.res?.status === 401) {
+    showLogin();
+    return;
+  }
+  if (!result.res || !result.res.ok) {
+    uCardMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+    uCardMessage.className = 'message error';
+    return;
+  }
+  uCardMessage.textContent = t('uCardDeleted');
+  uCardMessage.className = 'message success';
+  editingUCardId = null;
+  await loadUCardAdmin();
+};
+
+if (uCardPlatformForm) {
+  uCardPlatformForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(uCardPlatformForm);
+    uCardPlatformMessage.textContent = '';
+    uCardPlatformMessage.className = 'message';
+    const result = await requestTutorialJson(['/api/admin/u-card/platforms'], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: String(formData.get('name') || '').trim(),
+        sortOrder: Number(formData.get('sortOrder') || 0)
+      })
+    });
+    if (result.res?.status === 401) {
+      showLogin();
+      return;
+    }
+    if (!result.res || !result.res.ok) {
+      uCardPlatformMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+      uCardPlatformMessage.className = 'message error';
+      return;
+    }
+    uCardPlatformMessage.textContent = t('uCardPlatformCreated');
+    uCardPlatformMessage.className = 'message success';
+    uCardPlatformForm.reset();
+    await loadUCardAdmin();
+  });
+}
+
+if (uCardForm) {
+  uCardForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(uCardForm);
+    const platformIds = Array.from(uCardPlatformCheckboxes.querySelectorAll('input[name="platformIds"]:checked'))
+      .map((input) => Number(input.value))
+      .filter(Boolean);
+    uCardMessage.textContent = '';
+    uCardMessage.className = 'message';
+    const result = await requestTutorialJson(['/api/admin/u-card/cards'], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: String(formData.get('name') || '').trim(),
+        bin: String(formData.get('bin') || '').trim(),
+        sortOrder: Number(formData.get('sortOrder') || 0),
+        platformIds
+      })
+    });
+    if (result.res?.status === 401) {
+      showLogin();
+      return;
+    }
+    if (!result.res || !result.res.ok) {
+      uCardMessage.textContent = localizeApiError(result.data?.error || t('operationFailed'));
+      uCardMessage.className = 'message error';
+      return;
+    }
+    uCardMessage.textContent = t('uCardCreated');
+    uCardMessage.className = 'message success';
+    uCardForm.reset();
+    await loadUCardAdmin();
+  });
+}
+
+if (uCardNavPlatformAdd) uCardNavPlatformAdd.addEventListener('click', () => setUCardSubView('platform-add'));
+if (uCardNavPlatformList) uCardNavPlatformList.addEventListener('click', () => setUCardSubView('platform-list'));
+if (uCardNavCardAdd) uCardNavCardAdd.addEventListener('click', () => setUCardSubView('card-add'));
+if (uCardNavCardList) uCardNavCardList.addEventListener('click', () => setUCardSubView('card-list'));
 
 function formatTime(ms) {
   const n = Number(ms);
@@ -3077,6 +3560,39 @@ window.rejectSite = async function rejectSite(id) {
   loadList(currentStatus);
 };
 
+async function bulkReviewPendingSites(action) {
+  const isApprove = action === 'approve';
+  const confirmText = isApprove ? t('bulkApprovePendingConfirm') : t('bulkRejectPendingConfirm');
+  if (!window.confirm(confirmText)) return;
+
+  const note = isApprove ? '' : (prompt(t('rejectPrompt')) || '');
+  const res = await fetch(isApprove ? '/api/admin/sites/bulk-approve' : '/api/admin/sites/bulk-reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(isApprove ? {} : { note }),
+    credentials: 'include'
+  });
+  if (res.status === 401) {
+    showLogin();
+    return;
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    alert(localizeApiError(data.error || t('operationFailed')));
+    return;
+  }
+  alert(isApprove ? t('bulkApprovePendingDone')(Number(data.updated || 0)) : t('bulkRejectPendingDone')(Number(data.updated || 0)));
+  loadList('pending');
+}
+
+if (bulkApprovePendingBtn) {
+  bulkApprovePendingBtn.addEventListener('click', () => bulkReviewPendingSites('approve'));
+}
+
+if (bulkRejectPendingBtn) {
+  bulkRejectPendingBtn.addEventListener('click', () => bulkReviewPendingSites('reject'));
+}
+
 window.editSite = async function editSite(id) {
   // Keep old onclick hook, but switch to inline edit mode (no prompt popup).
   try {
@@ -3918,6 +4434,7 @@ document.getElementById('navTutorialAdd').addEventListener('click', () => {
 document.getElementById('navSkillsFetch').addEventListener('click', () => setView('skills-fetch'));
 document.getElementById('navSkills').addEventListener('click', () => setView('skills'));
 document.getElementById('navGames').addEventListener('click', () => setView('games'));
+document.getElementById('navUCard').addEventListener('click', () => setView('u-card'));
 document.getElementById('navOrders').addEventListener('click', () => setView('orders'));
 document.getElementById('ordersPMiningBtn').addEventListener('click', () => setView('p-mining-orders'));
 document.getElementById('ordersNexaTipBtn').addEventListener('click', () => setView('nexa-tip-orders'));

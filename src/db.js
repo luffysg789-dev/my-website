@@ -798,6 +798,17 @@ db.exec(`
 
 const DEFAULT_GAMES_CATALOG = [
   {
+    slug: 'u-card-query',
+    name: 'u卡场景查询',
+    description: '点击平台，查询支持该支付场景的 U 卡和卡头。',
+    cover_image: '',
+    secondary_image: '',
+    sound_file: '',
+    background_music_file: '',
+    is_enabled: 1,
+    sort_order: 58
+  },
+  {
     slug: 'nchat',
     name: 'Nchat',
     description: 'Nexa App 内的轻量聊天 H5，支持授权登录、搜索加好友与实时单聊。',
@@ -970,6 +981,78 @@ function ensureDefaultGamesCatalog() {
 }
 
 ensureDefaultGamesCatalog();
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS u_card_platforms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS u_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    bin TEXT NOT NULL DEFAULT '',
+    is_enabled INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS u_card_platform_support (
+    card_id INTEGER NOT NULL,
+    platform_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY(card_id, platform_id),
+    FOREIGN KEY(card_id) REFERENCES u_cards(id) ON DELETE CASCADE,
+    FOREIGN KEY(platform_id) REFERENCES u_card_platforms(id) ON DELETE CASCADE
+  );
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_u_card_platforms_enabled_sort
+  ON u_card_platforms(is_enabled DESC, sort_order ASC, id ASC);
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_u_cards_enabled_sort
+  ON u_cards(is_enabled DESC, sort_order DESC, updated_at DESC, id DESC);
+`);
+
+const DEFAULT_U_CARD_PLATFORMS = [
+  'ChatGPT',
+  'Anthropic',
+  'Grok',
+  'Gemini',
+  'Codex',
+  'Google',
+  'Amazon',
+  'Telegram',
+  'PlayStation',
+  'Midjourney',
+  'eBay',
+  'Notion',
+  'Tiktok',
+  'X',
+  'SUNO',
+  'Sora'
+];
+
+const insertUCardPlatform = db.prepare(`
+  INSERT OR IGNORE INTO u_card_platforms (name, sort_order, is_enabled, updated_at)
+  VALUES (?, ?, 1, datetime('now'))
+`);
+const seedUCardPlatforms = db.transaction((items) => {
+  items.forEach((name, index) => insertUCardPlatform.run(name, index + 1));
+});
+seedUCardPlatforms(DEFAULT_U_CARD_PLATFORMS);
 
 db.prepare(`
   UPDATE games_catalog

@@ -468,6 +468,9 @@ button.danger { background: var(--danger); }
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .site-card {
@@ -595,11 +598,22 @@ button.danger { background: var(--danger); }
 
 .review-card h3 {
   margin: 0 0 8px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .review-card a {
   color: var(--brand-2);
   text-decoration: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.review-card p {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .site-row {
@@ -676,10 +690,16 @@ button.danger { background: var(--danger); }
   padding: 20px 0 40px;
 }
 
+#panelCard {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .admin-panel-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+  min-width: 0;
 }
 
 .admin-nav {
@@ -687,12 +707,21 @@ button.danger { background: var(--danger); }
   flex-wrap: wrap;
   gap: 8px;
   align-content: start;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .admin-nav button {
   width: auto;
   min-width: 120px;
-  flex: 0 0 auto;
+  max-width: 180px;
+  flex: 1 1 120px;
+}
+
+.admin-main,
+.admin-list {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .admin-add-form {
@@ -703,9 +732,74 @@ button.danger { background: var(--danger); }
 
 .admin-add-form button { grid-column: 1 / -1; }
 
+.admin-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.admin-checkbox input {
+  width: auto;
+}
+
+.u-card-admin-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.u-card-admin-row-head h3 {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.u-card-admin-row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.u-card-admin-row-actions button {
+  width: auto;
+  min-width: 64px;
+  padding: 8px 12px;
+}
+
 .admin-list {
   display: grid;
   gap: 10px;
+}
+
+.admin-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-section-title-row h2 {
+  margin: 0;
+}
+
+.admin-section-title-row .toolbar {
+  margin: 0;
 }
 
 .visit-stats-grid {
