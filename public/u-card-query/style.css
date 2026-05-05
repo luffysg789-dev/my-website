@@ -184,7 +184,15 @@ body {
   letter-spacing: 0;
 }
 
-.bin {
+.u-card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bin,
+.issuer-region {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
@@ -194,6 +202,12 @@ body {
   color: #234832;
   font-weight: 800;
   letter-spacing: 0;
+}
+
+.issuer-region {
+  background: #f6f8f6;
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .empty-state,

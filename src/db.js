@@ -998,12 +998,18 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     bin TEXT NOT NULL DEFAULT '',
+    issuer_region TEXT NOT NULL DEFAULT '',
     is_enabled INTEGER NOT NULL DEFAULT 1,
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
+
+const hasUCardIssuerRegion = db.prepare("SELECT 1 FROM pragma_table_info('u_cards') WHERE name = 'issuer_region'").get();
+if (!hasUCardIssuerRegion) {
+  db.exec("ALTER TABLE u_cards ADD COLUMN issuer_region TEXT NOT NULL DEFAULT ''");
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS u_card_platform_support (

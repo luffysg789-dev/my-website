@@ -2962,7 +2962,7 @@ const selectUCardPlatformByIdStmt = db.prepare(`
   WHERE id = ?
 `);
 const listAdminUCardsStmt = db.prepare(`
-  SELECT c.id, c.name, c.bin, c.is_enabled, c.sort_order, c.created_at, c.updated_at,
+  SELECT c.id, c.name, c.bin, c.issuer_region, c.is_enabled, c.sort_order, c.created_at, c.updated_at,
          COALESCE(
            json_group_array(
              CASE
@@ -2979,7 +2979,7 @@ const listAdminUCardsStmt = db.prepare(`
   ORDER BY c.sort_order DESC, c.updated_at DESC, c.id DESC
 `);
 const listUCardsByPlatformStmt = db.prepare(`
-  SELECT c.id, c.name, c.bin
+  SELECT c.id, c.name, c.bin, c.issuer_region
   FROM u_cards c
   INNER JOIN u_card_platform_support s ON s.card_id = c.id
   INNER JOIN u_card_platforms p ON p.id = s.platform_id
@@ -4294,7 +4294,8 @@ function formatPublicUCard(row = {}) {
   return {
     id: Number(row.id || 0) || 0,
     name: String(row.name || '').trim(),
-    bin: String(row.bin || '').trim()
+    bin: String(row.bin || '').trim(),
+    issuer_region: String(row.issuer_region || '').trim()
   };
 }
 
@@ -4313,6 +4314,7 @@ function formatAdminUCard(row = {}) {
     id: Number(row.id || 0) || 0,
     name: String(row.name || '').trim(),
     bin: String(row.bin || '').trim(),
+    issuer_region: String(row.issuer_region || '').trim(),
     is_enabled: Number(row.is_enabled || 0) ? 1 : 0,
     sort_order: Number(row.sort_order || 0) || 0,
     platforms: parseUCardPlatformsJson(row.platforms_json),
@@ -4330,6 +4332,11 @@ function normalizeUCardPlatformIds(value) {
         .filter((id) => Number.isInteger(id) && id > 0)
     )
   );
+}
+
+function normalizeUCardIssuerRegion(value) {
+  const region = String(value || '').trim();
+  return ['美国', '香港', '新加坡'].includes(region) ? region : '';
 }
 
 app.get('/api/u-card/platforms', (_req, res) => {
@@ -9585,6 +9592,7 @@ app.get('/api/admin/u-card/cards', requireAdmin, (_req, res) => {
 app.post('/api/admin/u-card/cards', requireAdmin, (req, res) => {
   const name = String(req.body?.name || '').trim();
   const bin = String(req.body?.bin || '').replace(/\s+/g, '').trim();
+  const issuerRegion = normalizeUCardIssuerRegion(req.body?.issuerRegion ?? req.body?.issuer_region);
   const platformIds = normalizeUCardPlatformIds(req.body?.platformIds ?? req.body?.platform_ids);
   const sortOrder = Number.isFinite(Number(req.body?.sortOrder ?? req.body?.sort_order))
     ? Number(req.body?.sortOrder ?? req.body?.sort_order)
@@ -9604,10 +9612,10 @@ app.post('/api/admin/u-card/cards', requireAdmin, (req, res) => {
   const createCard = db.transaction(() => {
     const cardResult = db
       .prepare(`
-        INSERT INTO u_cards (name, bin, is_enabled, sort_order, updated_at)
-        VALUES (?, ?, ?, ?, datetime('now'))
+        INSERT INTO u_cards (name, bin, issuer_region, is_enabled, sort_order, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
       `)
-      .run(name, bin, isEnabled, sortOrder);
+      .run(name, bin, issuerRegion, isEnabled, sortOrder);
     const cardId = Number(cardResult.lastInsertRowid);
     const insertSupport = db.prepare(`
       INSERT OR IGNORE INTO u_card_platform_support (card_id, platform_id)
@@ -9624,6 +9632,7 @@ app.post('/api/admin/u-card/cards', requireAdmin, (req, res) => {
       id: cardId,
       name,
       bin,
+      issuer_region: issuerRegion,
       is_enabled: isEnabled,
       sort_order: sortOrder,
       platforms: existingPlatforms.map(formatUCardPlatform)
@@ -9635,6 +9644,7 @@ app.put('/api/admin/u-card/cards/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const name = String(req.body?.name || '').trim();
   const bin = String(req.body?.bin || '').replace(/\s+/g, '').trim();
+  const issuerRegion = normalizeUCardIssuerRegion(req.body?.issuerRegion ?? req.body?.issuer_region);
   const platformIds = normalizeUCardPlatformIds(req.body?.platformIds ?? req.body?.platform_ids);
   const sortOrder = Number.isFinite(Number(req.body?.sortOrder ?? req.body?.sort_order))
     ? Number(req.body?.sortOrder ?? req.body?.sort_order)
@@ -9655,10 +9665,10 @@ app.put('/api/admin/u-card/cards/:id', requireAdmin, (req, res) => {
     const result = db
       .prepare(`
         UPDATE u_cards
-        SET name = ?, bin = ?, is_enabled = ?, sort_order = ?, updated_at = datetime('now')
+        SET name = ?, bin = ?, issuer_region = ?, is_enabled = ?, sort_order = ?, updated_at = datetime('now')
         WHERE id = ?
       `)
-      .run(name, bin, isEnabled, sortOrder, id);
+      .run(name, bin, issuerRegion, isEnabled, sortOrder, id);
     if (!result.changes) return false;
 
     db.prepare('DELETE FROM u_card_platform_support WHERE card_id = ?').run(id);
@@ -9678,6 +9688,7 @@ app.put('/api/admin/u-card/cards/:id', requireAdmin, (req, res) => {
       id,
       name,
       bin,
+      issuer_region: issuerRegion,
       is_enabled: isEnabled,
       sort_order: sortOrder,
       platforms: existingPlatforms.map(formatUCardPlatform)

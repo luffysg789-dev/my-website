@@ -132,7 +132,7 @@ test('U card query seeds default platforms and returns cards for a selected plat
     const created = await harness.request(
       'POST',
       '/api/admin/u-card/cards',
-      { name: 'Wild AI Card', bin: '438888', platformIds: [chatgpt.id, sora.id] },
+      { name: 'Wild AI Card', bin: '438888', issuerRegion: '美国', platformIds: [chatgpt.id, sora.id] },
       cookies
     );
     assert.equal(created.statusCode, 200);
@@ -144,7 +144,8 @@ test('U card query seeds default platforms and returns cards for a selected plat
       {
         id: created.body.item.id,
         name: 'Wild AI Card',
-        bin: '438888'
+        bin: '438888',
+        issuer_region: '美国'
       }
     ]);
   } finally {
@@ -175,7 +176,7 @@ test('admin can edit U card platforms and cards', async () => {
     const created = await harness.request(
       'POST',
       '/api/admin/u-card/cards',
-      { name: 'Starter Card', bin: '411111', platformIds: [sora.id] },
+      { name: 'Starter Card', bin: '411111', issuerRegion: '香港', platformIds: [sora.id] },
       cookies
     );
     assert.equal(created.statusCode, 200);
@@ -183,12 +184,13 @@ test('admin can edit U card platforms and cards', async () => {
     const cardUpdate = await harness.request(
       'PUT',
       `/api/admin/u-card/cards/${created.body.item.id}`,
-      { name: 'Pro Card', bin: '522222', platformIds: [telegram.id], sortOrder: 12, isEnabled: 1 },
+      { name: 'Pro Card', bin: '522222', issuerRegion: '新加坡', platformIds: [telegram.id], sortOrder: 12, isEnabled: 1 },
       cookies
     );
     assert.equal(cardUpdate.statusCode, 200);
     assert.equal(cardUpdate.body.item.name, 'Pro Card');
     assert.equal(cardUpdate.body.item.bin, '522222');
+    assert.equal(cardUpdate.body.item.issuer_region, '新加坡');
     assert.deepEqual(cardUpdate.body.item.platforms.map((item) => item.name), ['Telegram']);
 
     const oldLookup = await harness.request('GET', `/api/u-card/platforms/${sora.id}/cards`);
@@ -197,7 +199,7 @@ test('admin can edit U card platforms and cards', async () => {
 
     const newLookup = await harness.request('GET', `/api/u-card/platforms/${telegram.id}/cards`);
     assert.equal(newLookup.statusCode, 200);
-    assert.deepEqual(newLookup.body.items, [{ id: created.body.item.id, name: 'Pro Card', bin: '522222' }]);
+    assert.deepEqual(newLookup.body.items, [{ id: created.body.item.id, name: 'Pro Card', bin: '522222', issuer_region: '新加坡' }]);
   } finally {
     harness.cleanup();
   }

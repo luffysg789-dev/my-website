@@ -30,7 +30,8 @@ const I18N = {
     failed: '查询失败',
     requestFailed: '请求失败',
     loadFailed: '加载失败',
-    binPrefix: '卡头'
+    binPrefix: '卡头',
+    issuerRegionLabel: '发行地'
   },
   en: {
     docTitle: 'U Card Scenario Query',
@@ -48,7 +49,8 @@ const I18N = {
     failed: 'Search failed',
     requestFailed: 'Request failed',
     loadFailed: 'Load failed',
-    binPrefix: 'BIN'
+    binPrefix: 'BIN',
+    issuerRegionLabel: 'Issued in'
   }
 };
 
@@ -57,6 +59,8 @@ const EXACT_TRANSLATIONS = new Map([
   ['美国粉卡', 'US Pink Card'],
   ['粉卡', 'Pink Card'],
   ['美国', 'US'],
+  ['香港', 'Hong Kong'],
+  ['新加坡', 'Singapore'],
   ['虚拟卡', 'Virtual Card'],
   ['实体卡', 'Physical Card']
 ]);
@@ -165,7 +169,14 @@ function renderCards(platform, items) {
     .map((card) => `
       <article class="u-card-item">
         <h3>${escapeHtml(displayName(card.name))}</h3>
-        <span class="bin">${escapeHtml(t('binPrefix'))} ${escapeHtml(card.bin)}</span>
+        <div class="u-card-meta-row">
+          <span class="bin">${escapeHtml(t('binPrefix'))} ${escapeHtml(card.bin)}</span>
+          ${
+            card.issuer_region
+              ? `<span class="issuer-region">${escapeHtml(t('issuerRegionLabel'))} ${escapeHtml(displayName(card.issuer_region))}</span>`
+              : ''
+          }
+        </div>
       </article>
     `)
     .join('');

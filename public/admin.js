@@ -356,6 +356,8 @@ const texts = {
     uCardAddTitle: '新增卡',
     uCardNameLabel: '卡名',
     uCardBinLabel: '卡头数字',
+    uCardIssuerRegionLabel: '发行地',
+    uCardIssuerRegionNone: '不选择',
     uCardSortLabel: '排序',
     uCardPlatformsLabel: '支持场景平台',
     uCardAddBtn: '新增卡',
@@ -659,6 +661,8 @@ const texts = {
     uCardAddTitle: 'Add Card',
     uCardNameLabel: 'Card Name',
     uCardBinLabel: 'Card BIN',
+    uCardIssuerRegionLabel: 'Issue Region',
+    uCardIssuerRegionNone: 'None',
     uCardSortLabel: 'Sort',
     uCardPlatformsLabel: 'Supported Platforms',
     uCardAddBtn: 'Add Card',
@@ -1261,6 +1265,8 @@ function applyLanguage() {
   document.getElementById('uCardAddTitle').textContent = dict.uCardAddTitle;
   document.getElementById('uCardNameLabel').childNodes[0].textContent = dict.uCardNameLabel;
   document.getElementById('uCardBinLabel').childNodes[0].textContent = dict.uCardBinLabel;
+  document.getElementById('uCardIssuerRegionLabel').childNodes[0].textContent = dict.uCardIssuerRegionLabel;
+  document.querySelector('#uCardIssuerRegionLabel option[value=""]').textContent = dict.uCardIssuerRegionNone;
   document.getElementById('uCardSortLabel').childNodes[0].textContent = dict.uCardSortLabel;
   document.getElementById('uCardPlatformsLabel').textContent = dict.uCardPlatformsLabel;
   document.getElementById('uCardAddBtn').textContent = dict.uCardAddBtn;
@@ -2382,6 +2388,18 @@ function renderUCardPlatformCheckbox(platform, isChecked) {
   `;
 }
 
+function renderUCardIssuerRegionOptions(selectedValue = '') {
+  const selected = String(selectedValue || '').trim();
+  return [
+    ['', t('uCardIssuerRegionNone')],
+    ['美国', '美国'],
+    ['香港', '香港'],
+    ['新加坡', '新加坡']
+  ]
+    .map(([value, label]) => `<option value="${escapeHtml(value)}" ${selected === value ? 'selected' : ''}>${escapeHtml(label)}</option>`)
+    .join('');
+}
+
 function renderUCards() {
   if (!uCardList) return;
   if (!uCardItems.length) {
@@ -2405,6 +2423,11 @@ function renderUCards() {
                   </label>
                   <label class="small">${escapeHtml(t('uCardBinLabel'))}
                     <input id="uCardBin-${card.id}" type="text" inputmode="numeric" value="${escapeHtml(card.bin || '')}" />
+                  </label>
+                  <label class="small">${escapeHtml(t('uCardIssuerRegionLabel'))}
+                    <select id="uCardIssuerRegion-${card.id}">
+                      ${renderUCardIssuerRegionOptions(card.issuer_region)}
+                    </select>
                   </label>
                   <label class="small">${escapeHtml(t('sort'))}
                     <input id="uCardSort-${card.id}" type="number" value="${Number(card.sort_order || 0)}" />
@@ -2433,6 +2456,7 @@ function renderUCards() {
                   </div>
                 </div>
                  <p class="small">${escapeHtml(t('uCardBinLabel'))}：${escapeHtml(card.bin || '')}</p>
+                 <p class="small">${escapeHtml(t('uCardIssuerRegionLabel'))}：${escapeHtml(card.issuer_region || '-')}</p>
                  <p class="small">${escapeHtml(t('uCardPlatformsLabel'))}：${escapeHtml(platformNames.join('、') || '-')}</p>
                  <p class="small">${escapeHtml(t('gameEnabledLabel'))}：${escapeHtml(card.is_enabled ? t('enabledYes') : t('enabledNo'))}</p>`
           }
@@ -2570,6 +2594,7 @@ window.saveUCardEdit = async function saveUCardEdit(id) {
   const payload = {
     name: String(document.getElementById(`uCardName-${id}`)?.value || '').trim(),
     bin: String(document.getElementById(`uCardBin-${id}`)?.value || '').trim(),
+    issuerRegion: String(document.getElementById(`uCardIssuerRegion-${id}`)?.value || '').trim(),
     sortOrder: Number(document.getElementById(`uCardSort-${id}`)?.value || 0),
     isEnabled: String(document.getElementById(`uCardEnabled-${id}`)?.value || '1') === '1' ? 1 : 0,
     platformIds
@@ -2661,6 +2686,7 @@ if (uCardForm) {
       body: JSON.stringify({
         name: String(formData.get('name') || '').trim(),
         bin: String(formData.get('bin') || '').trim(),
+        issuerRegion: String(formData.get('issuerRegion') || '').trim(),
         sortOrder: Number(formData.get('sortOrder') || 0),
         platformIds
       })

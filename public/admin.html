@@ -316,6 +316,14 @@
                 <form id="uCardForm" class="admin-add-form">
                   <label id="uCardNameLabel">卡名<input name="name" required /></label>
                   <label id="uCardBinLabel">卡头数字<input name="bin" inputmode="numeric" pattern="[0-9]{4,12}" required /></label>
+                  <label id="uCardIssuerRegionLabel">发行地
+                    <select name="issuerRegion">
+                      <option value="">不选择</option>
+                      <option value="美国">美国</option>
+                      <option value="香港">香港</option>
+                      <option value="新加坡">新加坡</option>
+                    </select>
+                  </label>
                   <label id="uCardSortLabel">排序<input name="sortOrder" type="number" value="0" /></label>
                   <div>
                     <p id="uCardPlatformsLabel" class="small">支持场景平台</p>
@@ -414,6 +422,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=20260319-02"></script>
+    <script src="/admin.js?v=20260319-03"></script>
   </body>
 </html>
