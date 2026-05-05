@@ -15,7 +15,7 @@ test('U card query page includes language toggle after platform count', () => {
   assert.match(html, /<span id="platformCount">0<\/span>[\s\S]*?<div class="lang-toggle"/);
   assert.match(html, /id="langZh"[\s\S]*data-lang="zh"[\s\S]*>中<\/button>/);
   assert.match(html, /id="langEn"[\s\S]*data-lang="en"[\s\S]*EN/);
-  assert.match(html, /\/u-card-query\/style\.css\?v=20260505-12/);
+  assert.match(html, /\/u-card-query\/style\.css\?v=20260506-01/);
   assert.match(html, /\/u-card-query\/script\.js\?v=20260505-05/);
 });
 
@@ -40,6 +40,7 @@ test('U card query CSS styles the language toggle compactly', () => {
   assert.match(css, /\.section-actions\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?gap:\s*8px;[\s\S]*?\}/);
   assert.match(css, /\.lang-toggle\s*\{[\s\S]*?border-radius:\s*999px;[\s\S]*?\}/);
   assert.match(css, /\.lang-toggle-btn\.active\s*\{[\s\S]*?background:\s*var\(--brand\);[\s\S]*?color:\s*#fff;[\s\S]*?\}/);
+  assert.match(css, /\.platform-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);[\s\S]*?\}/);
   assert.match(css, /\.issuer-region\s*\{[\s\S]*?background:\s*#f6f8f6;[\s\S]*?\}/);
 });
 
