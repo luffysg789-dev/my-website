@@ -82,6 +82,10 @@ body {
   min-width: 0;
 }
 
+.platform-panel {
+  touch-action: pan-y;
+}
+
 .section-head {
   display: flex;
   justify-content: space-between;

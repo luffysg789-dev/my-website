@@ -1,5 +1,6 @@
 const platformGrid = document.getElementById('platformGrid');
 const platformPager = document.getElementById('platformPager');
+const platformPanel = document.querySelector('.platform-panel');
 const platformCount = document.getElementById('platformCount');
 const platformSectionTitle = document.getElementById('platformSectionTitle');
 const resultTitle = document.getElementById('resultTitle');
@@ -14,8 +15,11 @@ let platforms = [];
 let activePlatform = null;
 let activeCards = [];
 let platformPage = 0;
+let swipeStartX = 0;
+let swipeStartY = 0;
 
 const PLATFORMS_PER_PAGE = 21;
+const SWIPE_MIN_DISTANCE = 48;
 
 const I18N = {
   zh: {
@@ -190,6 +194,14 @@ function renderPlatforms(items) {
       : '';
 }
 
+function changePlatformPage(delta) {
+  const totalPages = Math.max(1, Math.ceil(platforms.length / PLATFORMS_PER_PAGE));
+  const nextPage = Math.max(0, Math.min(platformPage + delta, totalPages - 1));
+  if (nextPage === platformPage) return;
+  platformPage = nextPage;
+  renderPlatforms(platforms);
+}
+
 function renderCards(platform, items) {
   resultTitle.textContent = platform ? t('supportedCardsTitle', displayPlatformName(platform.name)) : t('resultTitle');
   resultCount.textContent = items.length ? t('cardCount', items.length) : t('noResult');
@@ -277,9 +289,23 @@ platformPager.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-page-action]');
   if (!button || button.disabled) return;
   const action = button.dataset.pageAction;
-  platformPage += action === 'next' ? 1 : -1;
-  renderPlatforms(platforms);
+  changePlatformPage(action === 'next' ? 1 : -1);
 });
+
+platformPanel.addEventListener('touchstart', (event) => {
+  if (event.touches.length !== 1) return;
+  swipeStartX = event.touches[0].clientX;
+  swipeStartY = event.touches[0].clientY;
+}, { passive: true });
+
+platformPanel.addEventListener('touchend', (event) => {
+  if (!event.changedTouches.length) return;
+  const deltaX = event.changedTouches[0].clientX - swipeStartX;
+  const deltaY = event.changedTouches[0].clientY - swipeStartY;
+  if (Math.abs(deltaX) < SWIPE_MIN_DISTANCE || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
+  event.preventDefault();
+  changePlatformPage(deltaX < 0 ? 1 : -1);
+}, { passive: false });
 
 langZh.addEventListener('click', () => setLanguage('zh'));
 langEn.addEventListener('click', () => setLanguage('en'));

@@ -17,13 +17,14 @@ test('U card query page includes language toggle after platform count', () => {
   assert.match(html, /id="langEn"[\s\S]*data-lang="en"[\s\S]*EN/);
   assert.match(html, /id="platformPager" class="platform-pager"/);
   assert.match(html, /\/u-card-query\/style\.css\?v=20260506-02/);
-  assert.match(html, /\/u-card-query\/script\.js\?v=20260506-01/);
+  assert.match(html, /\/u-card-query\/script\.js\?v=20260506-02/);
 });
 
 test('U card query script translates fixed UI and selected results', () => {
   const js = fs.readFileSync(jsPath, 'utf8');
   assert.match(js, /currentLang = localStorage\.getItem\('uCardQueryLang'\) === 'en' \? 'en' : 'zh'/);
   assert.match(js, /const PLATFORMS_PER_PAGE = 21/);
+  assert.match(js, /const SWIPE_MIN_DISTANCE = 48/);
   assert.match(js, /function stripParenthetical\(value\)/);
   assert.match(js, /function displayPlatformName\(value\)/);
   assert.match(js, /selectPlatform:\s*'Select'/);
@@ -38,6 +39,10 @@ test('U card query script translates fixed UI and selected results', () => {
   assert.match(js, /<span class="bin">\$\{escapeHtml\(t\('binPrefix'\)\)\} \$\{escapeHtml\(card\.bin\)\}<\/span>/);
   assert.match(js, /<span class="issuer-region">\$\{escapeHtml\(t\('issuerRegionLabel'\)\)\} \$\{escapeHtml\(displayName\(card\.issuer_region\)\)\}<\/span>/);
   assert.match(js, /platformPager\.addEventListener\('click'/);
+  assert.match(js, /function changePlatformPage\(delta\)/);
+  assert.match(js, /platformPanel\.addEventListener\('touchstart'/);
+  assert.match(js, /platformPanel\.addEventListener\('touchend'/);
+  assert.match(js, /changePlatformPage\(deltaX < 0 \? 1 : -1\)/);
 });
 
 test('U card query CSS styles the language toggle compactly', () => {
@@ -46,6 +51,7 @@ test('U card query CSS styles the language toggle compactly', () => {
   assert.match(css, /\.lang-toggle\s*\{[\s\S]*?border-radius:\s*999px;[\s\S]*?\}/);
   assert.match(css, /\.lang-toggle-btn\.active\s*\{[\s\S]*?background:\s*var\(--brand\);[\s\S]*?color:\s*#fff;[\s\S]*?\}/);
   assert.match(css, /\.platform-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);[\s\S]*?\}/);
+  assert.match(css, /\.platform-panel\s*\{[\s\S]*?touch-action:\s*pan-y;[\s\S]*?\}/);
   assert.match(css, /\.platform-pager\s*\{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*center;[\s\S]*?\}/);
   assert.match(css, /\.issuer-region\s*\{[\s\S]*?background:\s*#f6f8f6;[\s\S]*?\}/);
 });
