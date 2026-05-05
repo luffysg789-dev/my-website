@@ -1,6 +1,7 @@
 const platformGrid = document.getElementById('platformGrid');
 const platformPager = document.getElementById('platformPager');
 const platformPanel = document.querySelector('.platform-panel');
+const platformSearch = document.getElementById('platformSearch');
 const platformCount = document.getElementById('platformCount');
 const platformSectionTitle = document.getElementById('platformSectionTitle');
 const resultTitle = document.getElementById('resultTitle');
@@ -24,7 +25,7 @@ const SWIPE_MIN_DISTANCE = 48;
 const I18N = {
   zh: {
     docTitle: 'u卡场景查询',
-    selectPlatform: '选择平台',
+    selectPlatform: '选择',
     platformCount: (count) => `${count} 个平台`,
     resultTitle: '支持的卡',
     supportedCardsTitle: (name) => `支持 ${name} 的卡`,
@@ -40,6 +41,7 @@ const I18N = {
     loadFailed: '加载失败',
     binPrefix: '卡头',
     issuerRegionLabel: '发行地',
+    searchPlaceholder: '搜索',
     prevPage: '上一页',
     nextPage: '下一页',
     pageInfo: (current, total) => `${current} / ${total}`
@@ -62,6 +64,7 @@ const I18N = {
     loadFailed: 'Load failed',
     binPrefix: 'BIN',
     issuerRegionLabel: 'Issued in',
+    searchPlaceholder: 'Search',
     prevPage: 'Prev',
     nextPage: 'Next',
     pageInfo: (current, total) => `${current} / ${total}`
@@ -146,6 +149,21 @@ function displayPlatformName(value) {
   return displayName(stripParenthetical(value));
 }
 
+function normalizeSearchText(value) {
+  return String(value || '').toLowerCase().trim();
+}
+
+function getFilteredPlatforms() {
+  const keyword = normalizeSearchText(platformSearch.value);
+  if (!keyword) return platforms;
+  return platforms.filter((platform) => {
+    const originalName = normalizeSearchText(platform.name);
+    const visibleName = normalizeSearchText(displayPlatformName(platform.name));
+    const strippedName = normalizeSearchText(stripParenthetical(platform.name));
+    return originalName.includes(keyword) || visibleName.includes(keyword) || strippedName.includes(keyword);
+  });
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replaceAll('&', '&amp;')
@@ -195,11 +213,12 @@ function renderPlatforms(items) {
 }
 
 function changePlatformPage(delta) {
-  const totalPages = Math.max(1, Math.ceil(platforms.length / PLATFORMS_PER_PAGE));
+  const filteredPlatforms = getFilteredPlatforms();
+  const totalPages = Math.max(1, Math.ceil(filteredPlatforms.length / PLATFORMS_PER_PAGE));
   const nextPage = Math.max(0, Math.min(platformPage + delta, totalPages - 1));
   if (nextPage === platformPage) return;
   platformPage = nextPage;
-  renderPlatforms(platforms);
+  renderPlatforms(filteredPlatforms);
 }
 
 function renderCards(platform, items) {
@@ -232,7 +251,7 @@ async function hydrateTranslations() {
     ...platforms.map((platform) => platform.name),
     ...activeCards.map((card) => card.name)
   ]);
-  renderPlatforms(platforms);
+  renderPlatforms(getFilteredPlatforms());
   if (activePlatform) renderCards(activePlatform, activeCards);
 }
 
@@ -241,8 +260,9 @@ function renderStaticText() {
   document.title = t('docTitle');
   langZh.classList.toggle('active', currentLang === 'zh');
   langEn.classList.toggle('active', currentLang === 'en');
+  platformSearch.placeholder = t('searchPlaceholder');
   platformSectionTitle.textContent = t('selectPlatform');
-  platformCount.textContent = t('platformCount', platforms.length);
+  platformCount.textContent = t('platformCount', getFilteredPlatforms().length);
   if (!activePlatform) {
     resultTitle.textContent = t('resultTitle');
     resultCount.textContent = t('choosePlatform');
@@ -254,7 +274,7 @@ function setLanguage(lang) {
   currentLang = lang === 'en' ? 'en' : 'zh';
   localStorage.setItem('uCardQueryLang', currentLang);
   renderStaticText();
-  renderPlatforms(platforms);
+  renderPlatforms(getFilteredPlatforms());
   if (activePlatform) renderCards(activePlatform, activeCards);
   hydrateTranslations();
 }
@@ -307,6 +327,11 @@ platformPanel.addEventListener('touchend', (event) => {
   changePlatformPage(deltaX < 0 ? 1 : -1);
 }, { passive: false });
 
+platformSearch.addEventListener('input', () => {
+  platformPage = 0;
+  renderPlatforms(getFilteredPlatforms());
+});
+
 langZh.addEventListener('click', () => setLanguage('zh'));
 langEn.addEventListener('click', () => setLanguage('en'));
 
@@ -315,7 +340,7 @@ async function bootstrap() {
     const data = await fetchJson('/api/u-card/platforms');
     platforms = Array.isArray(data.items) ? data.items : [];
     renderStaticText();
-    renderPlatforms(platforms);
+    renderPlatforms(getFilteredPlatforms());
     hydrateTranslations();
   } catch (error) {
     platformCount.textContent = t('loadFailed');

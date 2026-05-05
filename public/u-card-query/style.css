@@ -32,6 +32,7 @@ body {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .back-link {
@@ -64,6 +65,26 @@ body {
 .back-link:hover {
   border-color: #95c9a7;
   background: var(--brand-soft);
+}
+
+.platform-search {
+  width: clamp(130px, 24vw, 260px);
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfcfb;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  padding: 0 14px;
+}
+
+.platform-search:focus {
+  border-color: #95c9a7;
+  box-shadow: 0 0 0 3px rgba(33, 122, 75, 0.1);
 }
 
 .query-shell {
@@ -264,5 +285,9 @@ body {
 @media (max-width: 760px) {
   .u-card-app {
     width: min(100% - 20px, 620px);
+  }
+
+  .platform-search {
+    width: clamp(96px, 26vw, 180px);
   }
 }
